@@ -1,31 +1,30 @@
-import React from "react";
-import { Navigate, Outlet } from "react-router-dom";
-import { useSelector } from "react-redux";
-import RoutePath from "../core/constants/routes.constant";
-import { USER_ROLES } from "../core/constants/app.constant";
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from '../core/hooks/useAuth';
+import RoutePath from '../core/constants/routes.constant';
+import { hasAnyPermission, hasRole } from '../core/utils/permission';
 
-const ProtectedRoute = ({ allowedRoles }) => {
-  const { token, user } = useSelector((state) => state.auth);
+/**
+ * Guards a CRM route.
+ *
+ * @param {string[]} [allowedRoles] internal role names allowed through
+ * @param {string[]} [requiredPermissions] any one of these permissions grants access
+ */
+const ProtectedRoute = ({ allowedRoles, requiredPermissions }) => {
+  const { user, isAuthenticated } = useAuth();
 
-  if (!token || !user) {
-    return <Navigate to={RoutePath.AUTH_LOGIN} replace />;
+  if (!isAuthenticated) {
+    return <Navigate to={RoutePath.LOGIN} replace />;
   }
 
-  // Check activeRole only, not all roles
-  const activeRole = user?.activeRole;
+  if (allowedRoles && !hasRole(user, allowedRoles)) {
+    return <Navigate to={RoutePath.UNAUTHORIZED} replace />;
+  }
 
-  const mappedRole = (() => {
-    if (activeRole === "ADMIN") return USER_ROLES.ADMIN;
-    return null;
-  })();
-
-  // Only allow if the active role matches
-  const hasAccess = allowedRoles.includes(mappedRole);
-
-  if (!hasAccess) {
+  if (requiredPermissions && !hasAnyPermission(user, requiredPermissions)) {
     return <Navigate to={RoutePath.UNAUTHORIZED} replace />;
   }
 
   return <Outlet />;
 };
+
 export default ProtectedRoute;
