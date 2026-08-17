@@ -11,6 +11,7 @@ import { PERMISSIONS } from "../core/constants/permission.constant";
 // Public Pages
 import Home from "../pages/public/Home";
 import About from "../pages/public/About";
+import Plans from "../pages/public/Plans";
 import Contact from "../pages/public/Contact";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
@@ -53,6 +54,7 @@ const AppRoutes = () => {
       <Route element={<MainLayout />}>
         <Route path={RoutePath.HOME} element={<Home />} />
         <Route path={RoutePath.ABOUT} element={<About />} />
+        <Route path={RoutePath.PLANS} element={<Plans />} />
         <Route path={RoutePath.CONTACT} element={<Contact />} />
         <Route path={RoutePath.LOGIN} element={<Login />} />
         <Route path={RoutePath.SIGNUP} element={<Signup />} />

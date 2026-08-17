@@ -28,6 +28,13 @@ const Navbar = () => {
           </Link>
 
           <Link
+            to={RoutePath.PLANS}
+            className="hover:text-yellow-300 transition-colors duration-300"
+          >
+            Plans
+          </Link>
+
+          <Link
             to={RoutePath.CONTACT}
             className="hover:text-yellow-300 transition-colors duration-300"
           >

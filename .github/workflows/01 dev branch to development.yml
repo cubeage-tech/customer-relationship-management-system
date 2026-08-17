@@ -1,0 +1,90 @@
+# =============================================================================
+# TEAM REPOSITORY WORKFLOW 1
+# Trigger : push to any `dev-*` branch
+# Action  : automatically create/update a PR into `development`
+# Merge   : MANUAL - Team Lead / authorized maintainer must approve and merge
+# Scope   : runs entirely inside the team repository (fork)
+# =============================================================================
+
+name: "01 - Dev Branch -> Development (Auto PR)"
+
+on:
+  push:
+    branches:
+      - "dev_*"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: dev-to-development-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve branch name 
+        id: vars
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create or reuse Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ steps.vars.outputs.branch }}
+        run: |
+          set -euo pipefail
+
+          BASE="development"
+
+          echo "Source branch : $HEAD_BRANCH"
+          echo "Target branch : $BASE"
+
+          # Check whether an open PR already exists
+          EXISTING_PR=$(gh pr list \
+            --base "$BASE" \
+            --head "$HEAD_BRANCH" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -z "$EXISTING_PR" ]; then
+
+            echo "No existing PR found. Creating PR..."
+
+            PR_URL=$(gh pr create \
+              --base "$BASE" \
+              --head "$HEAD_BRANCH" \
+              --title "Auto PR: ${HEAD_BRANCH} -> ${BASE}" \
+              --body "$(cat <<EOF
+          ## Automatic Pull Request
+
+          This PR was automatically created when changes were pushed to:
+
+          **Source:** \`${HEAD_BRANCH}\`
+
+          **Target:** \`${BASE}\`
+
+          ### Review Required
+
+          This PR must be reviewed and manually merged by an authorized team member.
+
+          No automatic merge is performed by this workflow.
+          EOF
+          )")
+
+            echo "Created PR: $PR_URL"
+
+          else
+
+            echo "Open PR already exists: #$EXISTING_PR"
+            echo "New commits have been pushed to the existing PR."
+
+          fi
