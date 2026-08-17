@@ -9,6 +9,7 @@ class RoutePath {
   // ==================== PUBLIC ROUTES ====================
   static HOME = "/";
   static ABOUT = "/about";
+  static PLANS = "/plans";
   static CONTACT = "/contact";
   static LOGIN = "/login";
   static SIGNUP = "/signup";
