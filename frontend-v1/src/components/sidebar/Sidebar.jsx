@@ -1,67 +1,103 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useAuth } from "../../core/hooks/useAuth";
 import { getSidebarMenu } from "./SidebarConfig";
-import { APP_SHORT_NAME } from "../../core/constants/app.constant";
-import { getRoleLabel } from "../../core/utils/permission";
 import RoutePath from "../../core/constants/routes.constant";
 
+// Optional AI credits widget data — wire this up to real usage data.
+const AI_CREDITS_USED = 8420;
+const AI_CREDITS_TOTAL = 10000;
+
 const Sidebar = () => {
-  const { user, logoutUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
+  // getSidebarMenu(user) should return items shaped like:
+  // { path, label, icon, badge?: string | number, isNew?: boolean }
   const menus = getSidebarMenu(user);
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate(RoutePath.LOGIN, { replace: true });
-  };
+  const creditsPct = Math.min(
+    100,
+    Math.round((AI_CREDITS_USED / AI_CREDITS_TOTAL) * 100)
+  );
 
   return (
-    <aside className="w-72 bg-slate-900 text-white flex flex-col h-full">
+    <aside className="w-72 bg-white border-r border-slate-200 flex flex-col h-full">
 
-      <div className="h-20 flex flex-col items-center justify-center border-b border-slate-800 shrink-0">
-        <h1 className="text-2xl font-bold">
-          {APP_SHORT_NAME}
-        </h1>
-        {user?.role && (
-          <p className="text-xs text-slate-400">
-            {getRoleLabel(user.role)}
-          </p>
-        )}
-      </div>
-
-      <nav className="p-5 flex-1 overflow-y-auto">
+      <nav className="px-4 pt-6 pb-2 flex-1 overflow-y-auto">
+        <p className="px-3 mb-3 text-xs font-semibold tracking-wider text-slate-400">
+          WORKSPACE
+        </p>
 
         {menus.map((menu) => (
-
           <NavLink
             key={menu.path}
             to={menu.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 p-3 rounded-lg mb-2 ${
+              `relative flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-blue-600"
-                  : "hover:bg-slate-800"
+                  ? "bg-indigo-50 text-indigo-600"
+                  : "text-slate-600 hover:bg-slate-50"
               }`
             }
           >
-            <menu.icon size={20} />
-            {menu.label}
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600" />
+                )}
+
+                <span className="flex items-center gap-3">
+                  <menu.icon size={18} />
+                  {menu.label}
+                </span>
+
+                {menu.badge !== undefined && (
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      isActive
+                        ? "bg-indigo-100 text-indigo-600"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {menu.badge}
+                  </span>
+                )}
+
+                {menu.isNew && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-600 text-white">
+                    New
+                  </span>
+                )}
+              </>
+            )}
           </NavLink>
-
         ))}
-
       </nav>
 
-      <div className="p-5 border-t border-slate-800 shrink-0">
+      {/* AI Credits widget */}
+      <div className="p-4 border-t border-slate-200 shrink-0">
         <button
           type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-3 p-3 rounded-lg w-full text-left hover:bg-slate-800 transition-colors"
+          onClick={() => navigate(RoutePath.AI_CREDITS)}
+          className="w-full text-left rounded-xl bg-indigo-50 p-4 hover:bg-indigo-100/70 transition-colors"
         >
-          <LogOut size={20} />
-          Logout
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles size={16} className="text-indigo-600" />
+            <span className="text-sm font-semibold text-indigo-700">
+              AI Credits
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mb-2">
+            {AI_CREDITS_USED.toLocaleString()} of{" "}
+            {AI_CREDITS_TOTAL.toLocaleString()} monthly credits
+          </p>
+          <div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-indigo-600 rounded-full"
+              style={{ width: `${creditsPct}%` }}
+            />
+          </div>
         </button>
       </div>
 
