@@ -17,6 +17,7 @@ import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 
 // Role Dashboards
+import SuperAdminDashboard from "../pages/dashboard/SuperAdminDashboard";
 import AdminDashboard from "../pages/dashboard/AdminDashboard";
 import SalesManagerDashboard from "../pages/dashboard/SalesManagerDashboard";
 import SalesExecutiveDashboard from "../pages/dashboard/SalesExecutiveDashboard";
@@ -72,6 +73,19 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute
               allowedRoles={[USER_ROLES.SUPER_ADMIN]}
+            />
+          }
+        >
+          <Route
+            path={RoutePath.SUPER_ADMIN_DASHBOARD}
+            element={<SuperAdminDashboard />}
+          />
+        </Route>
+
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={[USER_ROLES.ADMIN]}
             />
           }
         >
