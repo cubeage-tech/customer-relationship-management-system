@@ -112,7 +112,7 @@ const Faq = () => {
   const [openIndex, setOpenIndex] = useState(null);
 
   return (
-    <section className="max-w-full py-12">
+    <section className="max-w-full py-12 px-4 sm:px-8 md:px-16 lg:px-24 xl:px-32">
       <h2 className="text-2xl text-center font-bold text-foreground mb-6">Frequently asked questions</h2>
 
       <div className="surface-card divide-y divide-border overflow-hidden">
@@ -132,12 +132,12 @@ const Faq = () => {
         ))}
       </div>
 
-      <div className="surface-card mt-8 px-8 py-6 flex items-center justify-between gap-6">
+      <div className="surface-card mt-8 px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-lg font-bold text-foreground">Ready to see your pipeline?</p>
           <p className="text-sm text-muted-foreground mt-1">Start a 14-day trial — no credit card, full feature access.</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
           <button className="px-5 py-2 rounded-xl text-sm font-semibold gradient-primary text-primary-foreground cursor-pointer border-none hover:scale-105 hover:opacity-80 transition-all duration-300 ease-in-out">
             Compare plans
           </button>
