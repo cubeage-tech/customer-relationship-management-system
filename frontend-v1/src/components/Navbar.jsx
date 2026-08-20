@@ -56,7 +56,7 @@ const Navbar = () => {
             to={RoutePath.LOGIN}
             className="px-5 py-2 rounded-full text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors duration-200"
           >
-            View Dashboard
+            Login
           </Link>
           <Link
             to={RoutePath.SIGNUP}
