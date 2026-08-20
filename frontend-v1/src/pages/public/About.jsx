@@ -1,10 +1,13 @@
 import Hero from '../../components/about/Hero'
+import Journey from '../../components/about/Journey'
+import Leadership from '../../components/about/Leadership'
 
 const About = () => {
   return (
-    <div>
-        <Hero/>
-      
+    <div className="page-canvas">
+      <Hero />
+      <Journey />
+      <Leadership />
     </div>
   )
 }
