@@ -57,11 +57,14 @@ const AppRoutes = () => {
         <Route path={RoutePath.ABOUT} element={<About />} />
         <Route path={RoutePath.PLANS} element={<Plans />} />
         <Route path={RoutePath.CONTACT} element={<Contact />} />
-        <Route path={RoutePath.LOGIN} element={<Login />} />
-        <Route path={RoutePath.SIGNUP} element={<Signup />} />
         <Route path={RoutePath.UNAUTHORIZED} element={<Unauthorized />} />
         <Route path={RoutePath.NOT_FOUND} element={<NotFound />} />
       </Route>
+
+      {/* ================= AUTH ROUTES ================= */}
+      <Route path={RoutePath.LOGIN} element={<Login />} />
+      <Route path={RoutePath.SIGNUP} element={<Signup />} />
+
 
       {/* ================= DASHBOARD LAYOUT ================= */}
 
