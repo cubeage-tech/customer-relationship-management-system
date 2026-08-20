@@ -6,6 +6,7 @@ export const APP_SHORT_NAME = 'CRM';
 
 export const USER_ROLES = {
   SUPER_ADMIN: 'super_admin',
+  ADMIN: 'admin',
   SALES_MANAGER: 'sales_manager',
   SALES_EXECUTIVE: 'sales_executive',
   MARKETING_EXECUTIVE: 'marketing_executive',
@@ -16,7 +17,8 @@ export const USER_ROLES = {
 
 /** Human readable name for every internal role name. */
 export const ROLE_LABELS = {
-  [USER_ROLES.SUPER_ADMIN]: 'Tenant Administrator',
+  [USER_ROLES.SUPER_ADMIN]: 'Platform Super Admin',
+  [USER_ROLES.ADMIN]: 'Tenant Administrator',
   [USER_ROLES.SALES_MANAGER]: 'Sales Manager',
   [USER_ROLES.SALES_EXECUTIVE]: 'Sales Executive',
   [USER_ROLES.MARKETING_EXECUTIVE]: 'Marketing Executive',
@@ -27,7 +29,9 @@ export const ROLE_LABELS = {
 
 export const ROLE_DESCRIPTIONS = {
   [USER_ROLES.SUPER_ADMIN]:
-    'Full access to every module, all teams and tenant administration settings.',
+    'Devniks/Cubeage platform staff. Manages every tenant on SmartCRM AI and sees cross-tenant sales and product analytics.',
+  [USER_ROLES.ADMIN]:
+    'Tenant owner. Full access to every module, all teams and tenant administration settings, including adding team members.',
   [USER_ROLES.SALES_MANAGER]:
     'Manages the sales team: full access to team customers, leads and opportunities, approves quotations.',
   [USER_ROLES.SALES_EXECUTIVE]:
@@ -48,13 +52,21 @@ export const ROLE_OPTIONS = Object.values(USER_ROLES).map((value) => ({
   label: ROLE_LABELS[value],
 }));
 
-/** Roles a user may pick during self-registration (tenant admin sets the rest). */
-export const SIGNUP_ROLES = [
-  USER_ROLES.SUPER_ADMIN,
+/**
+ * Roles selectable during public self-registration. Signing up only ever creates a new
+ * tenant + its admin (owner) — every other CRM role is added by that admin from the Users
+ * page, never self-registered, so tenants can't be joined just by knowing their name.
+ */
+export const SIGNUP_ROLES = [USER_ROLES.ADMIN];
+
+/** Roles a tenant admin may hand out to team members from the Users page. */
+export const TEAM_ROLES = [
   USER_ROLES.SALES_MANAGER,
   USER_ROLES.SALES_EXECUTIVE,
   USER_ROLES.MARKETING_EXECUTIVE,
   USER_ROLES.SERVICE_AGENT,
+  USER_ROLES.FINANCE_APPROVER,
+  USER_ROLES.EXECUTIVE_OWNER,
 ];
 
 export const isValidRole = (role) => Object.values(USER_ROLES).includes(role);
