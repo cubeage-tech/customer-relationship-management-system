@@ -19,6 +19,7 @@ class RoutePath {
   // ROLE DASHBOARDS
   // ======================================================
 
+  static SUPER_ADMIN_DASHBOARD = `${this.DASHBOARD_BASE}/super-admin`;
   static ADMIN_DASHBOARD = `${this.DASHBOARD_BASE}/admin`;
   static SALES_MANAGER_DASHBOARD = `${this.DASHBOARD_BASE}/sales-manager`;
   static SALES_EXECUTIVE_DASHBOARD = `${this.DASHBOARD_BASE}/sales-executive`;
@@ -108,7 +109,8 @@ class RoutePath {
 
 /** Landing route after login, per CRM role. */
 export const ROLE_HOME_ROUTE = {
-  [USER_ROLES.SUPER_ADMIN]: RoutePath.ADMIN_DASHBOARD,
+  [USER_ROLES.SUPER_ADMIN]: RoutePath.SUPER_ADMIN_DASHBOARD,
+  [USER_ROLES.ADMIN]: RoutePath.ADMIN_DASHBOARD,
   [USER_ROLES.SALES_MANAGER]: RoutePath.SALES_MANAGER_DASHBOARD,
   [USER_ROLES.SALES_EXECUTIVE]: RoutePath.SALES_EXECUTIVE_DASHBOARD,
   [USER_ROLES.MARKETING_EXECUTIVE]: RoutePath.MARKETING_DASHBOARD,

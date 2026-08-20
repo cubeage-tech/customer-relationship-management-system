@@ -11,6 +11,12 @@ export const DEV_USERS = [
     id: 'dev-super-admin',
     role: USER_ROLES.SUPER_ADMIN,
     name: 'Ava Administrator',
+    email: 'superadmin@crm.dev',
+  },
+  {
+    id: 'dev-admin',
+    role: USER_ROLES.ADMIN,
+    name: 'Tara Tenant-Owner',
     email: 'admin@crm.dev',
   },
   {

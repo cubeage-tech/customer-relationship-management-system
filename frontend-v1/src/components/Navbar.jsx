@@ -1,7 +1,17 @@
+import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import RoutePath from "../core/constants/routes.constant";
 
+const navLinks = [
+  { label: "Home", to: RoutePath.HOME },
+  { label: "About", to: RoutePath.ABOUT },
+  { label: "Plans", to: RoutePath.PLANS },
+  { label: "Contact", to: RoutePath.CONTACT },
+];
+
 const Navbar = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <nav className="bg-surface border-b border-border shadow-soft">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
@@ -20,14 +30,9 @@ const Navbar = () => {
           </div>
         </Link>
 
-        {/* Navigation Links */}
-        <div className="flex items-center gap-1">
-          {[
-            { label: "Home", to: RoutePath.HOME },
-            { label: "About", to: RoutePath.ABOUT },
-            { label: "Plans", to: RoutePath.PLANS },
-            { label: "Contact", to: RoutePath.CONTACT },
-          ].map(({ label, to }) => (
+        {/* Desktop Nav Links */}
+        <div className="hidden md:flex items-center gap-1">
+          {navLinks.map(({ label, to }) => (
             <NavLink
               key={to}
               to={to}
@@ -45,8 +50,8 @@ const Navbar = () => {
           ))}
         </div>
 
-        {/* CTA Buttons */}
-        <div className="flex items-center gap-3">
+        {/* Desktop CTA Buttons */}
+        <div className="hidden md:flex items-center gap-3">
           <Link
             to={RoutePath.LOGIN}
             className="px-5 py-2 rounded-full text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors duration-200"
@@ -60,7 +65,57 @@ const Navbar = () => {
             Start free trial
           </Link>
         </div>
+
+        {/* Hamburger Button */}
+        <button
+          className="md:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5"
+          onClick={() => setMenuOpen((prev) => !prev)}
+          aria-label="Toggle menu"
+        >
+          <span className={`block h-0.5 w-6 bg-foreground transition-transform duration-300 ${menuOpen ? "rotate-45 translate-y-2" : ""}`} />
+          <span className={`block h-0.5 w-6 bg-foreground transition-opacity duration-300 ${menuOpen ? "opacity-0" : ""}`} />
+          <span className={`block h-0.5 w-6 bg-foreground transition-transform duration-300 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`} />
+        </button>
       </div>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-border px-6 py-4 flex flex-col gap-2 bg-surface">
+          {navLinks.map(({ label, to }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              onClick={() => setMenuOpen(false)}
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm transition-colors duration-200 ${
+                  isActive
+                    ? "bg-secondary text-secondary-foreground font-medium"
+                    : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+          <div className="flex flex-col gap-2 mt-2">
+            <Link
+              to={RoutePath.LOGIN}
+              onClick={() => setMenuOpen(false)}
+              className="px-5 py-2 rounded-full text-sm font-medium border border-border text-foreground hover:bg-secondary transition-colors duration-200 text-center"
+            >
+              View Dashboard
+            </Link>
+            <Link
+              to={RoutePath.SIGNUP}
+              onClick={() => setMenuOpen(false)}
+              className="px-5 py-2 rounded-full text-sm font-medium gradient-primary text-primary-foreground hover:opacity-90 transition-opacity duration-200 text-center"
+            >
+              Start free trial
+            </Link>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

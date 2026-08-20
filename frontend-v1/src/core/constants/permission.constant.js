@@ -15,6 +15,7 @@ export const MODULES = {
   REPORTS: 'reports',
   USERS: 'users',
   SETTINGS: 'settings',
+  TENANTS: 'tenants',
 };
 
 /**
@@ -87,13 +88,36 @@ export const PERMISSIONS = {
   USERS_MANAGE: 'users.manage',
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_MANAGE: 'settings.manage',
+
+  // Platform administration (super_admin only — not tenant-scoped)
+  TENANTS_VIEW: 'tenants.view',
+  TENANTS_MANAGE: 'tenants.manage',
+  PLATFORM_ANALYTICS_VIEW: 'platform.analytics.view',
 };
 
 const ALL_PERMISSIONS = Object.values(PERMISSIONS);
 
+/** Tenant-wide CRM permissions (everything except platform-only ones). */
+const ALL_TENANT_PERMISSIONS = ALL_PERMISSIONS.filter(
+  (permission) =>
+    ![
+      PERMISSIONS.TENANTS_VIEW,
+      PERMISSIONS.TENANTS_MANAGE,
+      PERMISSIONS.PLATFORM_ANALYTICS_VIEW,
+    ].includes(permission)
+);
+
 /** Permission list granted to each CRM role. */
 export const ROLE_PERMISSIONS = {
-  [USER_ROLES.SUPER_ADMIN]: ALL_PERMISSIONS,
+  // Platform staff — manages tenants, not any single tenant's CRM data.
+  [USER_ROLES.SUPER_ADMIN]: [
+    PERMISSIONS.TENANTS_VIEW,
+    PERMISSIONS.TENANTS_MANAGE,
+    PERMISSIONS.PLATFORM_ANALYTICS_VIEW,
+  ],
+
+  // Tenant owner — full access to their own tenant's CRM.
+  [USER_ROLES.ADMIN]: ALL_TENANT_PERMISSIONS,
 
   [USER_ROLES.SALES_MANAGER]: [
     PERMISSIONS.CUSTOMERS_VIEW,
@@ -184,7 +208,9 @@ export const ROLE_PERMISSIONS = {
 
 /** How much data of each module a role may read. */
 export const ROLE_DATA_SCOPE = {
-  [USER_ROLES.SUPER_ADMIN]: {
+  // super_admin isn't part of any tenant, so tenant CRM data scope doesn't apply — it
+  // reads platform-level data (tenants, cross-tenant analytics) instead, not modeled here.
+  [USER_ROLES.ADMIN]: {
     [MODULES.CUSTOMERS]: DATA_SCOPE.ALL,
     [MODULES.LEADS]: DATA_SCOPE.ALL,
     [MODULES.OPPORTUNITIES]: DATA_SCOPE.ALL,
