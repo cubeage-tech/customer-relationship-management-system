@@ -45,6 +45,7 @@ public class Security {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/plans/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 // Without this, Spring Security's default entry point returns 403 for a
