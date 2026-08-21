@@ -244,7 +244,7 @@ const Login = () => {
                     <Button type="button" variant="secondary" onClick={() => handleDevLogin(user.email)} className="text-xs py-1.5 px-3">
                       Log in
                     </Button>
-                  </li>
+                  </li> 
                 ))}
               </ul>
             </div>
