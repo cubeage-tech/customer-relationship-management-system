@@ -5,9 +5,7 @@ import com.company.crm.tenant.dto.response.TenantResDto;
 import com.company.crm.tenant.service.TenantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,5 +20,17 @@ public class TenantController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Response<List<TenantResDto>> listTenants() {
         return Response.ok(tenantService.listTenants());
+    }
+
+    @PatchMapping("/{tenantId}/deactivate")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public Response<TenantResDto> deactivateTenant(@PathVariable Long tenantId) {
+        return Response.ok("Tenant temporarily deactivated", tenantService.deactivateTenant(tenantId));
+    }
+
+    @PatchMapping("/{tenantId}/restore")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public Response<TenantResDto> restoreTenant(@PathVariable Long tenantId) {
+        return Response.ok("Tenant restored", tenantService.restoreTenant(tenantId));
     }
 }

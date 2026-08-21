@@ -17,14 +17,14 @@ const Contact = () => {
   const isPartnershipEnquiry = activeEnquiry === 'Partnerships';
 
   return (
-    <section className="page-canvas px-6 py-14 sm:py-16 lg:py-[5.25rem]">
+    <section className="page-canvas overflow-hidden px-4 py-10 sm:px-6 sm:py-16 lg:py-[5.25rem]">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-[760px]">
           <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-700">
             <Sparkles size={14} strokeWidth={2.5} />
             Contact us
           </div>
-          <h1 className="mt-7 text-4xl font-bold leading-[1.08] tracking-tight text-slate-950 sm:text-5xl lg:text-[50px]">
+          <h1 className="mt-7 max-w-full text-3xl font-bold leading-[1.08] tracking-tight text-slate-950 sm:text-5xl lg:text-[50px]">
             Let&apos;s talk about your revenue stack
           </h1>
           <p className="mt-4 text-base leading-6 text-slate-500 sm:text-[17px]">
@@ -33,14 +33,14 @@ const Contact = () => {
         </div>
 
         <div className="mt-9 grid gap-5 lg:grid-cols-[1.35fr_0.85fr]">
-          <form className="surface-card p-6 sm:p-7">
+          <form className="surface-card min-w-0 p-4 sm:p-7">
             <div className="flex flex-wrap gap-2">
               {enquiryTypes.map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setActiveEnquiry(type)}
-                  className={`rounded-full border px-3 py-2 text-xs transition-colors ${
+                  className={`rounded-full border px-2.5 py-2 text-xs transition-colors sm:px-3 ${
                     activeEnquiry === type
                       ? 'border-indigo-300 bg-indigo-50 font-medium text-indigo-700'
                       : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-700'
@@ -51,8 +51,8 @@ const Contact = () => {
               ))}
             </div>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="text-xs font-semibold text-slate-700">
+            <div className="mt-5 grid min-w-0 gap-4 sm:grid-cols-2">
+              <label className="min-w-0 text-xs font-semibold text-slate-700">
                 Full name
                 <input
                   className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -60,7 +60,7 @@ const Contact = () => {
                   type="text"
                 />
               </label>
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="min-w-0 text-xs font-semibold text-slate-700">
                 Work email
                 <input
                   className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -68,7 +68,7 @@ const Contact = () => {
                   type="email"
                 />
               </label>
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="min-w-0 text-xs font-semibold text-slate-700">
                 Company{isSupportEnquiry ? ' (optional)' : ''}
                 <input
                   className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -77,7 +77,7 @@ const Contact = () => {
                 />
               </label>
               {isSupportEnquiry ? (
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="min-w-0 text-xs font-semibold text-slate-700">
                   Plan
                   <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" defaultValue="Starter">
                     <option>Starter</option>
@@ -87,7 +87,7 @@ const Contact = () => {
                   </select>
                 </label>
               ) : isPartnershipEnquiry ? (
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="min-w-0 text-xs font-semibold text-slate-700">
                   Partnership type
                   <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" defaultValue="Integration/Tech partner">
                     <option>Integration/Tech partner</option>
@@ -120,7 +120,7 @@ const Contact = () => {
                 </label>
               )}
               {isPricingEnquiry && (
-                <label className="text-xs font-semibold text-slate-700 sm:col-span-2">
+                <label className="min-w-0 text-xs font-semibold text-slate-700 sm:col-span-2">
                   Which plan are you interested in?
                   <select
                     className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -135,7 +135,7 @@ const Contact = () => {
                 </label>
               )}
               {isPartnershipEnquiry && (
-                <label className="text-xs font-semibold text-slate-700 sm:col-span-2">
+                <label className="min-w-0 text-xs font-semibold text-slate-700 sm:col-span-2">
                   Company website
                   <input
                     className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
@@ -146,7 +146,7 @@ const Contact = () => {
               )}
             </div>
 
-            <label className="mt-4 block text-xs font-semibold text-slate-700">
+            <label className="mt-4 block min-w-0 text-xs font-semibold text-slate-700">
               {isSupportEnquiry
                 ? 'Describe the issue'
                 : isPricingEnquiry
@@ -168,7 +168,7 @@ const Contact = () => {
               />
             </label>
 
-            <div className="mt-6 flex items-center gap-4">
+            <div className="mt-6 flex flex-wrap items-center gap-4">
               <button type="submit" className="gradient-primary rounded-xl px-5 py-3 text-xs font-semibold text-white shadow-glow">
                 Send message
               </button>

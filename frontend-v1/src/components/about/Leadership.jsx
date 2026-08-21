@@ -11,9 +11,9 @@ const leaders = [
 
 const Leadership = () => {
   return (
-    <section className="bg-transparent pb-20 pt-8 sm:pb-24 lg:pt-12">
-      <div className="mx-auto max-w-7xl px-6">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+    <section className="bg-transparent pb-16 pt-6 sm:pb-24 sm:pt-8 lg:pt-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
           Leadership
         </h2>
 
@@ -32,13 +32,13 @@ const Leadership = () => {
           ))}
         </div>
 
-        <div className="surface-card mt-24 flex flex-col gap-6 px-8 py-8 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:px-11">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <div className="surface-card mt-16 flex flex-col gap-6 px-5 py-6 sm:mt-24 sm:px-10 sm:py-8 lg:flex-row lg:items-center lg:justify-between lg:px-11">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Want to work with us?
           </h2>
           <Link
             to="/contact"
-            className="gradient-primary shadow-glow inline-flex h-12 items-center justify-center rounded-2xl px-6 text-base font-semibold text-white transition-transform duration-200 hover:-translate-y-0.5"
+            className="gradient-primary shadow-glow inline-flex h-12 w-full items-center justify-center rounded-2xl px-6 text-base font-semibold text-white transition-transform duration-200 hover:-translate-y-0.5 sm:w-auto"
           >
             Get in touch
           </Link>

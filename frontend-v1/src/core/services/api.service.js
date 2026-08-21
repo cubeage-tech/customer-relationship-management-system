@@ -13,5 +13,8 @@ export const apiPost = (url, body, config) =>
 export const apiPut = (url, body, config) =>
   axiosInstance.put(url, body, config).then(unwrap);
 
+export const apiPatch = (url, body, config) =>
+  axiosInstance.patch(url, body, config).then(unwrap);
+
 export const apiDelete = (url, config) =>
   axiosInstance.delete(url, config).then(unwrap);
