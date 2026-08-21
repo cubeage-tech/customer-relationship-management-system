@@ -17,12 +17,12 @@ import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 
 // Role Dashboards
-import SuperAdminDashboard from "../pages/dashboard/SuperAdminDashboard";
+import SuperAdminDashboard from "../pages/dashboard/ServiceDashboard";
 import AdminDashboard from "../pages/dashboard/AdminDashboard";
 import SalesManagerDashboard from "../pages/dashboard/SalesManagerDashboard";
 import SalesExecutiveDashboard from "../pages/dashboard/SalesExecutiveDashboard";
 import MarketingDashboard from "../pages/dashboard/MarketingDashboard";
-import ServiceDashboard from "../pages/dashboard/ServiceDashboard";
+import ServiceDashboard from "../pages/dashboard/ServiceAgentDashboard";
 import FinanceDashboard from "../pages/dashboard/FinanceDashboard";
 import ExecutiveDashboard from "../pages/dashboard/ExecutiveDashboard";
 

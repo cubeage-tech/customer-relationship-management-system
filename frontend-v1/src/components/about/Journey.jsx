@@ -19,10 +19,10 @@ const milestones = [
 
 const Journey = () => {
   return (
-    <section className="bg-transparent px-6 pb-20 pt-8 sm:px-10 sm:pb-24 lg:px-16 lg:pt-12">
-      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
+    <section className="bg-transparent px-4 pb-16 pt-6 sm:px-6 sm:pb-24 sm:pt-8 lg:pt-12">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Our journey
           </h2>
           <p className="mt-4 text-base leading-6 text-slate-500">
@@ -30,10 +30,10 @@ const Journey = () => {
           </p>
         </div>
 
-        <ol className="relative border-l border-slate-200 pl-6 sm:pl-7">
+        <ol className="relative border-l border-slate-200 pl-5 sm:pl-7">
           {milestones.map(({ year, description }) => (
             <li key={year} className="relative pb-8 last:pb-0">
-              <span className="gradient-primary absolute -left-[33px] top-0 size-3.5 rounded-full ring-4 ring-[#f8f9fc] sm:-left-[35px]" />
+              <span className="gradient-primary absolute -left-[28px] top-0 size-3.5 rounded-full ring-4 ring-[#f8f9fc] sm:-left-[35px]" />
               <p className="text-sm font-bold text-indigo-600">{year}</p>
               <p className="mt-2 text-[15px] leading-6 text-slate-500">
                 {description}
