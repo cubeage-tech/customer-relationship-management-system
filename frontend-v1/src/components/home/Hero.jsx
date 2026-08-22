@@ -19,7 +19,7 @@ const STATS = [
 
 const Hero = () => {
   return (
-    <section className="relative overflow-hidden bg-[#F7F8FA]">
+    <section className="relative overflow-hidden bg-background">
       {/* soft ambient backdrop */}
       <div
         aria-hidden="true"

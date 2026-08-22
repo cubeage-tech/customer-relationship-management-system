@@ -93,28 +93,42 @@ export const PERMISSIONS = {
   TENANTS_VIEW: 'tenants.view',
   TENANTS_MANAGE: 'tenants.manage',
   PLATFORM_ANALYTICS_VIEW: 'platform.analytics.view',
+  SUBSCRIPTION_PLANS_VIEW: 'platform.subscriptionPlans.view',
+  SUBSCRIPTION_PLANS_MANAGE: 'platform.subscriptionPlans.manage',
+  PLATFORM_ROLES_VIEW: 'platform.roles.view',
+  PLATFORM_ROLES_MANAGE: 'platform.roles.manage',
+  PLATFORM_SETTINGS_VIEW: 'platform.settings.view',
+  PLATFORM_SETTINGS_MANAGE: 'platform.settings.manage',
+  PLATFORM_REPORTS_VIEW: 'platform.reports.view',
+  AUDIT_LOGS_VIEW: 'platform.auditLogs.view',
 };
+
+/** Platform-only permissions — scoped to super_admin, never granted to a tenant role. */
+const PLATFORM_ONLY_PERMISSIONS = [
+  PERMISSIONS.TENANTS_VIEW,
+  PERMISSIONS.TENANTS_MANAGE,
+  PERMISSIONS.PLATFORM_ANALYTICS_VIEW,
+  PERMISSIONS.SUBSCRIPTION_PLANS_VIEW,
+  PERMISSIONS.SUBSCRIPTION_PLANS_MANAGE,
+  PERMISSIONS.PLATFORM_ROLES_VIEW,
+  PERMISSIONS.PLATFORM_ROLES_MANAGE,
+  PERMISSIONS.PLATFORM_SETTINGS_VIEW,
+  PERMISSIONS.PLATFORM_SETTINGS_MANAGE,
+  PERMISSIONS.PLATFORM_REPORTS_VIEW,
+  PERMISSIONS.AUDIT_LOGS_VIEW,
+];
 
 const ALL_PERMISSIONS = Object.values(PERMISSIONS);
 
 /** Tenant-wide CRM permissions (everything except platform-only ones). */
 const ALL_TENANT_PERMISSIONS = ALL_PERMISSIONS.filter(
-  (permission) =>
-    ![
-      PERMISSIONS.TENANTS_VIEW,
-      PERMISSIONS.TENANTS_MANAGE,
-      PERMISSIONS.PLATFORM_ANALYTICS_VIEW,
-    ].includes(permission)
+  (permission) => !PLATFORM_ONLY_PERMISSIONS.includes(permission)
 );
 
 /** Permission list granted to each CRM role. */
 export const ROLE_PERMISSIONS = {
   // Platform staff — manages tenants, not any single tenant's CRM data.
-  [USER_ROLES.SUPER_ADMIN]: [
-    PERMISSIONS.TENANTS_VIEW,
-    PERMISSIONS.TENANTS_MANAGE,
-    PERMISSIONS.PLATFORM_ANALYTICS_VIEW,
-  ],
+  [USER_ROLES.SUPER_ADMIN]: PLATFORM_ONLY_PERMISSIONS,
 
   // Tenant owner — full access to their own tenant's CRM.
   [USER_ROLES.ADMIN]: ALL_TENANT_PERMISSIONS,

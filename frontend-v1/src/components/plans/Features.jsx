@@ -55,7 +55,7 @@ const Features = () => {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8">
+    <div className="w-full max-w-7xl mx-auto px-6 py-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">Compare features</h2>
       
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">

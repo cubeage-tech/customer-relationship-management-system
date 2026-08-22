@@ -3,9 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { signup as signupRequest } from '../../core/services/auth.service';
 import RoutePath from '../../core/constants/routes.constant';
-import { USER_ROLES, ROLE_OPTIONS, ROLE_DESCRIPTIONS } from '../../core/constants/app.constant';
+import { USER_ROLES } from '../../core/constants/app.constant';
 import { NOTIFICATION_MESSAGES } from '../../core/constants/notification.constant';
-import { Eye, EyeOff, Bot, ShieldCheck, BarChart3, Sparkles, Check } from 'lucide-react';
+import { validateSignupForm, getPasswordStrength } from '../../utils/validation';
+import { Eye, EyeOff, Bot, ShieldCheck, BarChart3, Sparkles, Check, Landmark } from 'lucide-react';
+
+const STRENGTH_COLORS = ['bg-gray-200', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
+const STRENGTH_TEXT_COLORS = ['text-gray-400', 'text-red-500', 'text-orange-500', 'text-yellow-600', 'text-green-600'];
 
 const Signup = () => {
   const [form, setForm] = useState({
@@ -13,35 +17,45 @@ const Signup = () => {
     lastName: '',
     email: '',
     organizationName: '',
-    role: USER_ROLES.ADMIN,
+    bankAccountNumber: '',
     password: '',
+    confirmPassword: '',
     termsAccepted: false,
   });
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
+  const strength = getPasswordStrength(form.password);
+
   const handleChange = (e) => {
+    const { name } = e.target;
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setForm((prev) => ({ ...prev, [e.target.name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => (prev[name] ? { ...prev, [name]: '' } : prev));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    if (!form.termsAccepted) {
-      setError('You must accept the terms of service to continue.');
+
+    const formErrors = validateSignupForm(form);
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
       return;
     }
+    setErrors({});
 
     try {
-      await signupRequest({ 
+      await signupRequest({
         name: `${form.firstName} ${form.lastName}`.trim(),
         email: form.email,
         password: form.password,
         organizationName: form.organizationName,
-        role: form.role
+        bankAccountNumber: form.bankAccountNumber,
+        role: USER_ROLES.ADMIN,
       });
       navigate(RoutePath.LOGIN);
     } catch {
@@ -117,7 +131,7 @@ const Signup = () => {
           <div className="mb-6">
             <p className="text-indigo-600 font-bold text-xs tracking-[0.15em] uppercase mb-3">14-day free trial</p>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Create your workspace account</h2>
-            <p className="text-gray-500 text-sm">No credit card required. Invite your team and assign roles in minutes.</p>
+            <p className="text-gray-500 text-sm">No credit card required. You'll be set up as the workspace admin (tenant owner).</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,13 +146,16 @@ const Signup = () => {
                     id="firstName"
                     type="text"
                     name="firstName"
-                    className="block w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                    className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                      errors.firstName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    }`}
                     placeholder="John"
                     value={form.firstName}
                     onChange={handleChange}
                     required
                   />
                 </div>
+                {errors.firstName && <p className="mt-1 text-xs text-red-500">{errors.firstName}</p>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="lastName">Last name</label>
@@ -150,13 +167,16 @@ const Signup = () => {
                     id="lastName"
                     type="text"
                     name="lastName"
-                    className="block w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                    className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                      errors.lastName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    }`}
                     placeholder="Doe"
                     value={form.lastName}
                     onChange={handleChange}
                     required
                   />
                 </div>
+                {errors.lastName && <p className="mt-1 text-xs text-red-500">{errors.lastName}</p>}
               </div>
             </div>
 
@@ -170,13 +190,16 @@ const Signup = () => {
                   id="email"
                   type="email"
                   name="email"
-                  className="block w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                  className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
                   placeholder="john.doe@company.com"
                   value={form.email}
                   onChange={handleChange}
                   required
                 />
               </div>
+              {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
             </div>
 
             <div>
@@ -189,37 +212,43 @@ const Signup = () => {
                   id="organizationName"
                   type="text"
                   name="organizationName"
-                  className="block w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                  className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    errors.organizationName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
                   placeholder="Acme Corp"
                   value={form.organizationName}
                   onChange={handleChange}
                   required
                 />
               </div>
+              {errors.organizationName && <p className="mt-1 text-xs text-red-500">{errors.organizationName}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="role">Your role</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="bankAccountNumber">Bank account number</label>
               <div className="relative">
-                <select
-                  id="role"
-                  name="role"
-                  className="block w-full pl-3 pr-10 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 appearance-none"
-                  value={form.role}
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Landmark className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  id="bankAccountNumber"
+                  type="text"
+                  inputMode="numeric"
+                  name="bankAccountNumber"
+                  className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    errors.bankAccountNumber ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
+                  placeholder="e.g. 123456789012"
+                  value={form.bankAccountNumber}
                   onChange={handleChange}
                   required
-                >
-                  {ROLE_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </div>
+                />
               </div>
-              <p className="mt-1.5 text-xs text-gray-500">
-                {ROLE_DESCRIPTIONS[form.role] || 'Select your role'}
-              </p>
+              {errors.bankAccountNumber ? (
+                <p className="mt-1.5 text-xs text-red-500">{errors.bankAccountNumber}</p>
+              ) : (
+                <p className="mt-1.5 text-xs text-gray-500">Used for billing and payout settlement on your workspace.</p>
+              )}
             </div>
 
             <div>
@@ -232,7 +261,9 @@ const Signup = () => {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  className="block w-full pl-9 pr-10 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                  className={`block w-full pl-9 pr-10 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
                   placeholder="Create a strong password"
                   value={form.password}
                   onChange={handleChange}
@@ -246,15 +277,62 @@ const Signup = () => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              
-              {/* Password strength indicator mock */}
+
+              {/* Password strength indicator - animated, driven by actual password */}
               <div className="mt-2 flex gap-1 h-1">
-                <div className="flex-1 bg-gray-200 rounded-full"></div>
-                <div className="flex-1 bg-gray-200 rounded-full"></div>
-                <div className="flex-1 bg-gray-200 rounded-full"></div>
-                <div className="flex-1 bg-gray-200 rounded-full"></div>
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 rounded-full transition-colors duration-300 ${
+                      i < strength.score ? STRENGTH_COLORS[strength.score] : 'bg-gray-200'
+                    }`}
+                  ></div>
+                ))}
               </div>
-              <p className="mt-1 text-xs text-gray-500">Password strength: <span className="text-gray-400">Too short</span></p>
+              <p className="mt-1 text-xs text-gray-500">
+                Password strength:{' '}
+                <span className={`font-medium transition-colors duration-300 ${STRENGTH_TEXT_COLORS[strength.score]}`}>
+                  {strength.label}
+                </span>
+              </p>
+              {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="confirmPassword">Confirm password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  className={`block w-full pl-9 pr-10 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    (form.confirmPassword && form.confirmPassword !== form.password) || errors.confirmPassword
+                      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
+                  placeholder="Re-enter your password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {form.confirmPassword ? (
+                <p className={`mt-1 text-xs ${form.confirmPassword === form.password ? 'text-green-600' : 'text-red-500'}`}>
+                  {form.confirmPassword === form.password ? 'Passwords match' : 'Passwords do not match'}
+                </p>
+              ) : (
+                errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <div className="flex items-center pt-2">
@@ -270,6 +348,7 @@ const Signup = () => {
                 I agree to the <a href="#" className="text-indigo-600 hover:underline">Terms of Service</a> and <a href="#" className="text-indigo-600 hover:underline">Privacy Policy</a>.
               </label>
             </div>
+            {errors.termsAccepted && <p className="text-xs text-red-500">{errors.termsAccepted}</p>}
 
             {error && <p className="text-red-500 text-sm font-medium pt-1">{error}</p>}
 
@@ -297,7 +376,7 @@ const Signup = () => {
               </li>
             </ul>
           </div>
-          
+
           <div className="mt-8 text-center text-sm text-gray-600">
             Already have an account? <Link to={RoutePath.LOGIN} className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Sign in</Link>
           </div>
