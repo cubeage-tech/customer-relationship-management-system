@@ -45,7 +45,7 @@ const Pricing = () => {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-16">
+    <div className="w-full max-w-7xl mx-auto px-6 py-16">
       <div className="mb-12 flex flex-col items-center text-center md:items-start md:text-left">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50/80 text-indigo-600 text-xs font-semibold mb-6 border border-indigo-100">
           <Sparkles size={14} />

@@ -5,6 +5,7 @@ class RoutePath {
   // ==================== BASE ROUTES ====================
   static DASHBOARD_BASE = "/dashboard";
   static ADMIN_BASE = "/admin";
+  static PLATFORM_BASE = "/platform";
 
   // ==================== PUBLIC ROUTES ====================
   static HOME = "/";
@@ -97,8 +98,21 @@ class RoutePath {
   static ADMIN_SETTINGS = `${this.ADMIN_BASE}/settings`;
 
   // ======================================================
+  // PLATFORM ADMINISTRATION (super_admin only)
+  // ======================================================
+
+  static PLATFORM_TENANTS = `${this.PLATFORM_BASE}/tenants`;
+  static PLATFORM_SUBSCRIPTION_PLANS = `${this.PLATFORM_BASE}/subscription-plans`;
+  static PLATFORM_ROLES_PERMISSIONS = `${this.PLATFORM_BASE}/roles-permissions`;
+  static PLATFORM_SETTINGS = `${this.PLATFORM_BASE}/settings`;
+  static PLATFORM_REPORTS = `${this.PLATFORM_BASE}/reports`;
+  static PLATFORM_AUDIT_LOGS = `${this.PLATFORM_BASE}/audit-logs`;
+
+  // ======================================================
   // COMMON
   // ======================================================
+
+  static HELP_CENTER = "/help-center";
 
   static PROFILE = "/profile";
 

@@ -7,6 +7,7 @@ import { getRoleHomeRoute } from '../../core/constants/routes.constant';
 import { NOTIFICATION_MESSAGES } from '../../core/constants/notification.constant';
 import { ROLE_LABELS } from '../../core/constants/app.constant';
 import { DEV_USERS } from '../../core/mocks/devUsers';
+import { validateEmail, required } from '../../utils/validation';
 import { Eye, EyeOff, Bot, ShieldCheck, BarChart3, Sparkles, CheckCircle2 } from 'lucide-react';
 
 // Same double gate as auth.service.js: import.meta.env.DEV is compiled to
@@ -18,12 +19,17 @@ const DEV_LOGIN_PASSWORD = import.meta.env.VITE_DEV_LOGIN_PASSWORD || 'Dev@12345
 
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { loginUser } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => (prev[name] ? { ...prev, [name]: '' } : prev));
+  };
 
   const submitCredentials = async (credentials) => {
     setError('');
@@ -39,6 +45,18 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const formErrors = {};
+    const emailErr = validateEmail(form.email);
+    if (emailErr) formErrors.email = emailErr;
+    const passwordErr = required(form.password, 'Password');
+    if (passwordErr) formErrors.password = passwordErr;
+
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      return;
+    }
+    setErrors({});
     submitCredentials(form);
   };
 
@@ -129,13 +147,16 @@ const Login = () => {
                   id="email"
                   type="email"
                   name="email"
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                  className={`block w-full pl-10 pr-3 py-3 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
                   placeholder="john.doe@company.com"
                   value={form.email}
                   onChange={handleChange}
                   required
                 />
               </div>
+              {errors.email && <p className="mt-1.5 text-xs text-red-500">{errors.email}</p>}
             </div>
 
             <div>
@@ -150,7 +171,9 @@ const Login = () => {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300"
+                  className={`block w-full pl-10 pr-10 py-3 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
+                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                  }`}
                   placeholder="••••••••"
                   value={form.password}
                   onChange={handleChange}
@@ -164,6 +187,7 @@ const Login = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              {errors.password && <p className="mt-1.5 text-xs text-red-500">{errors.password}</p>}
             </div>
 
             <div className="flex items-center justify-between py-1">

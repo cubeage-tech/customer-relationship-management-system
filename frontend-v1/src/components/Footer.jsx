@@ -4,7 +4,7 @@ import RoutePath from "../core/constants/routes.constant";
 const Footer = () => {
   return (
     <footer className="bg-surface border-t border-border shadow-soft">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 px- 8 py-4">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} SmartCRM AI · Built for revenue teams
         </p>

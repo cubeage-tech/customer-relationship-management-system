@@ -15,7 +15,7 @@ const FAQ = () => {
   ];
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8 mb-16">
+    <div className="w-full max-w-7xl mx-auto px-6 py-8 mb-16">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">Pricing FAQ</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
