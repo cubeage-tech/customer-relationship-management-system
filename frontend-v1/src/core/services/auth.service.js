@@ -46,6 +46,11 @@ export const login = async ({ email, password }) => {
   return data;
 };
 
+/**
+ * Called by Signup.jsx as `signup({ name, email, password, ... })`.
+ */
+export const signup = (data) => ApiService.signup(data);
+
 export class UserAuthService {
   static checkIsLoggedIn() {
     const token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);

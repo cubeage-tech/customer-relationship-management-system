@@ -1,3 +1,3 @@
-import { apiGet } from './api.service';
+import ApiService from './api.service';
 
-export const getSuperAdminDashboard = () => apiGet('/api/dashboard/super-admin');
+export const getSuperAdminDashboard = () => ApiService.getSuperAdminDashboard();

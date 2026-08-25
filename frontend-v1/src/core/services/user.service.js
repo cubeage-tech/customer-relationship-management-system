@@ -1,5 +1,5 @@
-import { apiGet, apiPost } from './api.service';
+import ApiService from './api.service';
 
-export const listUsers = () => apiGet('/api/users');
+export const listUsers = () => ApiService.getUsers();
 
-export const createUser = (payload) => apiPost('/api/users', payload);
+export const createUser = (payload) => ApiService.createUser(payload);
