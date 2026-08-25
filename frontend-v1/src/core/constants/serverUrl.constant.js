@@ -1,5 +1,5 @@
 class ServerUrl {
-  static BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  static BASE_URL = import.meta.env.VITE_API_URL;
 
   // auth module
   static API_MODULE_AUTH = "/auth";

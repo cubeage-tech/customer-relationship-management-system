@@ -1,30 +1,79 @@
-import { apiPost } from './api.service';
-import { DEV_USERS } from '../mocks/devUsers';
-import { NOTIFICATION_MESSAGES } from '../constants/notification.constant';
+import ApiService from "./api.service";
+import StorageService from "./storage.service";
+import { APPLICATION_CONSTANTS } from "../constants/app.constant";
+import { DEV_USERS } from "../mocks/devUsers";
 
-// `import.meta.env.DEV` is a build-time constant Vite hardcodes to `false` in
-// production builds, so this branch — and the DEV_USERS list it closes over —
-// is dead-code-eliminated from `vite build` output no matter how the env vars
-// below are set. Mock login can only ever run under `vite dev`.
-const MOCK_AUTH_ENABLED =
-  import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK_AUTH === 'true';
-const DEV_LOGIN_PASSWORD = import.meta.env.VITE_DEV_LOGIN_PASSWORD || 'Dev@12345';
+const SHOW_MOCK_AUTH =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK_AUTH === "true";
+const DEV_LOGIN_PASSWORD = import.meta.env.VITE_DEV_LOGIN_PASSWORD || "Dev@12345";
 
-const mockLogin = ({ email, password }) => {
-  const user = DEV_USERS.find(
-    (candidate) => candidate.email.toLowerCase() === String(email ?? '').toLowerCase()
-  );
-
-  if (!user || password !== DEV_LOGIN_PASSWORD) {
-    return Promise.reject(new Error(NOTIFICATION_MESSAGES.LOGIN_FAILED));
+/**
+ * Decode JWT token manually without external library
+ */
+const decodeJWT = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    return null;
   }
-
-  return Promise.resolve({ user, token: `dev-token.${user.id}` });
 };
 
-export const login = (credentials) =>
-  MOCK_AUTH_ENABLED ? mockLogin(credentials) : apiPost('/auth/login', credentials);
+/**
+ * Called by Login.jsx as `login({ email, password })`.
+ * Returns { user, token } — Login.jsx destructures both and hands them
+ * straight to useAuth().loginUser().
+ */
+export const login = async ({ email, password }) => {
+  if (SHOW_MOCK_AUTH) {
+    const devUser = DEV_USERS.find((u) => u.email === email);
+    if (devUser && password === DEV_LOGIN_PASSWORD) {
+      const token = "dev-mock-token"; // not a real JWT — fine for local dev only
+      return { user: devUser, token };
+    }
+    // fall through to real API if no dev user matches, in case someone
+    // types real credentials while mock mode is on
+  }
 
-export const signup = (payload) => apiPost('/auth/signup', payload);
+  const data = await ApiService.login(email, password); // confirm this actually returns { user, token }
+  return data;
+};
 
-export const logout = () => apiPost('/auth/logout');
+export class UserAuthService {
+  static checkIsLoggedIn() {
+    const token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
+    if (token) {
+      try {
+        const decoded = decodeJWT(token);
+        if (!decoded) {
+          this.logoutUser();
+          return false;
+        }
+        if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          this.logoutUser();
+          return false;
+        }
+        return true;
+      } catch {
+        this.logoutUser();
+        return false;
+      }
+    }
+    return false;
+  }
+
+  static logoutUser() {
+    StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
+  }
+
+  static getToken() {
+    return StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
+  }
+}
