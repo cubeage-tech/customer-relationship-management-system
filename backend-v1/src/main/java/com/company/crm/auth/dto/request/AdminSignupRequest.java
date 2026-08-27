@@ -2,6 +2,7 @@ package com.company.crm.auth.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +28,11 @@ public class AdminSignupRequest {
 
     @NotBlank
     private String organizationName;
+
+    // Same shape the frontend validates client-side (validation.js BANK_ACCOUNT_NUMBER).
+    @NotBlank
+    @Pattern(regexp = "\\d{9,18}", message = "Bank account number must be 9-18 digits")
+    private String bankAccountNumber;
 
     private String website;
 

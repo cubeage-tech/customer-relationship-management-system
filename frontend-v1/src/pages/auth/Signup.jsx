@@ -58,8 +58,10 @@ const Signup = () => {
         role: USER_ROLES.ADMIN,
       });
       navigate(RoutePath.LOGIN);
-    } catch {
-      setError(NOTIFICATION_MESSAGES.GENERIC_ERROR);
+    } catch (err) {
+      // Surface the backend's reason (e.g. "A user with this email already
+      // exists" on 409) instead of a generic message that hides why signup failed.
+      setError(err.response?.data?.message || NOTIFICATION_MESSAGES.GENERIC_ERROR);
     }
   };
 

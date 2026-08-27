@@ -26,6 +26,9 @@ public class Tenant {
     @Column(name = "legal_name")
     private String legalName;
 
+    @Column(name = "bank_account_number", length = 18)
+    private String bankAccountNumber;
+
     @Column(nullable = false)
     private SubscriptionPlan plan = SubscriptionPlan.STARTER;
 

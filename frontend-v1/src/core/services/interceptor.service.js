@@ -56,13 +56,51 @@ function isTokenExpired(token) {
   return Date.now() / 1000 > payload.exp - 60;
 }
 
+/**
+ * Auth endpoints must never trigger a session wipe. A 401 from /auth/login means
+ * "wrong credentials", not "your session expired" — treating the two the same
+ * turned a failed sign-in into a full storage clear and a page reload.
+ */
+const AUTH_PATHS = [
+  "/auth/login",
+  "/auth/signup",
+  "/auth/verify-email",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
+function isAuthEndpoint(url = "") {
+  return AUTH_PATHS.some((path) => url.includes(path));
+}
+
+/**
+ * Did we actually send credentials on this request? Axios v1 stores headers in an
+ * AxiosHeaders instance, so read through .get() when it's available.
+ */
+function hadAuthHeader(config) {
+  const headers = config?.headers;
+  if (!headers) return false;
+  if (typeof headers.get === "function") return Boolean(headers.get("Authorization"));
+  return Boolean(headers.Authorization || headers.authorization);
+}
+
+// Several requests can 401 at once (a dashboard fans out on mount). Without this
+// latch each one fires its own navigation and the reloads stack up.
+let redirecting = false;
+
 function clearAuthAndRedirect() {
+  if (redirecting) return;
+  redirecting = true;
+
   // Use constants for storage keys — never raw string literals
   StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
   StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.USER_DETAILS);
+
   // Only redirect if not already on an auth page
   if (!window.location.pathname.includes("/login")) {
-    window.location.href = "/login";
+    window.location.replace("/login");
+  } else {
+    redirecting = false;
   }
 }
 
@@ -79,6 +117,11 @@ class ApiInterceptor {
 
     // ── Request interceptor ────────────────────────────────────────────────
     this.axiosReference.interceptors.request.use((config) => {
+      // Never attach (or validate) a token on the auth endpoints. A stale token
+      // left in storage used to make the request interceptor reject the very
+      // login call that would have replaced it.
+      if (isAuthEndpoint(config.url)) return config;
+
       const token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
 
       if (token) {
@@ -97,7 +140,15 @@ class ApiInterceptor {
     this.axiosReference.interceptors.response.use(
       (res) => res,
       (err) => {
-        if (err.response?.status === 401) {
+        // Only a 401 on a request we actually authenticated means the session is
+        // dead. A 401 on /auth/login (bad password) or on a call that carried no
+        // token at all is not a reason to sign the user out — that is what made a
+        // single misrouted request log you straight back out after signing in.
+        if (
+          err.response?.status === 401 &&
+          !isAuthEndpoint(err.config?.url) &&
+          hadAuthHeader(err.config)
+        ) {
           clearAuthAndRedirect();
         }
 

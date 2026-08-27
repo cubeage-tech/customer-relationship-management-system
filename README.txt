@@ -227,3 +227,5 @@ This repository is in **early/greenfield development**, built against the v1.0 S
 ## License
 
 Proprietary — © Devniks (Pentasoftware Consultancy). All rights reserved. Not for external distribution without authorization.
+
+To start backend use .\mvnw.cmd spring-boot:run
