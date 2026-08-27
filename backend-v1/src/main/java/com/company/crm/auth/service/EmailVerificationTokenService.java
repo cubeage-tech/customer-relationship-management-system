@@ -4,6 +4,7 @@ import com.company.crm.auth.entity.EmailVerificationToken;
 import com.company.crm.auth.repository.EmailVerificationTokenRepository;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.mail.MailService;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,11 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Issues and verifies email-verification tokens. There is no SMTP integration configured
- * anywhere in this project yet, so the token is logged rather than emailed — wiring a real
- * mail sender is a follow-up, not something this class fakes.
- */
+/** Issues and verifies email-verification tokens, and emails the verification link. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -28,6 +25,7 @@ public class EmailVerificationTokenService {
 
     private final EmailVerificationTokenRepository tokenRepository;
     private final UserRepository userRepository;
+    private final MailService mailService;
 
     @Transactional
     public void issueToken(User user) {
@@ -38,6 +36,7 @@ public class EmailVerificationTokenService {
         tokenRepository.save(token);
 
         log.info("Email verification token for {}: {} (expires in {}h)", user.getEmail(), token.getToken(), EXPIRY_HOURS);
+        mailService.sendVerificationEmail(user.getEmail(), user.getFullName(), token.getToken());
     }
 
     @Transactional

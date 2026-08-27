@@ -1,9 +1,7 @@
-import { apiGet, apiPatch } from './api.service';
+import ApiService from './api.service';
 
-export const listTenants = () => apiGet('/api/tenants');
+export const listTenants = () => ApiService.getTenants();
 
-export const deactivateTenant = (tenantId) =>
-	apiPatch(`/api/tenants/${tenantId}/deactivate`);
+export const deactivateTenant = (tenantId) => ApiService.deactivateTenant(tenantId);
 
-export const restoreTenant = (tenantId) =>
-	apiPatch(`/api/tenants/${tenantId}/restore`);
+export const restoreTenant = (tenantId) => ApiService.restoreTenant(tenantId);
