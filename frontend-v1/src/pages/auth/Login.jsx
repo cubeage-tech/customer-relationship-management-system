@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { login as loginRequest } from '../../core/services/auth.service';
 import { useAuth } from '../../core/hooks/useAuth';
@@ -24,6 +24,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { loginUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const justVerified = searchParams.get('verified') === 'true';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -132,6 +134,13 @@ const Login = () => {
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign in to SmartCRM AI</h2>
             <p className="text-gray-500 text-sm">Use your work account. Your role decides what you see next.</p>
           </div>
+
+          {justVerified && (
+            <div className="mb-6 flex items-center gap-2 rounded-xl border border-green-100 bg-[#F0FDF4] p-3 text-sm font-medium text-green-700">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Email confirmed — you can sign in now.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

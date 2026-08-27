@@ -16,6 +16,7 @@ const Plans = lazy(() => import("../pages/public/Plans"));
 const Contact = lazy(() => import("../pages/public/Contact"));
 const Login = lazy(() => import("../pages/auth/Login"));
 const Signup = lazy(() => import("../pages/auth/Signup"));
+const VerifyEmail = lazy(() => import("../pages/auth/VerifyEmail"));
 
 // Role Dashboards
 const SuperAdminDashboard = lazy(() => import("../pages/dashboard/ServiceDashboard"));
@@ -82,6 +83,7 @@ const AppRoutes = () => {
         {/* ================= AUTH ROUTES ================= */}
         <Route path={RoutePath.LOGIN} element={<Login />} />
         <Route path={RoutePath.SIGNUP} element={<Signup />} />
+        <Route path={RoutePath.VERIFY_EMAIL} element={<VerifyEmail />} />
 
 
         {/* ================= DASHBOARD LAYOUT ================= */}

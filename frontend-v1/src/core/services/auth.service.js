@@ -51,6 +51,11 @@ export const login = async ({ email, password }) => {
  */
 export const signup = (data) => ApiService.signup(data);
 
+/**
+ * Called by VerifyEmail.jsx with the token from the emailed link's query string.
+ */
+export const verifyEmail = (token) => ApiService.verifyEmail({ token });
+
 export class UserAuthService {
   static checkIsLoggedIn() {
     const token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
