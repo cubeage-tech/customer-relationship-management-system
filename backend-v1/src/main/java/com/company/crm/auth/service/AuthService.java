@@ -86,6 +86,7 @@ public class AuthService {
         Tenant tenant = new Tenant();
         tenant.setCompanyName(request.getOrganizationName());
         tenant.setLegalName(request.getAddress());
+        tenant.setBankAccountNumber(request.getBankAccountNumber());
         tenant = tenantRepository.save(tenant);
 
         Role adminRole = roleRepository.findByName(RoleType.ADMIN)
