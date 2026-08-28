@@ -41,6 +41,160 @@ class ApiService {
     return this.apipost(ServerUrl.USERS, data);
   }
 
+  // ------------------ Customer APIs ------------------
+  static getCustomers(params) {
+    return this.apiget(ServerUrl.CUSTOMERS, params);
+  }
+
+  static getCustomer(id) {
+    return this.apiget(ServerUrl.customer(id));
+  }
+
+  static createCustomer(data) {
+    return this.apipost(ServerUrl.CUSTOMERS, data);
+  }
+
+  static updateCustomer(id, data) {
+    return this.apiput(ServerUrl.customer(id), data);
+  }
+
+  static archiveCustomer(id) {
+    return this.apipatch(ServerUrl.customerArchive(id));
+  }
+
+  static restoreCustomer(id) {
+    return this.apipatch(ServerUrl.customerRestore(id));
+  }
+
+  static addCustomerContact(customerId, data) {
+    return this.apipost(ServerUrl.customerContacts(customerId), data);
+  }
+
+  static updateCustomerContact(customerId, contactId, data) {
+    return this.apiput(ServerUrl.customerContact(customerId, contactId), data);
+  }
+
+  static deleteCustomerContact(customerId, contactId) {
+    return this.apidelete(ServerUrl.customerContact(customerId, contactId));
+  }
+
+  // ------------------ Lead APIs ------------------
+  static getLeads(params) {
+    return this.apiget(ServerUrl.LEADS, params);
+  }
+
+  static getLead(id) {
+    return this.apiget(ServerUrl.lead(id));
+  }
+
+  static createLead(data) {
+    return this.apipost(ServerUrl.LEADS, data);
+  }
+
+  static updateLead(id, data) {
+    return this.apiput(ServerUrl.lead(id), data);
+  }
+
+  static deleteLead(id) {
+    return this.apidelete(ServerUrl.lead(id));
+  }
+
+  static changeLeadStage(id, data) {
+    return this.apipatch(ServerUrl.leadStage(id), data);
+  }
+
+  static assignLead(id, data) {
+    return this.apipatch(ServerUrl.leadAssign(id), data);
+  }
+
+  // ------------------ Opportunity APIs ------------------
+  static getOpportunities(params) {
+    return this.apiget(ServerUrl.OPPORTUNITIES, params);
+  }
+
+  static getOpportunitySummary() {
+    return this.apiget(ServerUrl.OPPORTUNITIES_SUMMARY);
+  }
+
+  static getOpportunity(id) {
+    return this.apiget(ServerUrl.opportunity(id));
+  }
+
+  static createOpportunity(data) {
+    return this.apipost(ServerUrl.OPPORTUNITIES, data);
+  }
+
+  static updateOpportunity(id, data) {
+    return this.apiput(ServerUrl.opportunity(id), data);
+  }
+
+  static deleteOpportunity(id) {
+    return this.apidelete(ServerUrl.opportunity(id));
+  }
+
+  static changeOpportunityStage(id, data) {
+    return this.apipatch(ServerUrl.opportunityStage(id), data);
+  }
+
+  // ------------------ Quotation APIs ------------------
+  static getQuotations(params) {
+    return this.apiget(ServerUrl.QUOTATIONS, params);
+  }
+
+  static getQuotation(id) {
+    return this.apiget(ServerUrl.quotation(id));
+  }
+
+  static createQuotation(data) {
+    return this.apipost(ServerUrl.QUOTATIONS, data);
+  }
+
+  static updateQuotation(id, data) {
+    return this.apiput(ServerUrl.quotation(id), data);
+  }
+
+  static sendQuotation(id) {
+    return this.apipatch(ServerUrl.quotationSend(id));
+  }
+
+  static setQuotationCustomerStatus(id, data) {
+    return this.apipatch(ServerUrl.quotationCustomerStatus(id), data);
+  }
+
+  static approveQuotationDiscount(id) {
+    return this.apipatch(ServerUrl.quotationDiscountApprove(id));
+  }
+
+  static rejectQuotationDiscount(id, data) {
+    return this.apipatch(ServerUrl.quotationDiscountReject(id), data);
+  }
+
+  /** Returns the raw axios response (blob) — a PDF download isn't wrapped in the JSON envelope. */
+  static downloadQuotationPdf(id) {
+    return this.axiosInstance.get(ServerUrl.quotationPdf(id), { responseType: "blob" });
+  }
+
+  // ------------------ Product APIs ------------------
+  static getProducts() {
+    return this.apiget(ServerUrl.PRODUCTS);
+  }
+
+  static createProduct(data) {
+    return this.apipost(ServerUrl.PRODUCTS, data);
+  }
+
+  static updateProduct(id, data) {
+    return this.apiput(ServerUrl.product(id), data);
+  }
+
+  static deactivateProduct(id) {
+    return this.apipatch(ServerUrl.productDeactivate(id));
+  }
+
+  static activateProduct(id) {
+    return this.apipatch(ServerUrl.productActivate(id));
+  }
+
   // ------------------ Tenant APIs ------------------
   static getTenants(params) {
     return this.apiget(ServerUrl.TENANTS, params);
