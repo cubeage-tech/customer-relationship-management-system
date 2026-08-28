@@ -38,7 +38,9 @@ const OpportunityDetail = lazy(() => import("../pages/opportunities/OpportunityD
 const Quotations = lazy(() => import("../pages/quotations/Quotations"));
 const QuotationDetail = lazy(() => import("../pages/quotations/QuotationDetail"));
 const ServiceTickets = lazy(() => import("../pages/service/ServiceTickets"));
+const ServiceTicketDetail = lazy(() => import("../pages/service/ServiceTicketDetail"));
 const Campaigns = lazy(() => import("../pages/marketing/Campaigns"));
+const CampaignDetail = lazy(() => import("../pages/marketing/CampaignDetail"));
 const Approvals = lazy(() => import("../pages/finance/Approvals"));
 const Reports = lazy(() => import("../pages/reports/Reports"));
 
@@ -265,6 +267,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.SERVICE_TICKETS} element={<ServiceTickets />} />
+            <Route path={RoutePath.EDIT_SERVICE_TICKET} element={<ServiceTicketDetail />} />
           </Route>
 
           {/* ================= MARKETING ================= */}
@@ -277,6 +280,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.CAMPAIGNS} element={<Campaigns />} />
+            <Route path={RoutePath.EDIT_CAMPAIGN} element={<CampaignDetail />} />
           </Route>
 
           {/* ================= FINANCE / APPROVALS ================= */}

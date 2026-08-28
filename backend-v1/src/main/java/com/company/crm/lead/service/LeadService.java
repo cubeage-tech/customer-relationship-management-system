@@ -1,5 +1,7 @@
 package com.company.crm.lead.service;
 
+import com.company.crm.campaign.entity.Campaign;
+import com.company.crm.campaign.repository.CampaignRepository;
 import com.company.crm.common.enums.CustomerStatus;
 import com.company.crm.common.enums.IndustryType;
 import com.company.crm.common.enums.LeadSource;
@@ -30,6 +32,7 @@ public class LeadService {
     private final LeadRepository leadRepository;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
+    private final CampaignRepository campaignRepository;
     private final OpportunityService opportunityService;
     private final LeadMapper leadMapper;
 
@@ -149,6 +152,7 @@ public class LeadService {
         lead.setSource(parseSource(dto.getSource()));
         lead.setFollowUpDate(dto.getFollowUpDate());
         lead.setNotes(dto.getNotes());
+        lead.setCampaign(dto.getCampaignId() != null ? resolveCampaign(currentUser, dto.getCampaignId()) : null);
 
         // sales_executive may work a lead without reassigning it — only honor an
         // ownerId change here for roles that hold LEADS_ASSIGN (admin/sales_manager).
@@ -158,6 +162,15 @@ public class LeadService {
         } else if (dto.getOwnerId() != null && currentUser.getRole().getName() != RoleType.SALES_EXECUTIVE) {
             lead.setOwner(resolveOwner(currentUser, dto.getOwnerId()));
         }
+    }
+
+    private Campaign resolveCampaign(User currentUser, Long campaignId) {
+        Campaign campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> ApiException.badRequest("Campaign not found"));
+        if (!campaign.getTenant().getId().equals(requireTenantId(currentUser))) {
+            throw ApiException.badRequest("Campaign must belong to your tenant");
+        }
+        return campaign;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {

@@ -237,3 +237,101 @@ export const DISCOUNT_APPROVAL_STATUS_LABELS = {
   approved: 'Approved',
   rejected: 'Rejected',
 };
+
+// Service ticket priority — mirrors backend TicketPriority db values (FR-6.1).
+export const TICKET_PRIORITIES = {
+  CRITICAL: 'critical',
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+};
+
+export const TICKET_PRIORITY_LABELS = {
+  [TICKET_PRIORITIES.CRITICAL]: 'Critical',
+  [TICKET_PRIORITIES.HIGH]: 'High',
+  [TICKET_PRIORITIES.MEDIUM]: 'Medium',
+  [TICKET_PRIORITIES.LOW]: 'Low',
+};
+
+export const TICKET_PRIORITY_OPTIONS = Object.values(TICKET_PRIORITIES).map((value) => ({
+  value,
+  label: TICKET_PRIORITY_LABELS[value],
+}));
+
+// Service ticket status — mirrors backend TicketStatus db values (FR-6.2).
+export const TICKET_STATUSES = {
+  OPEN: 'open',
+  ASSIGNED: 'assigned',
+  IN_PROGRESS: 'in_progress',
+  RESOLVED: 'resolved',
+  CLOSED: 'closed',
+};
+
+export const TICKET_STATUS_LABELS = {
+  [TICKET_STATUSES.OPEN]: 'Open',
+  [TICKET_STATUSES.ASSIGNED]: 'Assigned',
+  [TICKET_STATUSES.IN_PROGRESS]: 'In Progress',
+  [TICKET_STATUSES.RESOLVED]: 'Resolved',
+  [TICKET_STATUSES.CLOSED]: 'Closed',
+};
+
+export const TICKET_STATUS_OPTIONS = Object.values(TICKET_STATUSES).map((value) => ({
+  value,
+  label: TICKET_STATUS_LABELS[value],
+}));
+
+// SLA status — derived by the backend (FR-6.4), never persisted.
+export const TICKET_SLA_STATUS_LABELS = {
+  on_track: 'On track',
+  at_risk: 'At risk',
+  breached: 'Breached',
+  met: 'Met',
+};
+
+// Campaign channel — mirrors backend CampaignChannel db values (SRS §6.7).
+export const CAMPAIGN_CHANNELS = {
+  EMAIL: 'email',
+  SOCIAL_MEDIA: 'social_media',
+  SMS: 'sms',
+  EVENT: 'event',
+  WEBINAR: 'webinar',
+  PAID_ADS: 'paid_ads',
+  OTHER: 'other',
+};
+
+export const CAMPAIGN_CHANNEL_LABELS = {
+  [CAMPAIGN_CHANNELS.EMAIL]: 'Email',
+  [CAMPAIGN_CHANNELS.SOCIAL_MEDIA]: 'Social Media',
+  [CAMPAIGN_CHANNELS.SMS]: 'SMS',
+  [CAMPAIGN_CHANNELS.EVENT]: 'Event',
+  [CAMPAIGN_CHANNELS.WEBINAR]: 'Webinar',
+  [CAMPAIGN_CHANNELS.PAID_ADS]: 'Paid Ads',
+  [CAMPAIGN_CHANNELS.OTHER]: 'Other',
+};
+
+export const CAMPAIGN_CHANNEL_OPTIONS = Object.values(CAMPAIGN_CHANNELS).map((value) => ({
+  value,
+  label: CAMPAIGN_CHANNEL_LABELS[value],
+}));
+
+// Campaign status — mirrors backend CampaignStatus db values (SRS §6.7).
+export const CAMPAIGN_STATUSES = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+};
+
+export const CAMPAIGN_STATUS_LABELS = {
+  [CAMPAIGN_STATUSES.DRAFT]: 'Draft',
+  [CAMPAIGN_STATUSES.ACTIVE]: 'Active',
+  [CAMPAIGN_STATUSES.PAUSED]: 'Paused',
+  [CAMPAIGN_STATUSES.COMPLETED]: 'Completed',
+  [CAMPAIGN_STATUSES.CANCELLED]: 'Cancelled',
+};
+
+export const CAMPAIGN_STATUS_OPTIONS = Object.values(CAMPAIGN_STATUSES).map((value) => ({
+  value,
+  label: CAMPAIGN_STATUS_LABELS[value],
+}));

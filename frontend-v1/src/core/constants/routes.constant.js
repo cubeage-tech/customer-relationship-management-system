@@ -75,6 +75,7 @@ class RoutePath {
   // ======================================================
 
   static CAMPAIGNS = "/campaigns";
+  static EDIT_CAMPAIGN = "/campaigns/:id";
 
   // ======================================================
   // FINANCE / APPROVALS

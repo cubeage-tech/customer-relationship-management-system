@@ -21,5 +21,7 @@ public class LeadResDto {
     private Long ownerId;
     private String ownerName;
     private Long convertedCustomerId;
+    private Long campaignId;
+    private String campaignName;
     private LocalDateTime createdAt;
 }

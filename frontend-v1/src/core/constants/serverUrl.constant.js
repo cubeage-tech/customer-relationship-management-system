@@ -50,6 +50,21 @@ class ServerUrl {
   static productDeactivate = (id) => `${ServerUrl.PRODUCTS}/${id}/deactivate`;
   static productActivate = (id) => `${ServerUrl.PRODUCTS}/${id}/activate`;
 
+  // service tickets
+  static TICKETS = ServerUrl.API_MODULE_USER + "/tickets";
+  static TICKETS_SUMMARY = ServerUrl.TICKETS + "/summary";
+  static ticket = (id) => `${ServerUrl.TICKETS}/${id}`;
+  static ticketAssign = (id) => `${ServerUrl.TICKETS}/${id}/assign`;
+  static ticketStatus = (id) => `${ServerUrl.TICKETS}/${id}/status`;
+  static ticketFeedback = (id) => `${ServerUrl.TICKETS}/${id}/feedback`;
+
+  // campaigns
+  static CAMPAIGNS = ServerUrl.API_MODULE_USER + "/campaigns";
+  static CAMPAIGNS_SUMMARY = ServerUrl.CAMPAIGNS + "/summary";
+  static campaign = (id) => `${ServerUrl.CAMPAIGNS}/${id}`;
+  static campaignStatus = (id) => `${ServerUrl.CAMPAIGNS}/${id}/status`;
+  static campaignLeads = (id) => `${ServerUrl.CAMPAIGNS}/${id}/leads`;
+
   static ADMIN_TENANT = ServerUrl.API_MODULE_USER + "/super-admin/tenants";
   static ADMIN_DASHBOARD = ServerUrl.API_MODULE_USER + "/dashboard/super-admin";
 

@@ -195,6 +195,72 @@ class ApiService {
     return this.apipatch(ServerUrl.productActivate(id));
   }
 
+  // ------------------ Service Ticket APIs ------------------
+  static getTickets(params) {
+    return this.apiget(ServerUrl.TICKETS, params);
+  }
+
+  static getTicketSummary() {
+    return this.apiget(ServerUrl.TICKETS_SUMMARY);
+  }
+
+  static getTicket(id) {
+    return this.apiget(ServerUrl.ticket(id));
+  }
+
+  static createTicket(data) {
+    return this.apipost(ServerUrl.TICKETS, data);
+  }
+
+  static updateTicket(id, data) {
+    return this.apiput(ServerUrl.ticket(id), data);
+  }
+
+  static assignTicket(id, data) {
+    return this.apipatch(ServerUrl.ticketAssign(id), data);
+  }
+
+  static changeTicketStatus(id, data) {
+    return this.apipatch(ServerUrl.ticketStatus(id), data);
+  }
+
+  static recordTicketFeedback(id, data) {
+    return this.apipatch(ServerUrl.ticketFeedback(id), data);
+  }
+
+  // ------------------ Campaign APIs ------------------
+  static getCampaigns(params) {
+    return this.apiget(ServerUrl.CAMPAIGNS, params);
+  }
+
+  static getCampaignSummary() {
+    return this.apiget(ServerUrl.CAMPAIGNS_SUMMARY);
+  }
+
+  static getCampaign(id) {
+    return this.apiget(ServerUrl.campaign(id));
+  }
+
+  static getCampaignLeads(id) {
+    return this.apiget(ServerUrl.campaignLeads(id));
+  }
+
+  static createCampaign(data) {
+    return this.apipost(ServerUrl.CAMPAIGNS, data);
+  }
+
+  static updateCampaign(id, data) {
+    return this.apiput(ServerUrl.campaign(id), data);
+  }
+
+  static deleteCampaign(id) {
+    return this.apidelete(ServerUrl.campaign(id));
+  }
+
+  static changeCampaignStatus(id, data) {
+    return this.apipatch(ServerUrl.campaignStatus(id), data);
+  }
+
   // ------------------ Tenant APIs ------------------
   static getTenants(params) {
     return this.apiget(ServerUrl.TENANTS, params);
