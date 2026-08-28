@@ -36,4 +36,7 @@ public class LeadReqDto {
 
     /** Salesperson this lead is assigned to. Defaults to the creator when omitted. */
     private Long ownerId;
+
+    /** FR-5.3: the marketing campaign this lead came from, if any. */
+    private Long campaignId;
 }

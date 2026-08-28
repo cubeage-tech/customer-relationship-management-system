@@ -1,9 +1,7 @@
-package com.company.crm.lead.entity;
+package com.company.crm.support.entity;
 
-import com.company.crm.campaign.entity.Campaign;
-import com.company.crm.common.enums.IndustryType;
-import com.company.crm.common.enums.LeadSource;
-import com.company.crm.common.enums.LeadStage;
+import com.company.crm.common.enums.TicketPriority;
+import com.company.crm.common.enums.TicketStatus;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.user.entity.User;
@@ -15,11 +13,11 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "leads")
+@Table(name = "service_tickets")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Lead {
+public class ServiceTicket {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,45 +27,39 @@ public class Lead {
     @JoinColumn(name = "tenant_id", nullable = false)
     private Tenant tenant;
 
-    @Column(name = "lead_name", nullable = false)
-    private String leadName;
-
-    @Column(name = "company_name", nullable = false)
-    private String companyName;
-
-    @Column(name = "contact_email")
-    private String contactEmail;
-
-    @Column(name = "contact_phone")
-    private String contactPhone;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
 
     @Column(nullable = false)
-    private IndustryType industry;
-
-    @Column(nullable = false)
-    private LeadSource source;
-
-    @Column(nullable = false)
-    private LeadStage stage = LeadStage.NEW_LEAD;
-
-    @Column(name = "follow_up_date")
-    private LocalDateTime followUpDate;
+    private String subject;
 
     @Column(columnDefinition = "TEXT")
-    private String notes;
+    private String description;
+
+    @Column(nullable = false)
+    private TicketPriority priority;
+
+    @Column(nullable = false)
+    private TicketStatus status = TicketStatus.OPEN;
+
+    /** FR-6.4: computed at creation from the priority's configured SLA window. */
+    @Column(name = "sla_due_at", nullable = false)
+    private LocalDateTime slaDueAt;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    /** FR-6.5: recorded on the customer's behalf by internal staff — no self-service portal yet. */
+    @Column(name = "feedback_score")
+    private Integer feedbackScore;
+
+    @Column(name = "feedback_comment")
+    private String feedbackComment;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
-    private User owner;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "converted_customer_id")
-    private Customer convertedCustomer;
-
-    /** FR-5.3: the marketing campaign that generated this lead, if any. */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "campaign_id")
-    private Campaign campaign;
+    @JoinColumn(name = "assigned_technician_id")
+    private User assignedTechnician;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")

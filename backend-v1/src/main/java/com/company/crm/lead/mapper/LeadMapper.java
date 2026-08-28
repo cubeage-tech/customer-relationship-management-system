@@ -22,6 +22,8 @@ public class LeadMapper {
                 lead.getOwner() != null ? lead.getOwner().getId() : null,
                 lead.getOwner() != null ? lead.getOwner().getFullName() : null,
                 lead.getConvertedCustomer() != null ? lead.getConvertedCustomer().getId() : null,
+                lead.getCampaign() != null ? lead.getCampaign().getId() : null,
+                lead.getCampaign() != null ? lead.getCampaign().getName() : null,
                 lead.getCreatedAt()
         );
     }
