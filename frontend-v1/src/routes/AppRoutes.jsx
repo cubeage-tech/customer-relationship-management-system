@@ -30,11 +30,17 @@ const ExecutiveDashboard = lazy(() => import("../pages/dashboard/ExecutiveDashbo
 
 // CRM Modules
 const Customers = lazy(() => import("../pages/customers/Customers"));
+const CustomerDetail = lazy(() => import("../pages/customers/CustomerDetail"));
 const Leads = lazy(() => import("../pages/leads/Leads"));
+const LeadDetail = lazy(() => import("../pages/leads/LeadDetail"));
 const Opportunities = lazy(() => import("../pages/opportunities/Opportunities"));
+const OpportunityDetail = lazy(() => import("../pages/opportunities/OpportunityDetail"));
 const Quotations = lazy(() => import("../pages/quotations/Quotations"));
+const QuotationDetail = lazy(() => import("../pages/quotations/QuotationDetail"));
 const ServiceTickets = lazy(() => import("../pages/service/ServiceTickets"));
+const ServiceTicketDetail = lazy(() => import("../pages/service/ServiceTicketDetail"));
 const Campaigns = lazy(() => import("../pages/marketing/Campaigns"));
+const CampaignDetail = lazy(() => import("../pages/marketing/CampaignDetail"));
 const Approvals = lazy(() => import("../pages/finance/Approvals"));
 const Reports = lazy(() => import("../pages/reports/Reports"));
 
@@ -206,6 +212,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.CUSTOMERS} element={<Customers />} />
+            <Route path={RoutePath.EDIT_CUSTOMER} element={<CustomerDetail />} />
           </Route>
 
           {/* ================= LEADS ================= */}
@@ -218,6 +225,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.LEADS} element={<Leads />} />
+            <Route path={RoutePath.EDIT_LEAD} element={<LeadDetail />} />
           </Route>
 
           {/* ================= OPPORTUNITIES ================= */}
@@ -230,6 +238,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.OPPORTUNITIES} element={<Opportunities />} />
+            <Route path={RoutePath.EDIT_OPPORTUNITY} element={<OpportunityDetail />} />
           </Route>
 
           {/* ================= QUOTATIONS ================= */}
@@ -242,6 +251,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.QUOTATIONS} element={<Quotations />} />
+            <Route path={RoutePath.EDIT_QUOTATION} element={<QuotationDetail />} />
           </Route>
 
           {/* ================= SERVICE ================= */}
@@ -257,6 +267,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.SERVICE_TICKETS} element={<ServiceTickets />} />
+            <Route path={RoutePath.EDIT_SERVICE_TICKET} element={<ServiceTicketDetail />} />
           </Route>
 
           {/* ================= MARKETING ================= */}
@@ -269,6 +280,7 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.CAMPAIGNS} element={<Campaigns />} />
+            <Route path={RoutePath.EDIT_CAMPAIGN} element={<CampaignDetail />} />
           </Route>
 
           {/* ================= FINANCE / APPROVALS ================= */}
