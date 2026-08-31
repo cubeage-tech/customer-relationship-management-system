@@ -5,6 +5,7 @@ class RoutePath {
   // ==================== BASE ROUTES ====================
   static DASHBOARD_BASE = "/dashboard";
   static ADMIN_BASE = "/admin";
+  static PLATFORM_BASE = "/platform";
 
   // ==================== PUBLIC ROUTES ====================
   static HOME = "/";
@@ -14,11 +15,13 @@ class RoutePath {
   static LOGIN = "/login";
   static SIGNUP = "/signup";
   static FORGOT_PASSWORD = "/forgot-password";
+  static VERIFY_EMAIL = "/verify-email";
 
   // ======================================================
   // ROLE DASHBOARDS
   // ======================================================
 
+  static SUPER_ADMIN_DASHBOARD = `${this.DASHBOARD_BASE}/super-admin`;
   static ADMIN_DASHBOARD = `${this.DASHBOARD_BASE}/admin`;
   static SALES_MANAGER_DASHBOARD = `${this.DASHBOARD_BASE}/sales-manager`;
   static SALES_EXECUTIVE_DASHBOARD = `${this.DASHBOARD_BASE}/sales-executive`;
@@ -72,6 +75,7 @@ class RoutePath {
   // ======================================================
 
   static CAMPAIGNS = "/campaigns";
+  static EDIT_CAMPAIGN = "/campaigns/:id";
 
   // ======================================================
   // FINANCE / APPROVALS
@@ -96,8 +100,21 @@ class RoutePath {
   static ADMIN_SETTINGS = `${this.ADMIN_BASE}/settings`;
 
   // ======================================================
+  // PLATFORM ADMINISTRATION (super_admin only)
+  // ======================================================
+
+  static PLATFORM_TENANTS = `${this.PLATFORM_BASE}/tenants`;
+  static PLATFORM_SUBSCRIPTION_PLANS = `${this.PLATFORM_BASE}/subscription-plans`;
+  static PLATFORM_ROLES_PERMISSIONS = `${this.PLATFORM_BASE}/roles-permissions`;
+  static PLATFORM_SETTINGS = `${this.PLATFORM_BASE}/settings`;
+  static PLATFORM_REPORTS = `${this.PLATFORM_BASE}/reports`;
+  static PLATFORM_AUDIT_LOGS = `${this.PLATFORM_BASE}/audit-logs`;
+
+  // ======================================================
   // COMMON
   // ======================================================
+
+  static HELP_CENTER = "/help-center";
 
   static PROFILE = "/profile";
 
@@ -108,7 +125,8 @@ class RoutePath {
 
 /** Landing route after login, per CRM role. */
 export const ROLE_HOME_ROUTE = {
-  [USER_ROLES.SUPER_ADMIN]: RoutePath.ADMIN_DASHBOARD,
+  [USER_ROLES.SUPER_ADMIN]: RoutePath.SUPER_ADMIN_DASHBOARD,
+  [USER_ROLES.ADMIN]: RoutePath.ADMIN_DASHBOARD,
   [USER_ROLES.SALES_MANAGER]: RoutePath.SALES_MANAGER_DASHBOARD,
   [USER_ROLES.SALES_EXECUTIVE]: RoutePath.SALES_EXECUTIVE_DASHBOARD,
   [USER_ROLES.MARKETING_EXECUTIVE]: RoutePath.MARKETING_DASHBOARD,
