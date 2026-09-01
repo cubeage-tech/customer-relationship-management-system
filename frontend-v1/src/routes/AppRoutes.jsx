@@ -8,6 +8,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import RoutePath from "../core/constants/routes.constant";
 import { USER_ROLES } from "../core/constants/app.constant";
 import { PERMISSIONS } from "../core/constants/permission.constant";
+import PublicOnlyRoute from "./PublicOnlyRoute";
 
 // Public Pages
 const Home = lazy(() => import("../pages/public/Home"));
@@ -78,19 +79,22 @@ const AppRoutes = () => {
         {/* ================= PUBLIC ROUTES ================= */}
 
         <Route element={<MainLayout />}>
-          <Route path={RoutePath.HOME} element={<Home />} />
-          <Route path={RoutePath.ABOUT} element={<About />} />
-          <Route path={RoutePath.PLANS} element={<Plans />} />
-          <Route path={RoutePath.CONTACT} element={<Contact />} />
+          <Route element={<PublicOnlyRoute />}>
+            <Route path={RoutePath.HOME} element={<Home />} />
+            <Route path={RoutePath.ABOUT} element={<About />} />
+            <Route path={RoutePath.PLANS} element={<Plans />} />
+            <Route path={RoutePath.CONTACT} element={<Contact />} />
+          </Route>
           <Route path={RoutePath.UNAUTHORIZED} element={<Unauthorized />} />
           <Route path={RoutePath.NOT_FOUND} element={<NotFound />} />
         </Route>
 
         {/* ================= AUTH ROUTES ================= */}
-        <Route path={RoutePath.LOGIN} element={<Login />} />
-        <Route path={RoutePath.SIGNUP} element={<Signup />} />
-        <Route path={RoutePath.VERIFY_EMAIL} element={<VerifyEmail />} />
-
+        <Route element={<PublicOnlyRoute />}>
+          <Route path={RoutePath.LOGIN} element={<Login />} />
+          <Route path={RoutePath.SIGNUP} element={<Signup />} />
+          <Route path={RoutePath.VERIFY_EMAIL} element={<VerifyEmail />} />
+        </Route>
 
         {/* ================= DASHBOARD LAYOUT ================= */}
 
