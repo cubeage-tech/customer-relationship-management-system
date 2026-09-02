@@ -1,5 +1,11 @@
 package com.company.crm.plan.service;
 
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.company.crm.common.enums.SubscriptionPlan;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.plan.dto.request.UpdatePlanPriceReqDto;
@@ -8,17 +14,17 @@ import com.company.crm.plan.entity.PlanPrice;
 import com.company.crm.plan.mapper.PlanPriceMapper;
 import com.company.crm.plan.repository.PlanPriceRepository;
 import com.company.crm.user.entity.User;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class PlanPriceService {
 
+    @Autowired
     private final PlanPriceRepository planPriceRepository;
+
+    @Autowired
     private final PlanPriceMapper planPriceMapper;
 
     public List<PlanPriceResDto> listPrices() {
