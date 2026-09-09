@@ -229,6 +229,7 @@ This repository is in **early/greenfield development**, built against the v1.0 S
 Proprietary — © Devniks (Pentasoftware Consultancy). All rights reserved. Not for external distribution without authorization.
 
 To start backend use .\mvnw.cmd spring-boot:run
+mvnw.cmd spring-boot:run -Dspring-boot.run.main-class=com.company.crm.CrmApplication
 
 
 To login use test1@test.com or test2@gmail.com

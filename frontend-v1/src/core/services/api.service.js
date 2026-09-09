@@ -292,6 +292,10 @@ class ApiService {
     return this.apiget(ServerUrl.ADMIN_DASHBOARD);
   }
 
+  static getTenantAdminDashboard() {
+    return this.apiget(ServerUrl.TENANT_ADMIN_DASHBOARD);
+  }
+
   // ------------------ Generic Methods ------------------
   static apiget(url, params = {}) {
     return this.axiosInstance.get(url, { params }).then((res) => res.data?.data);
