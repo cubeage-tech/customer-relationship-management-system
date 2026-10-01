@@ -12,6 +12,8 @@ import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.entity.CustomerContact;
 import com.company.crm.customer.mapper.CustomerMapper;
 import com.company.crm.customer.repository.CustomerRepository;
+import com.company.crm.subscription.service.PlanLimitService;
+import com.company.crm.subscription.service.PlanLimitService.LimitedResource;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final CustomerMapper customerMapper;
+    private final PlanLimitService planLimitService;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (contacts, owner, tenant), so the session must stay open through mapping.
@@ -54,6 +57,9 @@ public class CustomerService {
 
     @Transactional
     public CustomerResDto createCustomer(User currentUser, CustomerReqDto dto) {
+        requireTenantId(currentUser);
+        planLimitService.assertCanAdd(currentUser.getTenant(), LimitedResource.CUSTOMERS);
+
         Customer customer = new Customer();
         customer.setTenant(currentUser.getTenant());
         customer.setCreatedBy(currentUser);
@@ -72,6 +78,7 @@ public class CustomerService {
     @Transactional
     public CustomerResDto archiveCustomer(User currentUser, Long customerId) {
         Customer customer = findCustomer(currentUser, customerId);
+        assertEditAccess(currentUser, customer);
         customer.setStatus(CustomerStatus.ARCHIVED);
         return customerMapper.toDto(customerRepository.save(customer));
     }
@@ -79,6 +86,7 @@ public class CustomerService {
     @Transactional
     public CustomerResDto restoreCustomer(User currentUser, Long customerId) {
         Customer customer = findCustomer(currentUser, customerId);
+        assertEditAccess(currentUser, customer);
         customer.setStatus(CustomerStatus.ACTIVE);
         return customerMapper.toDto(customerRepository.save(customer));
     }

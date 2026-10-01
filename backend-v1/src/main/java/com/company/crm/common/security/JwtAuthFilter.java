@@ -1,5 +1,7 @@
 package com.company.crm.common.security;
 
+import com.company.crm.common.enums.AccountStatus;
+import com.company.crm.user.entity.User;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -11,6 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -41,17 +44,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String email = jwtService.extractEmail(token);
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                if (jwtService.isTokenValid(token, userDetails.getUsername())) {
+                // Re-checked on every request so deactivating a user or tenant takes effect
+                // immediately instead of when their token expires.
+                if (jwtService.isTokenValid(token, userDetails.getUsername()) && isAllowedIn(userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-        } catch (JwtException | IllegalArgumentException ignored) {
-            // Invalid/expired token — leave the request unauthenticated, downstream security rules will reject it.
+        } catch (JwtException | IllegalArgumentException | UsernameNotFoundException ignored) {
+            // Invalid/expired token, or its user no longer exists — leave the request
+            // unauthenticated, downstream security rules will reject it.
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isAllowedIn(UserDetails userDetails) {
+        if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+            return false;
+        }
+        return !(userDetails instanceof User user)
+                || user.getTenant() == null
+                || user.getTenant().getStatus() == AccountStatus.ACTIVE;
     }
 }

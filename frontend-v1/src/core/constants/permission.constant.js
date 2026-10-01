@@ -88,6 +88,8 @@ export const PERMISSIONS = {
   USERS_MANAGE: 'users.manage',
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_MANAGE: 'settings.manage',
+  // Plan, usage and upgrades — the tenant owner only (backend: @PreAuthorize ADMIN).
+  BILLING_VIEW: 'billing.view',
 
   // Platform administration (super_admin only — not tenant-scoped)
   TENANTS_VIEW: 'tenants.view',

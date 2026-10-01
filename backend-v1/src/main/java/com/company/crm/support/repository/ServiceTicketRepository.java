@@ -1,5 +1,6 @@
 package com.company.crm.support.repository;
 
+import com.company.crm.common.enums.TicketStatus;
 import com.company.crm.support.entity.ServiceTicket;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +11,6 @@ public interface ServiceTicketRepository extends JpaRepository<ServiceTicket, Lo
     List<ServiceTicket> findByTenantId(Long tenantId);
 
     List<ServiceTicket> findByTenantIdAndAssignedTechnicianId(Long tenantId, Long technicianId);
+
+    long countByTenantIdAndStatus(Long tenantId, TicketStatus status);
 }

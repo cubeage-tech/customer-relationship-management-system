@@ -292,6 +292,30 @@ class ApiService {
     return this.apiget(ServerUrl.ADMIN_DASHBOARD);
   }
 
+  static getTenantAdminDashboard() {
+    return this.apiget(ServerUrl.TENANT_ADMIN_DASHBOARD);
+  }
+
+  static createPaymentOrder(data) {
+    return this.apipost(ServerUrl.PAYMENT_CREATE_ORDER, data);
+  }
+
+  static verifyPaymentOrder(data) {
+    return this.apipost(ServerUrl.PAYMENT_VERIFY_ORDER, data);
+  }
+
+  static getCurrentSubscription() {
+    return this.apiget(ServerUrl.SUBSCRIPTION_CURRENT);
+  }
+
+  static getSubscriptionPlans() {
+    return this.apiget(ServerUrl.SUBSCRIPTION_PLANS);
+  }
+
+  static upgradeSubscription(data) {
+    return this.apipost(ServerUrl.SUBSCRIPTION_UPGRADE, data);
+  }
+
   // ------------------ Generic Methods ------------------
   static apiget(url, params = {}) {
     return this.axiosInstance.get(url, { params }).then((res) => res.data?.data);

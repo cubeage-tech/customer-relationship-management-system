@@ -4,7 +4,7 @@ import com.company.crm.tenant.dto.response.TenantResDto;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.tenant.repository.TenantRepository;
 import com.company.crm.common.enums.AccountStatus;
-import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.exception.TenantNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +39,7 @@ public class TenantService {
 
     private Tenant findTenant(Long tenantId) {
         return tenantRepository.findById(tenantId)
-                .orElseThrow(() -> ApiException.notFound("Tenant not found"));
+                .orElseThrow(() -> new TenantNotFoundException("Tenant not found"));
     }
 
     private TenantResDto toDto(Tenant tenant) {

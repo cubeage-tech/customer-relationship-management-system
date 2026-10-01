@@ -7,7 +7,7 @@ import { getRoleHomeRoute } from '../../core/constants/routes.constant';
 import { NOTIFICATION_MESSAGES } from '../../core/constants/notification.constant';
 import { ROLE_LABELS } from '../../core/constants/app.constant';
 import { DEV_USERS } from '../../core/mocks/devUsers';
-import { validateEmail, required } from '../../utils/validation';
+import { validateEmail, required, sanitizeEmail } from '../../utils/validation';
 import { Eye, EyeOff, Bot, ShieldCheck, BarChart3, Sparkles, CheckCircle2 } from 'lucide-react';
 
 // Same double gate as auth.service.js: import.meta.env.DEV is compiled to
@@ -29,8 +29,20 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => (prev[name] ? { ...prev, [name]: '' } : prev));
+    
+    const newValue =
+      name === 'email'
+        ? sanitizeEmail(value)
+        : value;
+    
+    setForm((prev) => ({
+      ...prev,
+      [name]: newValue,
+    }));
+  
+    setErrors((prev) =>
+      prev[name] ? { ...prev, [name]: '' } : prev
+    );
   };
 
   const submitCredentials = async (credentials) => {

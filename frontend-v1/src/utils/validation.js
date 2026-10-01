@@ -290,6 +290,78 @@ export const validateSignupForm = (form) => {
 };
 
 // ---------------------------------------------------------------------------
+// Input sanitizers
+// ---------------------------------------------------------------------------
+// These functions are used inside handleChange() to prevent invalid
+// characters from being stored in the form state.
+//
+// Validation functions check whether the final value is valid.
+// Sanitizers remove characters that are not allowed while typing.
+// ---------------------------------------------------------------------------
+
+export const sanitizeName = (value) => {
+  return String(value ?? '')
+    .replace(/[^A-Za-z\s'-]/g, '')
+    .slice(0, 50);
+};
+
+export const sanitizeEmail = (value) => {
+  return String(value ?? '')
+    .replace(/\s/g, '')
+    .slice(0, 254);
+};
+
+export const sanitizeOrganizationName = (value) => {
+  return String(value ?? '')
+    .replace(/[^A-Za-z0-9\s.,'&-]/g, '')
+    .slice(0, 100);
+};
+
+export const sanitizeBankAccountNumber = (value) => {
+  return String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, 18);
+};
+
+export const sanitizeIfscCode = (value) => {
+  return String(value ?? '')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, 11);
+};
+
+export const sanitizePhoneIndia = (value) => {
+  return String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, 10);
+};
+
+export const sanitizePan = (value) => {
+  return String(value ?? '')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, 10);
+};
+
+export const sanitizeGstin = (value) => {
+  return String(value ?? '')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, 15);
+};
+
+export const sanitizeAlphanumeric = (value) => {
+  return String(value ?? '')
+    .replace(/[^A-Za-z0-9]/g, '');
+};
+
+export const sanitizeUrl = (value) => {
+  return String(value ?? '')
+    .replace(/\s/g, '')
+    .slice(0, 2048);
+};
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
@@ -315,4 +387,16 @@ export default {
   validateTermsAccepted,
   validateUrl,
   validateSignupForm,
+
+  // Input sanitizers
+  sanitizeName,
+  sanitizeEmail,
+  sanitizeOrganizationName,
+  sanitizeBankAccountNumber,
+  sanitizeIfscCode,
+  sanitizePhoneIndia,
+  sanitizePan,
+  sanitizeGstin,
+  sanitizeAlphanumeric,
+  sanitizeUrl,
 };

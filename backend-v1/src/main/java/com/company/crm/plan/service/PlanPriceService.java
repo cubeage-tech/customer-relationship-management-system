@@ -6,13 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.company.crm.common.enums.SubscriptionPlan;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.plan.dto.request.UpdatePlanPriceReqDto;
 import com.company.crm.plan.dto.response.PlanPriceResDto;
 import com.company.crm.plan.entity.PlanPrice;
 import com.company.crm.plan.mapper.PlanPriceMapper;
 import com.company.crm.plan.repository.PlanPriceRepository;
+import com.company.crm.plan.repository.PlanRepository;
 import com.company.crm.user.entity.User;
 
 import lombok.RequiredArgsConstructor;
@@ -25,8 +25,13 @@ public class PlanPriceService {
     private final PlanPriceRepository planPriceRepository;
 
     @Autowired
+    private final PlanRepository planRepository;
+
+    @Autowired
     private final PlanPriceMapper planPriceMapper;
 
+    // open-in-view is disabled — the mapper reads the lazy PlanPrice.plan association.
+    @Transactional(readOnly = true)
     public List<PlanPriceResDto> listPrices() {
         return planPriceRepository.findAll().stream()
                 .map(planPriceMapper::toDto)
@@ -35,14 +40,11 @@ public class PlanPriceService {
 
     @Transactional
     public PlanPriceResDto updatePrice(User superAdmin, String rawPlan, UpdatePlanPriceReqDto dto) {
-        SubscriptionPlan plan;
-        try {
-            plan = SubscriptionPlan.fromDbValue(rawPlan);
-        } catch (IllegalArgumentException ex) {
+        if (planRepository.findByCode(rawPlan).isEmpty()) {
             throw ApiException.badRequest("Unknown plan: " + rawPlan);
         }
 
-        PlanPrice planPrice = planPriceRepository.findByPlan(plan)
+        PlanPrice planPrice = planPriceRepository.findByPlanCode(rawPlan)
                 .orElseThrow(() -> ApiException.notFound("No price configured for plan: " + rawPlan));
 
         planPrice.setMonthlyPrice(dto.getMonthlyPrice());

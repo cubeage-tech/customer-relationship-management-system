@@ -1,5 +1,6 @@
 package com.company.crm.user.repository;
 
+import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -10,4 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     List<User> findByTenantId(Long tenantId);
+    long countByTenantId(Long tenantId);
+    long countByTenantIdAndStatusNot(Long tenantId, AccountStatus status);
 }
