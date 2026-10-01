@@ -15,6 +15,8 @@ import com.company.crm.lead.dto.response.LeadResDto;
 import com.company.crm.lead.entity.Lead;
 import com.company.crm.lead.mapper.LeadMapper;
 import com.company.crm.lead.repository.LeadRepository;
+import com.company.crm.subscription.service.PlanLimitService;
+import com.company.crm.subscription.service.PlanLimitService.LimitedResource;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class CampaignService {
     private final UserRepository userRepository;
     private final CampaignMapper campaignMapper;
     private final LeadMapper leadMapper;
+    private final PlanLimitService planLimitService;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (owner, tenant), so the session must stay open through mapping.
@@ -80,6 +83,9 @@ public class CampaignService {
 
     @Transactional
     public CampaignResDto createCampaign(User currentUser, CampaignReqDto dto) {
+        requireTenantId(currentUser);
+        planLimitService.assertCanAdd(currentUser.getTenant(), LimitedResource.CAMPAIGNS);
+
         Campaign campaign = new Campaign();
         campaign.setTenant(currentUser.getTenant());
         campaign.setCreatedBy(currentUser);

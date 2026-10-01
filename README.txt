@@ -234,3 +234,5 @@ mvnw.cmd spring-boot:run -Dspring-boot.run.main-class=com.company.crm.CrmApplica
 
 To login use test1@test.com or test2@gmail.com
 password is Test@123
+
+To login superadmin superadmin@smartcrm.ai password is ChangeMe123!

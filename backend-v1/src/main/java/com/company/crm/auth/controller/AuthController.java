@@ -43,6 +43,12 @@ public class AuthController {
         return Response.ok("Email verified. You can now log in.", null);
     }
 
+    @PostMapping("/resend-verification")
+    public Response<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.getEmail());
+        return Response.ok("If that account is awaiting verification, a new link has been sent.", null);
+    }
+
     @PostMapping("/forgot-password")
     public Response<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request.getEmail());

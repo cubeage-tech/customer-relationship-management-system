@@ -4,6 +4,8 @@ import com.company.crm.auth.service.EmailVerificationTokenService;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.subscription.service.PlanLimitService;
+import com.company.crm.subscription.service.PlanLimitService.LimitedResource;
 import com.company.crm.user.dto.request.CreateUserReqDto;
 import com.company.crm.user.dto.response.UserResDto;
 import com.company.crm.user.entity.Role;
@@ -39,6 +41,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationTokenService emailVerificationTokenService;
+    private final PlanLimitService planLimitService;
 
     @Transactional
     public UserResDto createTeamUser(User creator, CreateUserReqDto dto) {
@@ -47,6 +50,7 @@ public class UserService {
         }
 
         RoleType requestedRole = parseTeamRole(dto.getRole());
+        planLimitService.assertCanAdd(creator.getTenant(), LimitedResource.USERS);
 
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw ApiException.conflict("A user with this email already exists");

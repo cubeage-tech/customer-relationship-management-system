@@ -9,9 +9,17 @@ public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
 
+    /** Optional machine-readable code the frontend can branch on; null for generic errors. */
+    private final String errorCode;
+
     public ApiException(HttpStatus status, String message) {
+        this(status, message, null);
+    }
+
+    public ApiException(HttpStatus status, String message, String errorCode) {
         super(message);
         this.status = status;
+        this.errorCode = errorCode;
     }
 
     public static ApiException badRequest(String message) {

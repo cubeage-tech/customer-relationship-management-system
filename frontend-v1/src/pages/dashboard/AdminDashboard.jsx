@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import DashboardShell from '../../components/dashboard/DashboardShell';
 import EmptyState from '../../components/common/EmptyState';
 import { getTenantAdminDashboard } from '../../core/services/dashboard.service';
+import UpgradePopup from '../../components/common/UpgradePopup';
+import ApiService from '../../core/services/api.service';
+
+// Statuses where the owner should be prompted to renew (expired tenants are read-only).
+const RENEW_STATUSES = ['past_due', 'expired'];
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState([
@@ -12,6 +17,21 @@ const AdminDashboard = () => {
   ]);
 
   const [loading, setLoading] = useState(true);
+
+  const [subscription, setSubscription] = useState(null);
+  const [showUpgradePopup, setShowUpgradePopup] = useState(false);
+
+  const loadSubscription = () =>
+    ApiService.getCurrentSubscription()
+      .then((current) => {
+        setSubscription(current);
+        setShowUpgradePopup(RENEW_STATUSES.includes(current?.status));
+      })
+      .catch((error) => console.error('Failed to fetch subscription:', error));
+
+  useEffect(() => {
+    loadSubscription();
+  }, []);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -59,6 +79,12 @@ const AdminDashboard = () => {
       <EmptyState
         title="No tenant activity yet"
         message="Once users start working leads, quotations and service tickets, the tenant wide activity feed will appear here."
+      />
+      <UpgradePopup
+        isOpen={showUpgradePopup}
+        onClose={() => setShowUpgradePopup(false)}
+        currentPlan={subscription?.plan}
+        onPaymentSuccess={loadSubscription}
       />
     </DashboardShell>
   );

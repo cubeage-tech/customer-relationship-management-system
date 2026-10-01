@@ -12,7 +12,11 @@ import com.company.crm.auth.repository.PasswordResetTokenRepository;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.exception.InvalidTokenException;
+import com.company.crm.common.exception.TenantInactiveException;
+import com.company.crm.common.exception.TokenExpiredException;
 import com.company.crm.common.security.JwtService;
+import com.company.crm.subscription.service.SubscriptionService;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.tenant.repository.TenantRepository;
 import com.company.crm.user.entity.Role;
@@ -26,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -45,8 +50,10 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthMapper authMapper;
     private final EmailVerificationTokenService emailVerificationTokenService;
+    private final SubscriptionService subscriptionService;
 
-    @Transactional
+    // noRollbackFor: failed attempts must still be recorded even though we then throw.
+    @Transactional(noRollbackFor = ApiException.class)
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 
@@ -61,15 +68,28 @@ public class AuthService {
             throw ApiException.forbidden(statusMessage(user.getStatus()));
         }
 
+        Tenant tenant = user.getTenant();
+        if (tenant != null && tenant.getStatus() != AccountStatus.ACTIVE) {
+            recordAttempt(user, request.getEmail(), false, "tenant_" + tenant.getStatus().getDbValue());
+            throw new TenantInactiveException("Your company account has been "
+                    + tenant.getStatus().getDbValue().replace('_', ' ') + ". Please contact support.");
+        }
+
         recordAttempt(user, request.getEmail(), true, null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        String token = jwtService.generateAccessToken(user.getEmail(), Map.of(
-                "userId", user.getId(),
-                "role", user.getRole().getName().getDbValue(),
-                "tenantId", user.getTenant() != null ? user.getTenant().getId() : -1
-        ));
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put("role", user.getRole().getName().getDbValue());
+        claims.put("tenantId", tenant != null ? tenant.getId() : -1);
+        if (tenant != null) {
+            // Informational for the frontend (e.g. showing a renew banner). The server never
+            // trusts these — access is re-checked against the database on each request.
+            claims.put("plan", subscriptionService.currentPlan(tenant).getCode());
+            claims.put("subscriptionStatus", subscriptionService.currentStatus(tenant).getDbValue());
+        }
+        String token = jwtService.generateAccessToken(user.getEmail(), claims);
 
         return authMapper.toAuthResponse(token, user);
     }
@@ -110,6 +130,10 @@ public class AuthService {
         emailVerificationTokenService.verify(token);
     }
 
+    public void resendVerification(String email) {
+        emailVerificationTokenService.resend(email);
+    }
+
     @Transactional
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email).orElse(null);
@@ -130,13 +154,13 @@ public class AuthService {
     @Transactional
     public void resetPassword(String rawToken, String newPassword) {
         PasswordResetToken token = passwordResetTokenRepository.findByToken(rawToken)
-                .orElseThrow(() -> ApiException.badRequest("Invalid reset token"));
+                .orElseThrow(() -> new InvalidTokenException("Invalid reset token"));
 
         if (token.getUsedAt() != null) {
-            throw ApiException.badRequest("This reset link has already been used");
+            throw new InvalidTokenException("This reset link has already been used");
         }
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw ApiException.badRequest("This reset link has expired");
+            throw new TokenExpiredException("This reset link has expired");
         }
 
         token.setUsedAt(LocalDateTime.now());

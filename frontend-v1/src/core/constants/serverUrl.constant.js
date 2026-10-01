@@ -74,6 +74,17 @@ class ServerUrl {
     // plans
     static PLANS = ServerUrl.API_MODULE_USER + "/plans";
 
+    // payments
+    static PAYMENTS = ServerUrl.API_MODULE_USER + "/payments";
+    static PAYMENT_CREATE_ORDER = ServerUrl.PAYMENTS + "/create-order";
+    static PAYMENT_VERIFY_ORDER = ServerUrl.PAYMENTS + "/verify";
+
+    // subscriptions
+    static SUBSCRIPTIONS = ServerUrl.API_MODULE_USER + "/subscriptions";
+    static SUBSCRIPTION_CURRENT = ServerUrl.SUBSCRIPTIONS + "/current";
+    static SUBSCRIPTION_PLANS = ServerUrl.SUBSCRIPTIONS + "/plans";
+    static SUBSCRIPTION_UPGRADE = ServerUrl.SUBSCRIPTIONS + "/upgrade";
+
   static PLAN_PRICES = ServerUrl.PLANS + "/prices"; // GET list
   static planPrice = (plan) => `${ServerUrl.PLANS}/${plan}/price`; // PUT single
 }

@@ -14,4 +14,6 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     List<Lead> findByTenantIdAndCampaignId(Long tenantId, Long campaignId);
 
     List<Lead> findByTenantIdAndCampaignIdIsNotNull(Long tenantId);
+
+    long countByTenantId(Long tenantId);
 }
