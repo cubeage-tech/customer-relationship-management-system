@@ -18,8 +18,10 @@ import {
   assignTicket,
   changeTicketStatus,
   recordTicketFeedback,
+  claimTicket,
 } from '../../core/services/serviceTicket.service';
 import { listUsers } from '../../core/services/user.service';
+import { apiErrorMessage } from '../../core/utils/apiError';
 
 const SLA_BADGE_CLASS = {
   breached: 'text-red-600 font-medium',
@@ -30,7 +32,7 @@ const SLA_BADGE_CLASS = {
 
 const ServiceTicketDetail = () => {
   const { id } = useParams();
-  const { can } = usePermissions();
+  const { can, role } = usePermissions();
   const canEdit = can(PERMISSIONS.TICKETS_EDIT) || can(PERMISSIONS.TICKETS_RESOLVE);
 
   const [ticket, setTicket] = useState(null);
@@ -98,8 +100,22 @@ const ServiceTicketDetail = () => {
     );
   }
 
+  // A service agent may open an unassigned (queue) ticket but must claim it before editing.
+  const needsClaim = role === USER_ROLES.SERVICE_AGENT && !ticket.technicianId;
+  const editable = canEdit && !needsClaim;
+
+  const handleClaim = async () => {
+    setActionError('');
+    try {
+      setTicket(await claimTicket(id));
+    } catch (err) {
+      setActionError(apiErrorMessage(err, 'Could not claim this ticket.'));
+      refresh();
+    }
+  };
+
   const canRecordFeedback =
-    canEdit && (ticket.status === TICKET_STATUSES.RESOLVED || ticket.status === TICKET_STATUSES.CLOSED);
+    editable && (ticket.status === TICKET_STATUSES.RESOLVED || ticket.status === TICKET_STATUSES.CLOSED);
 
   return (
     <section>
@@ -112,6 +128,14 @@ const ServiceTicketDetail = () => {
           </Link>
         }
       />
+
+      {needsClaim && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 p-4" role="status">
+          <p className="text-sm text-violet-900">This ticket is in the queue. Claim it to start working on it.</p>
+          <Button size="sm" onClick={handleClaim}>Claim this ticket</Button>
+        </div>
+      )}
+      {needsClaim && actionError && <p className="form-error mb-4" role="alert">{actionError}</p>}
 
       {/* ---------------- Status & SLA ---------------- */}
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
@@ -135,13 +159,13 @@ const ServiceTicketDetail = () => {
             <button
               key={option.value}
               type="button"
-              disabled={!canEdit}
+              disabled={!editable}
               onClick={() => handleStatusChange(option.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                 ticket.status === option.value
                   ? 'bg-indigo-600 text-white border-indigo-600'
                   : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
-              } ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}
+              } ${!editable ? 'cursor-not-allowed opacity-60' : ''}`}
             >
               {option.label}
             </button>
@@ -151,7 +175,7 @@ const ServiceTicketDetail = () => {
       </div>
 
       {/* ---------------- Assignment ---------------- */}
-      {canEdit && (
+      {editable && (
         <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
           <h2 className="font-semibold text-slate-900 mb-3">Assigned technician</h2>
           <select

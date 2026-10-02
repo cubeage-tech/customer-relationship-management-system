@@ -1,6 +1,8 @@
 package com.company.crm.support.controller;
 
+import com.company.crm.common.pagination.PageRequestFactory;
 import com.company.crm.common.response.Response;
+import io.swagger.v3.oas.annotations.Operation;
 import com.company.crm.support.dto.request.ServiceTicketAssignReqDto;
 import com.company.crm.support.dto.request.ServiceTicketFeedbackReqDto;
 import com.company.crm.support.dto.request.ServiceTicketReqDto;
@@ -38,15 +40,40 @@ public class ServiceTicketController {
     private static final String CREATE_ROLES = "hasAnyRole('ADMIN', 'SALES_EXECUTIVE', 'SERVICE_AGENT')";
     private static final String EDIT_ROLES = "hasAnyRole('ADMIN', 'SERVICE_AGENT')";
 
+    /**
+     * Without page/size: the original array response (unchanged for existing screens).
+     * With page and/or size: a PageResponse, size capped by app.pagination.max-size.
+     * {@code scope} (mine | queue) applies to service agents only; default is both.
+     */
     @GetMapping
     @PreAuthorize(VIEW_ROLES)
-    public Response<List<ServiceTicketResDto>> listTickets(
+    @Operation(summary = "List tickets; service agents see their own plus the unassigned queue",
+            description = "scope=mine|queue narrows an agent's list. Send page/size to get a paged response; "
+                    + "sort=createdAt|slaDueAt|priority|status[,asc|desc].")
+    public Response<?> listTickets(
             @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) String scope,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String priority,
             @RequestParam(required = false) Long customerId,
-            @RequestParam(required = false) String search) {
-        return Response.ok(ticketService.listTickets(currentUser, status, priority, customerId, search));
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        if (PageRequestFactory.isPaged(page, size)) {
+            return Response.ok(ticketService.listTicketsPage(currentUser, scope, status, priority, customerId, search, page, size, sort));
+        }
+        return Response.ok(ticketService.listTickets(currentUser, scope, status, priority, customerId, search));
+    }
+
+    @PostMapping("/{ticketId}/claim")
+    @PreAuthorize("hasRole('SERVICE_AGENT')")
+    @Operation(summary = "Claim an unassigned ticket (service agent)",
+            description = "Atomic: if two agents claim at once, one wins and the other gets 409 Conflict.")
+    public Response<ServiceTicketResDto> claimTicket(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long ticketId) {
+        return Response.ok("Ticket claimed", ticketService.claimTicket(currentUser, ticketId));
     }
 
     @GetMapping("/summary")
