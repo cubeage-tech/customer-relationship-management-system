@@ -1,5 +1,7 @@
 package com.company.crm.support.service;
 
+import com.company.crm.common.period.ReportingPeriods;
+import com.company.crm.support.repository.ServiceTicketSummaryQuery;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.enums.RoleType;
@@ -43,6 +45,11 @@ public class ServiceTicketService {
     private final ServiceTicketMapper ticketMapper;
     private final PageRequestFactory pageRequestFactory;
     private final AuditService auditService;
+    private final ServiceTicketSummaryQuery ticketSummaryQuery;
+    private final ReportingPeriods reportingPeriods;
+
+    /** Window for the average-resolution-time figure. */
+    private static final int RESOLUTION_AVERAGE_DAYS = 30;
 
     private static final String AUDIT_ENTITY = "service_ticket";
 
@@ -138,27 +145,19 @@ public class ServiceTicketService {
         return ticketMapper.toDto(ticket);
     }
 
-    /** FR-6.4: counts of still-open tickets by SLA status, for the escalation view. */
+    /**
+     * FR-6.4 SLA counts plus dashboard figures, aggregated in the database. Service agents get
+     * their assigned tickets only (unchanged); other roles the whole tenant.
+     */
     @Transactional(readOnly = true)
     public ServiceTicketSummaryDto getSummary(User currentUser) {
-        List<ServiceTicket> tickets = currentUser.getRole().getName() == RoleType.SERVICE_AGENT
-                ? ticketRepository.findByTenantIdAndAssignedTechnicianId(requireTenantId(currentUser), currentUser.getId())
-                : ticketRepository.findByTenantId(requireTenantId(currentUser));
-
-        long onTrack = 0;
-        long atRisk = 0;
-        long breached = 0;
-        for (ServiceTicket ticket : tickets) {
-            if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.CLOSED) {
-                continue;
-            }
-            switch (ticketMapper.slaStatus(ticket)) {
-                case "at_risk" -> atRisk++;
-                case "breached" -> breached++;
-                default -> onTrack++;
-            }
-        }
-        return new ServiceTicketSummaryDto(onTrack, atRisk, breached);
+        LocalDateTime now = reportingPeriods.now();
+        return ticketSummaryQuery.summarize(
+                requireTenantId(currentUser),
+                isAgent(currentUser) ? currentUser.getId() : null,
+                now,
+                reportingPeriods.startOfWeekAt(),
+                now.minusDays(RESOLUTION_AVERAGE_DAYS));
     }
 
     @Transactional

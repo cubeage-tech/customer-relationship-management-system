@@ -1,5 +1,7 @@
 package com.company.crm.quotation.service;
 
+import com.company.crm.quotation.dto.response.QuotationSummaryDto;
+import com.company.crm.quotation.repository.QuotationSummaryQuery;
 import com.company.crm.common.enums.DiscountApprovalStatus;
 import com.company.crm.common.enums.QuotationStatus;
 import com.company.crm.common.enums.RoleType;
@@ -35,6 +37,7 @@ public class QuotationService {
 
     private final QuotationRepository quotationRepository;
     private final DataScopeResolver dataScopeResolver;
+    private final QuotationSummaryQuery quotationSummaryQuery;
     private final CustomerRepository customerRepository;
     private final OpportunityRepository opportunityRepository;
     private final UserRepository userRepository;
@@ -221,6 +224,12 @@ public class QuotationService {
     private void assertAccess(User currentUser, Quotation quotation) {
         dataScopeResolver.assertCanAccess(currentUser,
                 quotation.getOwner() != null ? quotation.getOwner().getId() : null, "quotation");
+    }
+
+    /** Dashboard counts and discount figures, aggregated in the database within the caller's data scope. */
+    @Transactional(readOnly = true)
+    public QuotationSummaryDto getSummary(User currentUser) {
+        return quotationSummaryQuery.summarize(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser));
     }
 
     /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */

@@ -1,5 +1,8 @@
 package com.company.crm.customer.service;
 
+import com.company.crm.common.period.ReportingPeriods;
+import com.company.crm.customer.dto.response.CustomerSummaryDto;
+import com.company.crm.customer.repository.CustomerSummaryQuery;
 import com.company.crm.common.enums.CustomerStatus;
 import com.company.crm.common.enums.IndustryType;
 import com.company.crm.common.enums.RoleType;
@@ -30,6 +33,8 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final DataScopeResolver dataScopeResolver;
+    private final CustomerSummaryQuery customerSummaryQuery;
+    private final ReportingPeriods reportingPeriods;
     private final UserRepository userRepository;
     private final CustomerMapper customerMapper;
     private final PlanLimitService planLimitService;
@@ -186,6 +191,13 @@ public class CustomerService {
     /** sales_executive may only edit accounts assigned to them; everyone else in the tenant may edit any. */
     private void assertEditAccess(User currentUser, Customer customer) {
         assertViewAccess(currentUser, customer);
+    }
+
+    /** Dashboard counts, aggregated in the database within the caller's data scope. */
+    @Transactional(readOnly = true)
+    public CustomerSummaryDto getSummary(User currentUser) {
+        return customerSummaryQuery.summarize(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser),
+                reportingPeriods.startOfQuarter());
     }
 
     /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */

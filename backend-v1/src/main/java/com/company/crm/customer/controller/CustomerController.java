@@ -1,5 +1,7 @@
 package com.company.crm.customer.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import com.company.crm.customer.dto.response.CustomerSummaryDto;
 import com.company.crm.common.response.Response;
 import com.company.crm.customer.dto.request.CustomerContactReqDto;
 import com.company.crm.customer.dto.request.CustomerReqDto;
@@ -27,6 +29,13 @@ import java.util.List;
 public class CustomerController {
 
     private final CustomerService customerService;
+
+    @GetMapping("/summary")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "Customer counts for dashboards (total, active, new this quarter) within your data scope")
+    public Response<CustomerSummaryDto> getSummary(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(customerService.getSummary(currentUser));
+    }
 
     @GetMapping
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)

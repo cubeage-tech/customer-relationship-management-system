@@ -48,7 +48,14 @@ class RoleAccessIntegrationTest extends PostgresIntegrationTest {
             new Rule("/api/super-admin/tenants", Set.of(SUPER_ADMIN)),
             new Rule("/api/tenants", Set.of(SUPER_ADMIN)),
             new Rule("/api/dashboard/super-admin", Set.of(SUPER_ADMIN)),
-            new Rule("/api/users", EnumSet.allOf(RoleType.class))
+            new Rule("/api/users", EnumSet.allOf(RoleType.class)),
+            // Dashboard summaries: same roles as the module's list
+            new Rule("/api/customers/summary", Set.of(ADMIN, SALES_MANAGER, SALES_EXECUTIVE, MARKETING_EXECUTIVE, SERVICE_AGENT, FINANCE_APPROVER, EXECUTIVE_OWNER)),
+            new Rule("/api/leads/summary", Set.of(ADMIN, SALES_MANAGER, SALES_EXECUTIVE, MARKETING_EXECUTIVE, FINANCE_APPROVER, EXECUTIVE_OWNER)),
+            new Rule("/api/opportunities/kpis", Set.of(ADMIN, SALES_MANAGER, SALES_EXECUTIVE, FINANCE_APPROVER, EXECUTIVE_OWNER)),
+            new Rule("/api/quotations/summary", Set.of(ADMIN, SALES_MANAGER, SALES_EXECUTIVE, FINANCE_APPROVER, EXECUTIVE_OWNER)),
+            new Rule("/api/tickets/summary", Set.of(ADMIN, SALES_MANAGER, SERVICE_AGENT, EXECUTIVE_OWNER)),
+            new Rule("/api/campaigns/summary", Set.of(ADMIN, MARKETING_EXECUTIVE, EXECUTIVE_OWNER))
     );
 
     private TestTenant acme;

@@ -1,5 +1,8 @@
 package com.company.crm.lead.service;
 
+import com.company.crm.common.period.ReportingPeriods;
+import com.company.crm.lead.dto.response.LeadSummaryDto;
+import com.company.crm.lead.repository.LeadSummaryQuery;
 import com.company.crm.campaign.entity.Campaign;
 import com.company.crm.campaign.repository.CampaignRepository;
 import com.company.crm.common.enums.CustomerStatus;
@@ -33,6 +36,8 @@ public class LeadService {
 
     private final LeadRepository leadRepository;
     private final DataScopeResolver dataScopeResolver;
+    private final LeadSummaryQuery leadSummaryQuery;
+    private final ReportingPeriods reportingPeriods;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
     private final CampaignRepository campaignRepository;
@@ -211,6 +216,13 @@ public class LeadService {
     private void assertAccess(User currentUser, Lead lead) {
         dataScopeResolver.assertCanAccess(currentUser,
                 lead.getOwner() != null ? lead.getOwner().getId() : null, "lead");
+    }
+
+    /** Dashboard counts, aggregated in the database within the caller's data scope. */
+    @Transactional(readOnly = true)
+    public LeadSummaryDto getSummary(User currentUser) {
+        return leadSummaryQuery.summarize(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser),
+                reportingPeriods.startOfMonth());
     }
 
     /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */

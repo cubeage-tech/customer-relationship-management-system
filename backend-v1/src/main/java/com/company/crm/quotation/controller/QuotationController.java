@@ -1,5 +1,7 @@
 package com.company.crm.quotation.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import com.company.crm.quotation.dto.response.QuotationSummaryDto;
 import com.company.crm.common.response.Response;
 import com.company.crm.quotation.dto.request.DiscountReviewReqDto;
 import com.company.crm.quotation.dto.request.QuotationCustomerStatusReqDto;
@@ -38,6 +40,13 @@ public class QuotationController {
             "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')";
     private static final String EDIT_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')";
     private static final String APPROVE_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'FINANCE_APPROVER')";
+
+    @GetMapping("/summary")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "Quotation counts and approved-discount figures for dashboards, within your data scope")
+    public Response<QuotationSummaryDto> getSummary(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(quotationService.getSummary(currentUser));
+    }
 
     @GetMapping
     @PreAuthorize(VIEW_ROLES)

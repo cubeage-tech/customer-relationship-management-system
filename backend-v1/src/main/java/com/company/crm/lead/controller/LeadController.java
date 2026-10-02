@@ -1,5 +1,7 @@
 package com.company.crm.lead.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import com.company.crm.lead.dto.response.LeadSummaryDto;
 import com.company.crm.common.response.Response;
 import com.company.crm.lead.dto.request.LeadAssignReqDto;
 import com.company.crm.lead.dto.request.LeadReqDto;
@@ -28,6 +30,13 @@ import java.util.List;
 public class LeadController {
 
     private final LeadService leadService;
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'MARKETING_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')")
+    @Operation(summary = "Lead counts for dashboards (total, open, new this month) within your data scope")
+    public Response<LeadSummaryDto> getSummary(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(leadService.getSummary(currentUser));
+    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'MARKETING_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')")
