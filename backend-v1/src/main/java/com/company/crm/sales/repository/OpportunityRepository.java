@@ -7,8 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface OpportunityRepository extends JpaRepository<Opportunity, Long> {
+
+    /** Tenant-scoped lookup: a record from another tenant is indistinguishable from a missing one. */
+    Optional<Opportunity> findByIdAndTenantId(Long id, Long tenantId);
 
     List<Opportunity> findByTenantId(Long tenantId);
 

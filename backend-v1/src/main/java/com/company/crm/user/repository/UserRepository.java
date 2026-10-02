@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    /** Tenant-scoped lookup: a record from another tenant is indistinguishable from a missing one. */
+    Optional<User> findByIdAndTenantId(Long id, Long tenantId);
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     List<User> findByTenantId(Long tenantId);

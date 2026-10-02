@@ -142,11 +142,8 @@ public class ServiceTicketService {
             throw ApiException.forbidden("You do not have access to this service ticket");
         }
 
-        User technician = userRepository.findById(technicianId)
-                .orElseThrow(() -> ApiException.badRequest("Technician not found"));
-        if (technician.getTenant() == null || !technician.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Technician must belong to your tenant");
-        }
+        User technician = userRepository.findByIdAndTenantId(technicianId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Technician must belong to your tenant"));
 
         ticket.setAssignedTechnician(technician);
         if (ticket.getStatus() == TicketStatus.OPEN) {
@@ -197,11 +194,8 @@ public class ServiceTicketService {
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> ApiException.badRequest("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Customer must belong to your tenant");
-        }
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Customer must belong to your tenant"));
         return customer;
     }
 
@@ -222,11 +216,8 @@ public class ServiceTicketService {
     }
 
     private ServiceTicket findTicket(User currentUser, Long ticketId) {
-        ServiceTicket ticket = ticketRepository.findById(ticketId)
+        ServiceTicket ticket = ticketRepository.findByIdAndTenantId(ticketId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Service ticket not found"));
-        if (!ticket.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Service ticket not found");
-        }
         return ticket;
     }
 

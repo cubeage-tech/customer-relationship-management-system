@@ -159,20 +159,14 @@ public class OpportunityService {
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> ApiException.badRequest("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Customer must belong to your tenant");
-        }
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Customer must belong to your tenant"));
         return customer;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -185,11 +179,8 @@ public class OpportunityService {
     }
 
     private Opportunity findOpportunity(User currentUser, Long opportunityId) {
-        Opportunity opportunity = opportunityRepository.findById(opportunityId)
+        Opportunity opportunity = opportunityRepository.findByIdAndTenantId(opportunityId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Opportunity not found"));
-        if (!opportunity.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Opportunity not found");
-        }
         return opportunity;
     }
 

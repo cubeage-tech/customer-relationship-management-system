@@ -150,11 +150,8 @@ public class CustomerService {
         if (ownerId == null) {
             return currentUser;
         }
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -167,11 +164,8 @@ public class CustomerService {
     }
 
     private Customer findCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Customer not found");
-        }
         return customer;
     }
 

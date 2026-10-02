@@ -177,11 +177,8 @@ public class QuotationService {
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> ApiException.badRequest("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Customer must belong to your tenant");
-        }
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Customer must belong to your tenant"));
         return customer;
     }
 
@@ -189,20 +186,14 @@ public class QuotationService {
         if (opportunityId == null) {
             return null;
         }
-        Opportunity opportunity = opportunityRepository.findById(opportunityId)
-                .orElseThrow(() -> ApiException.badRequest("Opportunity not found"));
-        if (!opportunity.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Opportunity must belong to your tenant");
-        }
+        Opportunity opportunity = opportunityRepository.findByIdAndTenantId(opportunityId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Opportunity must belong to your tenant"));
         return opportunity;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -220,11 +211,8 @@ public class QuotationService {
     }
 
     private Quotation findQuotation(User currentUser, Long quotationId) {
-        Quotation quotation = quotationRepository.findById(quotationId)
+        Quotation quotation = quotationRepository.findByIdAndTenantId(quotationId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Quotation not found"));
-        if (!quotation.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Quotation not found");
-        }
         return quotation;
     }
 

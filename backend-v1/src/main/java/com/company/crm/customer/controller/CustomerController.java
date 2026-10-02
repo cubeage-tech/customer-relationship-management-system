@@ -8,6 +8,7 @@ import com.company.crm.customer.service.CustomerService;
 import com.company.crm.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.common.security.RoleExpressions;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,7 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @GetMapping
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
     public Response<List<CustomerResDto>> listCustomers(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(required = false) String industry,
@@ -37,6 +39,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{customerId}")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
     public Response<CustomerResDto> getCustomer(
             @AuthenticationPrincipal User currentUser,
             @PathVariable Long customerId) {

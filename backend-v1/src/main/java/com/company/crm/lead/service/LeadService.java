@@ -165,20 +165,14 @@ public class LeadService {
     }
 
     private Campaign resolveCampaign(User currentUser, Long campaignId) {
-        Campaign campaign = campaignRepository.findById(campaignId)
-                .orElseThrow(() -> ApiException.badRequest("Campaign not found"));
-        if (!campaign.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Campaign must belong to your tenant");
-        }
+        Campaign campaign = campaignRepository.findByIdAndTenantId(campaignId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Campaign must belong to your tenant"));
         return campaign;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -207,11 +201,8 @@ public class LeadService {
     }
 
     private Lead findLead(User currentUser, Long leadId) {
-        Lead lead = leadRepository.findById(leadId)
+        Lead lead = leadRepository.findByIdAndTenantId(leadId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Lead not found"));
-        if (!lead.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Lead not found");
-        }
         return lead;
     }
 
