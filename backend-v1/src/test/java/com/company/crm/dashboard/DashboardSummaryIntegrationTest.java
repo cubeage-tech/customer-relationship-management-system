@@ -110,8 +110,7 @@ class DashboardSummaryIntegrationTest extends PostgresIntegrationTest {
         send(get("/api/tickets/summary"), tenant.token(SERVICE_AGENT), null).andExpect(jsonPath("$.data.resolvedThisWeek").value(0));
 
         // ---- Team scope applies to summaries too: manager of a team containing the exec
-        long teamId = id(send(post("/api/sales-teams"), admin, "{\"name\":\"Dash team\",\"managerId\":" + tenant.user(SALES_MANAGER).getId() + "}"));
-        send(put("/api/sales-teams/" + teamId + "/members"), admin, "{\"userIds\":[" + execUser.getId() + "]}").andExpect(status().isOk());
+        testTenants.createTeam(tenant.tenant(), "Dash team", tenant.user(SALES_MANAGER), execUser);
         send(get("/api/leads/summary"), tenant.token(SALES_MANAGER), null).andExpect(jsonPath("$.data.total").value(2));
         send(get("/api/opportunities/kpis"), tenant.token(SALES_MANAGER), null).andExpect(jsonPath("$.data.openValue").value(1000));
     }

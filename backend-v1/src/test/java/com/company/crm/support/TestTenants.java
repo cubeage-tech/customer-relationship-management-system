@@ -3,6 +3,8 @@ package com.company.crm.support;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.security.JwtService;
+import com.company.crm.sales_team.entity.SalesTeam;
+import com.company.crm.sales_team.repository.SalesTeamRepository;
 import com.company.crm.subscription.service.SubscriptionService;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.tenant.repository.TenantRepository;
@@ -38,13 +40,17 @@ public class TestTenants {
     private final SubscriptionService subscriptionService;
     private final JwtService jwtService;
 
+    private final SalesTeamRepository salesTeamRepository;
+
     public TestTenants(TenantRepository tenantRepository, RoleRepository roleRepository, UserRepository userRepository,
-                       SubscriptionService subscriptionService, JwtService jwtService) {
+                       SubscriptionService subscriptionService, JwtService jwtService,
+                       SalesTeamRepository salesTeamRepository) {
         this.tenantRepository = tenantRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.subscriptionService = subscriptionService;
         this.jwtService = jwtService;
+        this.salesTeamRepository = salesTeamRepository;
     }
 
     /** A tenant (on an active trial) with one user for every tenant role. */
@@ -86,6 +92,32 @@ public class TestTenants {
         user.setEmailVerified(true);
         user.setStatus(AccountStatus.ACTIVE);
         return userRepository.save(user);
+    }
+
+    /** A sales team led by {@code manager} with the given members (written directly; there is no team API). */
+    @Transactional
+    public Long createTeam(Tenant tenant, String name, User manager, User... members) {
+        SalesTeam team = new SalesTeam();
+        team.setTenant(tenant);
+        team.setName(name);
+        team.setManager(manager);
+        Long teamId = salesTeamRepository.save(team).getId();
+        for (User member : members) {
+            member.setTeamId(teamId);
+            userRepository.save(member);
+        }
+        return teamId;
+    }
+
+    @Transactional
+    public void deleteTeam(Long teamId) {
+        userRepository.findAll().stream()
+                .filter(user -> teamId.equals(user.getTeamId()))
+                .forEach(user -> {
+                    user.setTeamId(null);
+                    userRepository.save(user);
+                });
+        salesTeamRepository.deleteById(teamId);
     }
 
     public String tokenFor(User user) {

@@ -320,27 +320,6 @@ class ApiService {
     return this.apipost(ServerUrl.SUBSCRIPTION_UPGRADE, data);
   }
 
-  // ------------------ Sales Team APIs (tenant admin) ------------------
-  static getSalesTeams() {
-    return this.apiget(ServerUrl.SALES_TEAMS);
-  }
-
-  static createSalesTeam(data) {
-    return this.apipost(ServerUrl.SALES_TEAMS, data);
-  }
-
-  static updateSalesTeam(id, data) {
-    return this.apiput(ServerUrl.salesTeam(id), data);
-  }
-
-  static setSalesTeamMembers(id, data) {
-    return this.apiput(ServerUrl.salesTeamMembers(id), data);
-  }
-
-  static deleteSalesTeam(id) {
-    return this.apidelete(ServerUrl.salesTeam(id));
-  }
-
   // ------------------ Generic Methods ------------------
   static apiget(url, params = {}) {
     return this.axiosInstance.get(url, { params }).then((res) => res.data?.data);

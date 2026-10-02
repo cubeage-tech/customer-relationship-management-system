@@ -13,7 +13,6 @@ import {
   Building2,
   CreditCard,
   ScrollText,
-  UsersRound,
 } from "lucide-react";
 import RoutePath, { getRoleHomeRoute } from "../../core/constants/routes.constant";
 import { USER_ROLES } from "../../core/constants/app.constant";
@@ -89,12 +88,6 @@ export const SIDEBAR_ITEMS = [
     icon: ShieldCheck,
     path: RoutePath.ADMIN_USERS,
     permissions: [PERMISSIONS.USERS_VIEW],
-  },
-  {
-    label: "Teams",
-    icon: UsersRound,
-    path: RoutePath.ADMIN_TEAMS,
-    permissions: [PERMISSIONS.TEAMS_MANAGE],
   },
   {
     label: "My Plan",
