@@ -90,6 +90,12 @@ export const SIDEBAR_ITEMS = [
     permissions: [PERMISSIONS.USERS_VIEW],
   },
   {
+    label: "My Plan",
+    icon: CreditCard,
+    path: RoutePath.ADMIN_MY_PLAN,
+    permissions: [PERMISSIONS.BILLING_VIEW],
+  },
+  {
     label: "Settings",
     icon: Settings,
     path: RoutePath.ADMIN_SETTINGS,

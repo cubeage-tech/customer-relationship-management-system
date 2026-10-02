@@ -5,7 +5,7 @@ import { signup as signupRequest } from '../../core/services/auth.service';
 import RoutePath from '../../core/constants/routes.constant';
 import { USER_ROLES } from '../../core/constants/app.constant';
 import { NOTIFICATION_MESSAGES } from '../../core/constants/notification.constant';
-import { validateSignupForm, getPasswordStrength } from '../../utils/validation';
+import { validateSignupForm, getPasswordStrength, sanitizeName, sanitizeEmail, sanitizeBankAccountNumber } from '../../utils/validation';
 import { Eye, EyeOff, Bot, ShieldCheck, BarChart3, Sparkles, Check, Landmark } from 'lucide-react';
 
 const STRENGTH_COLORS = ['bg-gray-200', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
@@ -30,11 +30,32 @@ const Signup = () => {
 
   const strength = getPasswordStrength(form.password);
 
+  const sanitizers = {
+    firstName: sanitizeName,
+    lastName: sanitizeName,
+    email: sanitizeEmail,
+    bankAccountNumber: sanitizeBankAccountNumber,
+  };
+
   const handleChange = (e) => {
-    const { name } = e.target;
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => (prev[name] ? { ...prev, [name]: '' } : prev));
+    const { name, type, value, checked } = e.target;
+
+    let newValue = type === 'checkbox' ? checked : value;
+
+    const sanitizer = sanitizers[name];
+
+    if (sanitizer) {
+      newValue = sanitizer(value);
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: newValue, // ✅ use sanitized value
+    }));
+
+    setErrors((prev) =>
+      prev[name] ? { ...prev, [name]: '' } : prev
+    );
   };
 
   const handleSubmit = async (e) => {

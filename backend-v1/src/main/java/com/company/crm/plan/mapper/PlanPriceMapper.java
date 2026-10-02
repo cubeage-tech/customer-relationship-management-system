@@ -9,7 +9,7 @@ public class PlanPriceMapper {
 
     public PlanPriceResDto toDto(PlanPrice planPrice) {
         return new PlanPriceResDto(
-                planPrice.getPlan().getDbValue(),
+                planPrice.getPlan().getCode(),
                 planPrice.getMonthlyPrice(),
                 planPrice.getAnnualPrice(),
                 planPrice.getCurrency(),

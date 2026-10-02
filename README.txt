@@ -229,9 +229,15 @@ This repository is in **early/greenfield development**, built against the v1.0 S
 Proprietary — © Devniks (Pentasoftware Consultancy). All rights reserved. Not for external distribution without authorization.
 
 ## Local Authentication
+To start backend use .\mvnw.cmd spring-boot:run
+mvnw.cmd spring-boot:run -Dspring-boot.run.main-class=com.company.crm.CrmApplication
 
 Start the backend from `backend-v1` with `.\mvnw.cmd spring-boot:run`.
 
 On first startup, the backend creates one platform super-admin using the `SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASSWORD` environment variables. If those variables are unset, the defaults in `backend-v1/src/main/resources/application.properties` are used. The bootstrap account is created only once; changing the environment variables later does not reset its existing password.
 
 Create tenant administrator accounts through the signup page, then verify the signup email before logging in. The previously listed `test1@test.com` and `test2@gmail.com` accounts are not seeded by the current backend and cannot be used unless you create them yourself.
+To login use test1@test.com or test2@gmail.com
+password is Test@123
+
+To login superadmin superadmin@smartcrm.ai password is ChangeMe123!
