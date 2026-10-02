@@ -4,6 +4,8 @@ import com.company.crm.common.enums.DiscountApprovalStatus;
 import com.company.crm.common.enums.QuotationStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.scope.DataScope;
+import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.quotation.dto.request.QuotationCustomerStatusReqDto;
@@ -32,6 +34,7 @@ import java.util.List;
 public class QuotationService {
 
     private final QuotationRepository quotationRepository;
+    private final DataScopeResolver dataScopeResolver;
     private final CustomerRepository customerRepository;
     private final OpportunityRepository opportunityRepository;
     private final UserRepository userRepository;
@@ -46,9 +49,7 @@ public class QuotationService {
     // must stay open through mapping.
     @Transactional(readOnly = true)
     public List<QuotationResDto> listQuotations(User currentUser, String status, Long customerId, String search) {
-        List<Quotation> quotations = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? quotationRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : quotationRepository.findByTenantId(requireTenantId(currentUser));
+        List<Quotation> quotations = findInScope(currentUser);
 
         return quotations.stream()
                 .filter(q -> status == null || status.isBlank() || q.getStatus().getDbValue().equals(status))
@@ -218,10 +219,17 @@ public class QuotationService {
 
     /** sales_executive may only access quotations assigned to them ("own" data scope). */
     private void assertAccess(User currentUser, Quotation quotation) {
-        if (currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                && (quotation.getOwner() == null || !quotation.getOwner().getId().equals(currentUser.getId()))) {
-            throw ApiException.forbidden("You do not have access to this quotation");
-        }
+        dataScopeResolver.assertCanAccess(currentUser,
+                quotation.getOwner() != null ? quotation.getOwner().getId() : null, "quotation");
+    }
+
+    /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */
+    private List<Quotation> findInScope(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        return scope.isTenantWide()
+                ? quotationRepository.findByTenantId(tenantId)
+                : quotationRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
     }
 
     private Long requireTenantId(User currentUser) {

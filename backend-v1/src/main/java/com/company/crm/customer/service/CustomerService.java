@@ -4,6 +4,8 @@ import com.company.crm.common.enums.CustomerStatus;
 import com.company.crm.common.enums.IndustryType;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.scope.DataScope;
+import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.dto.request.CustomerContactReqDto;
 import com.company.crm.customer.dto.request.CustomerReqDto;
 import com.company.crm.customer.dto.response.CustomerContactResDto;
@@ -27,6 +29,7 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final DataScopeResolver dataScopeResolver;
     private final UserRepository userRepository;
     private final CustomerMapper customerMapper;
     private final PlanLimitService planLimitService;
@@ -35,9 +38,7 @@ public class CustomerService {
     // associations (contacts, owner, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
     public List<CustomerResDto> listCustomers(User currentUser, String industry, String status, String search) {
-        List<Customer> customers = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? customerRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : customerRepository.findByTenantId(requireTenantId(currentUser));
+        List<Customer> customers = findInScope(currentUser);
 
         return customers.stream()
                 .filter(c -> industry == null || industry.isBlank() || c.getIndustry().getDbValue().equals(industry))
@@ -178,15 +179,22 @@ public class CustomerService {
 
     /** sales_executive may only view accounts assigned to them ("own" data scope). */
     private void assertViewAccess(User currentUser, Customer customer) {
-        if (currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                && (customer.getOwner() == null || !customer.getOwner().getId().equals(currentUser.getId()))) {
-            throw ApiException.forbidden("You do not have access to this customer");
-        }
+        dataScopeResolver.assertCanAccess(currentUser,
+                customer.getOwner() != null ? customer.getOwner().getId() : null, "customer");
     }
 
     /** sales_executive may only edit accounts assigned to them; everyone else in the tenant may edit any. */
     private void assertEditAccess(User currentUser, Customer customer) {
         assertViewAccess(currentUser, customer);
+    }
+
+    /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */
+    private List<Customer> findInScope(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        return scope.isTenantWide()
+                ? customerRepository.findByTenantId(tenantId)
+                : customerRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
     }
 
     private Long requireTenantId(User currentUser) {

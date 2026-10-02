@@ -36,6 +36,14 @@ public class User implements UserDetails {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
+    /**
+     * Sales team this user belongs to (FK to sales_teams, ON DELETE SET NULL). A plain id rather
+     * than a relation: User is the security principal and lives outside transactions, so a lazy
+     * association here would be a LazyInitializationException waiting to happen.
+     */
+    @Column(name = "team_id")
+    private Long teamId;
+
     @Column(name = "full_name", nullable = false)
     private String fullName;
 

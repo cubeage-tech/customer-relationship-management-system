@@ -18,6 +18,8 @@ public interface OpportunityRepository extends JpaRepository<Opportunity, Long> 
 
     List<Opportunity> findByTenantIdAndOwnerId(Long tenantId, Long ownerId);
 
+    List<Opportunity> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
+
     long countByTenantIdAndStageNotIn(Long tenantId, Collection<OpportunityStage> stages);
 
     long countByTenantIdAndStageNotIn(Long tenantId, List<OpportunityStage> stages);

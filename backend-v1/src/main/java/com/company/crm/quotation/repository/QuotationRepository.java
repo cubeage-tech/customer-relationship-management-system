@@ -3,6 +3,7 @@ package com.company.crm.quotation.repository;
 import com.company.crm.quotation.entity.Quotation;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +15,8 @@ public interface QuotationRepository extends JpaRepository<Quotation, Long> {
     List<Quotation> findByTenantId(Long tenantId);
 
     List<Quotation> findByTenantIdAndOwnerId(Long tenantId, Long ownerId);
+
+    List<Quotation> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
 
     long countByTenantId(Long tenantId);
 }

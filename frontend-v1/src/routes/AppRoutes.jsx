@@ -50,6 +50,7 @@ const Users = lazy(() => import("../pages/admin/Users"));
 const Roles = lazy(() => import("../pages/admin/Roles"));
 const Settings = lazy(() => import("../pages/admin/Settings"));
 const MyPlan = lazy(() => import("../pages/admin/MyPlan"));
+const Teams = lazy(() => import("../pages/admin/Teams"));
 
 // Platform Administration (super_admin)
 const PlatformTenants = lazy(() => import("../pages/platform/Tenants"));
@@ -346,6 +347,16 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.ADMIN_MY_PLAN} element={<MyPlan />} />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.TEAMS_MANAGE]}
+              />
+            }
+          >
+            <Route path={RoutePath.ADMIN_TEAMS} element={<Teams />} />
           </Route>
 
           {/* ================= PLATFORM ADMINISTRATION ================= */}

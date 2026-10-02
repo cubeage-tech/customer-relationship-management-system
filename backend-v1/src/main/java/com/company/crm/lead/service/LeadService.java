@@ -8,6 +8,8 @@ import com.company.crm.common.enums.LeadSource;
 import com.company.crm.common.enums.LeadStage;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.scope.DataScope;
+import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.lead.dto.request.LeadReqDto;
@@ -30,6 +32,7 @@ import java.util.List;
 public class LeadService {
 
     private final LeadRepository leadRepository;
+    private final DataScopeResolver dataScopeResolver;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
     private final CampaignRepository campaignRepository;
@@ -40,9 +43,7 @@ public class LeadService {
     // associations (owner, convertedCustomer, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
     public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search) {
-        List<Lead> leads = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? leadRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : leadRepository.findByTenantId(requireTenantId(currentUser));
+        List<Lead> leads = findInScope(currentUser);
 
         return leads.stream()
                 .filter(l -> stage == null || stage.isBlank() || l.getStage().getDbValue().equals(stage))
@@ -208,10 +209,17 @@ public class LeadService {
 
     /** sales_executive may only access leads assigned to them ("own" data scope). */
     private void assertAccess(User currentUser, Lead lead) {
-        if (currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                && (lead.getOwner() == null || !lead.getOwner().getId().equals(currentUser.getId()))) {
-            throw ApiException.forbidden("You do not have access to this lead");
-        }
+        dataScopeResolver.assertCanAccess(currentUser,
+                lead.getOwner() != null ? lead.getOwner().getId() : null, "lead");
+    }
+
+    /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */
+    private List<Lead> findInScope(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        return scope.isTenantWide()
+                ? leadRepository.findByTenantId(tenantId)
+                : leadRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
     }
 
     private Long requireTenantId(User currentUser) {

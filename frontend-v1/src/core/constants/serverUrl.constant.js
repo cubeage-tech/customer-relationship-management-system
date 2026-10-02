@@ -85,6 +85,11 @@ class ServerUrl {
     static SUBSCRIPTION_PLANS = ServerUrl.SUBSCRIPTIONS + "/plans";
     static SUBSCRIPTION_UPGRADE = ServerUrl.SUBSCRIPTIONS + "/upgrade";
 
+    // sales teams (tenant admin)
+    static SALES_TEAMS = ServerUrl.API_MODULE_USER + "/sales-teams";
+    static salesTeam = (id) => `${ServerUrl.SALES_TEAMS}/${id}`;
+    static salesTeamMembers = (id) => `${ServerUrl.SALES_TEAMS}/${id}/members`;
+
   static PLAN_PRICES = ServerUrl.PLANS + "/prices"; // GET list
   static planPrice = (plan) => `${ServerUrl.PLANS}/${plan}/price`; // PUT single
 }
