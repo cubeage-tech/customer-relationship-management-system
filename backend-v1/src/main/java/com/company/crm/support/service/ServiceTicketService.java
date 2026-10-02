@@ -1,6 +1,16 @@
 package com.company.crm.support.service;
 
+import com.company.crm.common.period.ReportingPeriods;
+import com.company.crm.support.repository.ServiceTicketSummaryQuery;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.enums.RoleType;
+import com.company.crm.common.pagination.PageRequestFactory;
+import com.company.crm.common.pagination.PageResponse;
+import com.company.crm.support.repository.ServiceTicketSpecifications;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import com.company.crm.common.enums.TicketPriority;
 import com.company.crm.common.enums.TicketStatus;
 import com.company.crm.common.exception.ApiException;
@@ -23,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +43,24 @@ public class ServiceTicketService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final ServiceTicketMapper ticketMapper;
+    private final PageRequestFactory pageRequestFactory;
+    private final AuditService auditService;
+    private final ServiceTicketSummaryQuery ticketSummaryQuery;
+    private final ReportingPeriods reportingPeriods;
+
+    /** Window for the average-resolution-time figure. */
+    private static final int RESOLUTION_AVERAGE_DAYS = 30;
+
+    private static final String AUDIT_ENTITY = "service_ticket";
+
+    /** API sort name → entity property. */
+    private static final Map<String, String> SORTABLE_FIELDS = Map.of(
+            "createdAt", "createdAt",
+            "slaDueAt", "slaDueAt",
+            "priority", "priority",
+            "status", "status");
+
+    private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
 
     @Value("${app.ticket.sla-hours.critical}")
     private long slaHoursCritical;
@@ -50,10 +79,15 @@ public class ServiceTicketService {
     // open through mapping.
     @Transactional(readOnly = true)
     public List<ServiceTicketResDto> listTickets(
-            User currentUser, String status, String priority, Long customerId, String search) {
-        List<ServiceTicket> tickets = currentUser.getRole().getName() == RoleType.SERVICE_AGENT
-                ? ticketRepository.findByTenantIdAndAssignedTechnicianId(requireTenantId(currentUser), currentUser.getId())
-                : ticketRepository.findByTenantId(requireTenantId(currentUser));
+            User currentUser, String scope, String status, String priority, Long customerId, String search) {
+        if (isAgent(currentUser)) {
+            // Agents: their own tickets plus the unassigned queue (Decision 4), filtered in the DB.
+            return ticketRepository.findAll(filters(currentUser, scope, status, priority, customerId, search), DEFAULT_SORT)
+                    .stream().map(ticketMapper::toDto).toList();
+        }
+
+        // Every other role: unchanged.
+        List<ServiceTicket> tickets = ticketRepository.findByTenantId(requireTenantId(currentUser));
 
         return tickets.stream()
                 .filter(t -> status == null || status.isBlank() || t.getStatus().getDbValue().equals(status))
@@ -66,34 +100,64 @@ public class ServiceTicketService {
                 .toList();
     }
 
+    /** Paged, DB-filtered list (opt-in via page/size). Same visibility rules as {@link #listTickets}. */
+    @Transactional(readOnly = true)
+    public PageResponse<ServiceTicketResDto> listTicketsPage(
+            User currentUser, String scope, String status, String priority, Long customerId, String search,
+            Integer page, Integer size, String sort) {
+        Pageable pageable = pageRequestFactory.of(page, size, sort, SORTABLE_FIELDS, DEFAULT_SORT);
+        return PageResponse.of(
+                ticketRepository.findAll(filters(currentUser, scope, status, priority, customerId, search), pageable),
+                ticketMapper::toDto);
+    }
+
     @Transactional(readOnly = true)
     public ServiceTicketResDto getTicket(User currentUser, Long ticketId) {
         ServiceTicket ticket = findTicket(currentUser, ticketId);
-        assertAccess(currentUser, ticket);
+        assertViewAccess(currentUser, ticket);
         return ticketMapper.toDto(ticket);
     }
 
-    /** FR-6.4: counts of still-open tickets by SLA status, for the escalation view. */
+    /**
+     * Decision 4: an agent takes an unassigned ticket. Atomic — one conditional UPDATE, so of two
+     * agents claiming at the same moment exactly one wins; the other gets 409. Claiming a ticket
+     * you already hold is a no-op that succeeds.
+     */
+    @Transactional
+    public ServiceTicketResDto claimTicket(User agent, Long ticketId) {
+        Long tenantId = requireTenantId(agent);
+        int updated = ticketRepository.assignIfUnassigned(ticketId, tenantId, agent.getId(), LocalDateTime.now());
+        ServiceTicket ticket = findTicket(agent, ticketId); // 404 if not in this tenant
+
+        if (updated == 0) {
+            User holder = ticket.getAssignedTechnician();
+            if (holder != null && holder.getId().equals(agent.getId())) {
+                return ticketMapper.toDto(ticket);
+            }
+            throw ApiException.conflict("This ticket has already been claimed by " + (holder != null ? holder.getFullName() : "another agent"));
+        }
+
+        if (ticket.getStatus() == TicketStatus.OPEN) {
+            ticket.setStatus(TicketStatus.ASSIGNED);
+            ticket = ticketRepository.save(ticket);
+        }
+        auditService.record(agent, AuditAction.TICKET_CLAIMED, AUDIT_ENTITY, ticketId, "claimedBy=" + agent.getId());
+        return ticketMapper.toDto(ticket);
+    }
+
+    /**
+     * FR-6.4 SLA counts plus dashboard figures, aggregated in the database. Service agents get
+     * their assigned tickets only (unchanged); other roles the whole tenant.
+     */
     @Transactional(readOnly = true)
     public ServiceTicketSummaryDto getSummary(User currentUser) {
-        List<ServiceTicket> tickets = currentUser.getRole().getName() == RoleType.SERVICE_AGENT
-                ? ticketRepository.findByTenantIdAndAssignedTechnicianId(requireTenantId(currentUser), currentUser.getId())
-                : ticketRepository.findByTenantId(requireTenantId(currentUser));
-
-        long onTrack = 0;
-        long atRisk = 0;
-        long breached = 0;
-        for (ServiceTicket ticket : tickets) {
-            if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.CLOSED) {
-                continue;
-            }
-            switch (ticketMapper.slaStatus(ticket)) {
-                case "at_risk" -> atRisk++;
-                case "breached" -> breached++;
-                default -> onTrack++;
-            }
-        }
-        return new ServiceTicketSummaryDto(onTrack, atRisk, breached);
+        LocalDateTime now = reportingPeriods.now();
+        return ticketSummaryQuery.summarize(
+                requireTenantId(currentUser),
+                isAgent(currentUser) ? currentUser.getId() : null,
+                now,
+                reportingPeriods.startOfWeekAt(),
+                now.minusDays(RESOLUTION_AVERAGE_DAYS));
     }
 
     @Transactional
@@ -142,10 +206,20 @@ public class ServiceTicketService {
             throw ApiException.forbidden("You do not have access to this service ticket");
         }
 
-        User technician = userRepository.findById(technicianId)
-                .orElseThrow(() -> ApiException.badRequest("Technician not found"));
-        if (technician.getTenant() == null || !technician.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Technician must belong to your tenant");
+        User technician = userRepository.findByIdAndTenantId(technicianId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Technician must belong to your tenant"));
+
+        // An agent assigning an unassigned ticket is a claim: do it atomically so two agents
+        // can't both take it (the check above alone is a check-then-act race).
+        if (isAgent(currentUser) && ticket.getAssignedTechnician() == null) {
+            if (ticketRepository.assignIfUnassigned(ticketId, requireTenantId(currentUser), technician.getId(), LocalDateTime.now()) == 0) {
+                throw ApiException.conflict("This ticket has just been claimed by someone else");
+            }
+            ticket = findTicket(currentUser, ticketId);
+            if (ticket.getStatus() == TicketStatus.OPEN) {
+                ticket.setStatus(TicketStatus.ASSIGNED);
+            }
+            return ticketMapper.toDto(ticketRepository.save(ticket));
         }
 
         ticket.setAssignedTechnician(technician);
@@ -197,11 +271,8 @@ public class ServiceTicketService {
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> ApiException.badRequest("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Customer must belong to your tenant");
-        }
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Customer must belong to your tenant"));
         return customer;
     }
 
@@ -222,11 +293,8 @@ public class ServiceTicketService {
     }
 
     private ServiceTicket findTicket(User currentUser, Long ticketId) {
-        ServiceTicket ticket = ticketRepository.findById(ticketId)
+        ServiceTicket ticket = ticketRepository.findByIdAndTenantId(ticketId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Service ticket not found"));
-        if (!ticket.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Service ticket not found");
-        }
         return ticket;
     }
 
@@ -237,6 +305,32 @@ public class ServiceTicketService {
                         || !ticket.getAssignedTechnician().getId().equals(currentUser.getId()))) {
             throw ApiException.forbidden("You do not have access to this service ticket");
         }
+    }
+
+    /** Reading is wider than editing for agents: they may open unassigned queue tickets before claiming. */
+    private void assertViewAccess(User currentUser, ServiceTicket ticket) {
+        if (isAgent(currentUser) && ticket.getAssignedTechnician() == null) {
+            return;
+        }
+        assertAccess(currentUser, ticket);
+    }
+
+    private boolean isAgent(User user) {
+        return user.getRole().getName() == RoleType.SERVICE_AGENT;
+    }
+
+    /** Tenant + role visibility + optional filters, all evaluated in the database. */
+    private Specification<ServiceTicket> filters(User currentUser, String scope, String status, String priority,
+                                                 Long customerId, String search) {
+        Specification<ServiceTicket> spec = ServiceTicketSpecifications.inTenant(requireTenantId(currentUser));
+        if (isAgent(currentUser)) {
+            spec = spec.and(ServiceTicketSpecifications.forAgent(currentUser.getId(), TicketScope.parse(scope)));
+        }
+        return spec
+                .and(ServiceTicketSpecifications.hasStatus(status == null || status.isBlank() ? null : parseStatus(status)))
+                .and(ServiceTicketSpecifications.hasPriority(priority == null || priority.isBlank() ? null : parsePriority(priority)))
+                .and(ServiceTicketSpecifications.forCustomer(customerId))
+                .and(ServiceTicketSpecifications.matches(search));
     }
 
     private Long requireTenantId(User currentUser) {

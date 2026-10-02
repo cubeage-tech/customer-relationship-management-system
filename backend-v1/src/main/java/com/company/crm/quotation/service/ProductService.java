@@ -57,11 +57,8 @@ public class ProductService {
     }
 
     private Product findProduct(User currentUser, Long productId) {
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdAndTenantId(productId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Product not found"));
-        if (!product.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Product not found");
-        }
         return product;
     }
 

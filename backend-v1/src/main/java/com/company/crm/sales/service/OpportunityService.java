@@ -1,8 +1,13 @@
 package com.company.crm.sales.service;
 
+import com.company.crm.common.period.ReportingPeriods;
+import com.company.crm.sales.dto.response.OpportunityKpiDto;
+import com.company.crm.sales.repository.OpportunitySummaryQuery;
 import com.company.crm.common.enums.OpportunityStage;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.scope.DataScope;
+import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.lead.entity.Lead;
@@ -31,6 +36,9 @@ import java.util.Map;
 public class OpportunityService {
 
     private final OpportunityRepository opportunityRepository;
+    private final DataScopeResolver dataScopeResolver;
+    private final OpportunitySummaryQuery opportunitySummaryQuery;
+    private final ReportingPeriods reportingPeriods;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final OpportunityMapper opportunityMapper;
@@ -40,9 +48,7 @@ public class OpportunityService {
     @Transactional(readOnly = true)
     public List<OpportunityResDto> listOpportunities(
             User currentUser, String stage, Long customerId, String search) {
-        List<Opportunity> opportunities = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? opportunityRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : opportunityRepository.findByTenantId(requireTenantId(currentUser));
+        List<Opportunity> opportunities = findInScope(currentUser);
 
         return opportunities.stream()
                 .filter(o -> stage == null || stage.isBlank() || o.getStage().getDbValue().equals(stage))
@@ -65,21 +71,28 @@ public class OpportunityService {
     /** FR-3.3: cumulative deal value per stage, for the pipeline/Kanban header. */
     @Transactional(readOnly = true)
     public List<OpportunityStageSummaryDto> getStageSummary(User currentUser) {
-        List<Opportunity> opportunities = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? opportunityRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : opportunityRepository.findByTenantId(requireTenantId(currentUser));
+        // Aggregated in the database (GROUP BY stage); same response as before — every stage, in
+        // pipeline order, zero-filled.
+        Map<OpportunityStage, OpportunitySummaryQuery.StageTotals> totals =
+                opportunitySummaryQuery.totalsByStage(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser));
 
-        Map<OpportunityStage, List<Opportunity>> byStage = new LinkedHashMap<>();
-        Arrays.stream(OpportunityStage.values()).forEach(stage -> byStage.put(stage, new java.util.ArrayList<>()));
-        opportunities.forEach(o -> byStage.get(o.getStage()).add(o));
-
-        return byStage.entrySet().stream()
-                .map(entry -> new OpportunityStageSummaryDto(
-                        entry.getKey().getDbValue(),
-                        entry.getValue().size(),
-                        entry.getValue().stream().map(Opportunity::getDealValue).reduce(BigDecimal.ZERO, BigDecimal::add)
-                ))
+        return Arrays.stream(OpportunityStage.values())
+                .map(stage -> {
+                    OpportunitySummaryQuery.StageTotals stageTotals = totals.get(stage);
+                    return new OpportunityStageSummaryDto(
+                            stage.getDbValue(),
+                            stageTotals == null ? 0 : stageTotals.count(),
+                            stageTotals == null ? BigDecimal.ZERO : stageTotals.totalValue());
+                })
                 .toList();
+    }
+
+    /** Dashboard pipeline KPIs (open value, closing this week, won this month/quarter), in one query. */
+    @Transactional(readOnly = true)
+    public OpportunityKpiDto getKpis(User currentUser) {
+        return opportunitySummaryQuery.kpis(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser),
+                reportingPeriods.startOfWeek(), reportingPeriods.endOfWeek(),
+                reportingPeriods.startOfMonth(), reportingPeriods.startOfQuarter());
     }
 
     @Transactional
@@ -159,20 +172,14 @@ public class OpportunityService {
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> ApiException.badRequest("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Customer must belong to your tenant");
-        }
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Customer must belong to your tenant"));
         return customer;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -185,20 +192,24 @@ public class OpportunityService {
     }
 
     private Opportunity findOpportunity(User currentUser, Long opportunityId) {
-        Opportunity opportunity = opportunityRepository.findById(opportunityId)
+        Opportunity opportunity = opportunityRepository.findByIdAndTenantId(opportunityId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Opportunity not found"));
-        if (!opportunity.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Opportunity not found");
-        }
         return opportunity;
     }
 
     /** sales_executive may only access opportunities assigned to them ("own" data scope). */
     private void assertAccess(User currentUser, Opportunity opportunity) {
-        if (currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                && (opportunity.getOwner() == null || !opportunity.getOwner().getId().equals(currentUser.getId()))) {
-            throw ApiException.forbidden("You do not have access to this opportunity");
-        }
+        dataScopeResolver.assertCanAccess(currentUser,
+                opportunity.getOwner() != null ? opportunity.getOwner().getId() : null, "opportunity");
+    }
+
+    /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */
+    private List<Opportunity> findInScope(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        return scope.isTenantWide()
+                ? opportunityRepository.findByTenantId(tenantId)
+                : opportunityRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
     }
 
     private Long requireTenantId(User currentUser) {

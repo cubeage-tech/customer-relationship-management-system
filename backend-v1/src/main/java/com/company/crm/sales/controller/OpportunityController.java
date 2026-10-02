@@ -1,5 +1,7 @@
 package com.company.crm.sales.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import com.company.crm.sales.dto.response.OpportunityKpiDto;
 import com.company.crm.common.response.Response;
 import com.company.crm.sales.dto.request.OpportunityReqDto;
 import com.company.crm.sales.dto.request.OpportunityStageReqDto;
@@ -41,6 +43,14 @@ public class OpportunityController {
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) String search) {
         return Response.ok(opportunityService.listOpportunities(currentUser, stage, customerId, search));
+    }
+
+    /** New: the stage summary is a per-stage list for the board; date-window KPIs don't fit its contract. */
+    @GetMapping("/kpis")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "Pipeline KPIs for dashboards: open value, closing this week, won this month/quarter")
+    public Response<OpportunityKpiDto> getKpis(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(opportunityService.getKpis(currentUser));
     }
 
     @GetMapping("/summary")

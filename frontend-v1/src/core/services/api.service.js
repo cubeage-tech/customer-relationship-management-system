@@ -228,6 +228,10 @@ class ApiService {
     return this.apipatch(ServerUrl.ticketFeedback(id), data);
   }
 
+  static claimTicket(id) {
+    return this.apipost(ServerUrl.ticketClaim(id));
+  }
+
   // ------------------ Campaign APIs ------------------
   static getCampaigns(params) {
     return this.apiget(ServerUrl.CAMPAIGNS, params);

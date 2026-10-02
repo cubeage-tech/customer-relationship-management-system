@@ -1,9 +1,13 @@
 package com.company.crm.quotation.service;
 
+import com.company.crm.quotation.dto.response.QuotationSummaryDto;
+import com.company.crm.quotation.repository.QuotationSummaryQuery;
 import com.company.crm.common.enums.DiscountApprovalStatus;
 import com.company.crm.common.enums.QuotationStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.scope.DataScope;
+import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.quotation.dto.request.QuotationCustomerStatusReqDto;
@@ -32,6 +36,8 @@ import java.util.List;
 public class QuotationService {
 
     private final QuotationRepository quotationRepository;
+    private final DataScopeResolver dataScopeResolver;
+    private final QuotationSummaryQuery quotationSummaryQuery;
     private final CustomerRepository customerRepository;
     private final OpportunityRepository opportunityRepository;
     private final UserRepository userRepository;
@@ -46,9 +52,7 @@ public class QuotationService {
     // must stay open through mapping.
     @Transactional(readOnly = true)
     public List<QuotationResDto> listQuotations(User currentUser, String status, Long customerId, String search) {
-        List<Quotation> quotations = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? quotationRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : quotationRepository.findByTenantId(requireTenantId(currentUser));
+        List<Quotation> quotations = findInScope(currentUser);
 
         return quotations.stream()
                 .filter(q -> status == null || status.isBlank() || q.getStatus().getDbValue().equals(status))
@@ -177,11 +181,8 @@ public class QuotationService {
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> ApiException.badRequest("Customer not found"));
-        if (!customer.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Customer must belong to your tenant");
-        }
+        Customer customer = customerRepository.findByIdAndTenantId(customerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Customer must belong to your tenant"));
         return customer;
     }
 
@@ -189,20 +190,14 @@ public class QuotationService {
         if (opportunityId == null) {
             return null;
         }
-        Opportunity opportunity = opportunityRepository.findById(opportunityId)
-                .orElseThrow(() -> ApiException.badRequest("Opportunity not found"));
-        if (!opportunity.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Opportunity must belong to your tenant");
-        }
+        Opportunity opportunity = opportunityRepository.findByIdAndTenantId(opportunityId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Opportunity must belong to your tenant"));
         return opportunity;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -220,20 +215,30 @@ public class QuotationService {
     }
 
     private Quotation findQuotation(User currentUser, Long quotationId) {
-        Quotation quotation = quotationRepository.findById(quotationId)
+        Quotation quotation = quotationRepository.findByIdAndTenantId(quotationId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Quotation not found"));
-        if (!quotation.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Quotation not found");
-        }
         return quotation;
     }
 
     /** sales_executive may only access quotations assigned to them ("own" data scope). */
     private void assertAccess(User currentUser, Quotation quotation) {
-        if (currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                && (quotation.getOwner() == null || !quotation.getOwner().getId().equals(currentUser.getId()))) {
-            throw ApiException.forbidden("You do not have access to this quotation");
-        }
+        dataScopeResolver.assertCanAccess(currentUser,
+                quotation.getOwner() != null ? quotation.getOwner().getId() : null, "quotation");
+    }
+
+    /** Dashboard counts and discount figures, aggregated in the database within the caller's data scope. */
+    @Transactional(readOnly = true)
+    public QuotationSummaryDto getSummary(User currentUser) {
+        return quotationSummaryQuery.summarize(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser));
+    }
+
+    /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */
+    private List<Quotation> findInScope(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        return scope.isTenantWide()
+                ? quotationRepository.findByTenantId(tenantId)
+                : quotationRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
     }
 
     private Long requireTenantId(User currentUser) {

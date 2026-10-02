@@ -59,6 +59,7 @@ class ServerUrl {
     static ticketAssign = (id) => `${ServerUrl.TICKETS}/${id}/assign`;
     static ticketStatus = (id) => `${ServerUrl.TICKETS}/${id}/status`;
     static ticketFeedback = (id) => `${ServerUrl.TICKETS}/${id}/feedback`;
+    static ticketClaim = (id) => `${ServerUrl.TICKETS}/${id}/claim`;
 
     // campaigns
     static CAMPAIGNS = ServerUrl.API_MODULE_USER + "/campaigns";

@@ -16,3 +16,10 @@ export const changeTicketStatus = (id, status) => ApiService.changeTicketStatus(
 
 export const recordTicketFeedback = (id, score, comment) =>
   ApiService.recordTicketFeedback(id, { score, comment });
+
+/** Service agent takes an unassigned ticket. Rejects with 409 if another agent got it first. */
+export const claimTicket = (id) => ApiService.claimTicket(id);
+
+/** Agent ticket list, paged server-side. scope: 'queue' (unassigned) | 'mine'. Resolves to a page envelope. */
+export const listAgentTickets = ({ scope, status, priority, search, page, size }) =>
+  ApiService.getTickets({ scope, status, priority, search, page, size });
