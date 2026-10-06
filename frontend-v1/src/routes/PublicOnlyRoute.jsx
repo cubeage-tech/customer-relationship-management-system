@@ -6,13 +6,9 @@ import { getRoleHomeRoute } from '../core/constants/routes.constant';
 // verify-email). If a session already exists, bounce straight to that role's
 // dashboard instead of rendering the auth page.
 const PublicOnlyRoute = () => {
-  const { user, isLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
-  // Wait for auth state to hydrate (e.g. token check on app load) before
-  // deciding — otherwise a logged-in user briefly flashes the login form.
-  if (isLoading) return null; // or a spinner/skeleton
-
-  if (user) {
+  if (isAuthenticated) {
     return <Navigate to={getRoleHomeRoute(user.role)} replace />;
   }
 

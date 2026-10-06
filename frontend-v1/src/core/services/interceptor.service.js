@@ -1,6 +1,7 @@
 import axios from "axios";
 import StorageService from "./storage.service";
 import { APPLICATION_CONSTANTS } from "../constants/app.constant";
+import { queryClient } from "../query/queryClient";
 
 /**
  * Resolve the API base URL from environment variables.
@@ -30,7 +31,7 @@ function resolveBaseURL() {
 
     // In development fall back to localhost so the dev server still starts.
     console.error(msg);
-    return "http://localhost:3000/api";
+    return "http://localhost:8080"; // backend default (server.port=8080, no path prefix)
   }
 
   return url;
@@ -67,6 +68,7 @@ const AUTH_PATHS = [
   "/auth/verify-email",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/resend-verification",
 ];
 
 function isAuthEndpoint(url = "") {
@@ -95,6 +97,7 @@ function clearAuthAndRedirect() {
   // Use constants for storage keys — never raw string literals
   StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
   StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.USER_DETAILS);
+  queryClient.clear();
 
   // Only redirect if not already on an auth page
   if (!window.location.pathname.includes("/login")) {

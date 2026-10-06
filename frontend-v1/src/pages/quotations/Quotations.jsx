@@ -12,6 +12,7 @@ import {
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
 import { listQuotations, createQuotation } from '../../core/services/quotation.service';
+import { apiErrorMessage } from '../../core/utils/apiError';
 import { listCustomers } from '../../core/services/customer.service';
 import { listOpportunities } from '../../core/services/opportunity.service';
 import { listProducts, createProduct } from '../../core/services/product.service';
@@ -42,14 +43,21 @@ const Quotations = () => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [lineItems, setLineItems] = useState([{ ...EMPTY_LINE_ITEM }]);
   const [toast, setToast] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState(INITIAL_PRODUCT_FORM);
 
   const refresh = () => {
     listQuotations({ status: statusFilter, search })
-      .then((data) => setQuotations(data ?? []))
-      .catch(() => setQuotations([]))
+      .then((data) => {
+        setQuotations(data ?? []);
+        setLoadError('');
+      })
+      .catch((err) => {
+        setQuotations([]);
+        setLoadError(apiErrorMessage(err));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -326,6 +334,8 @@ const Quotations = () => {
 
         {loading ? (
           <div className="space-y-3 p-5" role="status" aria-label="Loading quotations">{[0, 1, 2].map((row) => <div key={row} className="h-12 animate-pulse rounded-md bg-slate-100" />)}</div>
+        ) : loadError ? (
+          <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-rose-50 text-rose-700"><CircleAlert size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">Couldn't load quotations</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{loadError}</p><Button className="mt-5" variant="outline" onClick={() => { setLoading(true); refresh(); }}>Retry</Button></div>
         ) : quotations.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><FileText size={22} /></span>

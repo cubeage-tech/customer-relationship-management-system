@@ -133,11 +133,8 @@ public class CampaignService {
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -158,11 +155,8 @@ public class CampaignService {
     }
 
     private Campaign findCampaign(User currentUser, Long campaignId) {
-        Campaign campaign = campaignRepository.findById(campaignId)
+        Campaign campaign = campaignRepository.findByIdAndTenantId(campaignId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Campaign not found"));
-        if (!campaign.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Campaign not found");
-        }
         return campaign;
     }
 

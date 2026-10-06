@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import { login as loginRequest } from '../../core/services/auth.service';
+import { login as loginRequest, resendVerification } from '../../core/services/auth.service';
 import { useAuth } from '../../core/hooks/useAuth';
-import { getRoleHomeRoute } from '../../core/constants/routes.constant';
+import RoutePath, { getRoleHomeRoute } from '../../core/constants/routes.constant';
 import { NOTIFICATION_MESSAGES } from '../../core/constants/notification.constant';
+import { apiErrorMessage } from '../../core/utils/apiError';
 import { ROLE_LABELS } from '../../core/constants/app.constant';
 import { DEV_USERS } from '../../core/mocks/devUsers';
 import { validateEmail, required, sanitizeEmail } from '../../utils/validation';
@@ -22,10 +23,16 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendNotice, setResendNotice] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { loginUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const justVerified = searchParams.get('verified') === 'true';
+  const justSignedUp = searchParams.get('signup') === 'check-email';
+  const signupEmail = searchParams.get('email') || '';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,15 +52,31 @@ const Login = () => {
     );
   };
 
+  const handleResendVerification = async (email) => {
+    setResendNotice('');
+    try {
+      await resendVerification(email);
+      setResendNotice('If that account is awaiting verification, a new link has been sent.');
+    } catch (err) {
+      setResendNotice(apiErrorMessage(err));
+    }
+  };
+
   const submitCredentials = async (credentials) => {
+    if (submitting) return;
+    setSubmitting(true);
     setError('');
+    setNeedsVerification(false);
     try {
       const { user, token } = await loginRequest(credentials);
-      loginUser({ user, token });
+      loginUser({ user, token, rememberMe });
       // Every CRM role lands on its own dashboard.
       navigate(getRoleHomeRoute(user.role));
-    } catch {
-      setError(NOTIFICATION_MESSAGES.LOGIN_FAILED);
+    } catch (err) {
+      setError(apiErrorMessage(err, NOTIFICATION_MESSAGES.LOGIN_FAILED));
+      setNeedsVerification(err.response?.data?.errorCode === 'EMAIL_NOT_VERIFIED');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -154,6 +177,19 @@ const Login = () => {
             </div>
           )}
 
+          {justSignedUp && (
+            <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-sm text-indigo-700">
+              <p className="font-medium">
+                Account created. We've sent a verification link to {signupEmail || 'your email'} — open it to activate your account, then sign in.
+              </p>
+              {signupEmail && (
+                <button type="button" onClick={() => handleResendVerification(signupEmail)} className="mt-2 font-semibold underline hover:text-indigo-500">
+                  Resend verification email
+                </button>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="email">Work email</label>
@@ -217,6 +253,8 @@ const Login = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600 cursor-pointer select-none">
@@ -225,49 +263,38 @@ const Login = () => {
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+                <Link to={RoutePath.FORGOT_PASSWORD} className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
                   Forgot password?
-                </a>
+                </Link>
               </div>
             </div>
 
             {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
+            {needsVerification && (
+              <button type="button" onClick={() => handleResendVerification(form.email)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+                Resend verification email
+              </button>
+            )}
+            {resendNotice && <p className="text-sm text-gray-600">{resendNotice}</p>}
 
             <button
               type="submit"
-              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98]"
+              disabled={submitting}
+              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Sign in
+              {submitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-gray-400">
-                <span className="bg-[#FAFAFA] px-4">Or continue with</span>
-              </div>
-            </div>
+          {/* SSO (Google Workspace / Microsoft) buttons removed until single sign-on is implemented. */}
 
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <button className="flex justify-center items-center py-3 px-4 border border-gray-200 rounded-xl shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors hover:border-gray-300">
-                <span className="mr-2">Google Workspace</span>
-              </button>
-              <button className="flex justify-center items-center py-3 px-4 border border-gray-200 rounded-xl shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors hover:border-gray-300">
-                <span className="mr-2">Microsoft SSO</span>
-              </button>
-            </div>
-          </div>
-          
           <div className="mt-8 bg-[#F0FDF4] rounded-xl p-3 flex items-center justify-center gap-2 border border-green-100">
             <CheckCircle2 className="w-4 h-4 text-green-600" />
-            <p className="text-[13px] text-gray-600 font-medium">Protected by SSO, MFA and role-based access control.</p>
+            <p className="text-[13px] text-gray-600 font-medium">Protected by role-based access control.</p>
           </div>
           
           <div className="mt-8 text-center text-sm text-gray-600">
-            New to SmartCRM AI? <a href="signup" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Create an account</a>
+            New to SmartCRM AI? <Link to={RoutePath.SIGNUP} className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Create an account</Link>
           </div>
 
           {SHOW_DEV_CREDENTIALS && (

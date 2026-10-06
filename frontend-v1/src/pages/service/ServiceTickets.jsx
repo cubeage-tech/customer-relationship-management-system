@@ -14,7 +14,11 @@ import {
   TICKET_SLA_STATUS_LABELS,
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
+import { USER_ROLES } from '../../core/constants/app.constant';
+import { useQueryClient } from '@tanstack/react-query';
+import AgentTicketQueue from '../../components/service/AgentTicketQueue';
 import { listTickets, getTicketSummary, createTicket } from '../../core/services/serviceTicket.service';
+import { apiErrorMessage } from '../../core/utils/apiError';
 import { listCustomers } from '../../core/services/customer.service';
 
 const INITIAL_FORM = { customerId: '', subject: '', description: '', priority: TICKET_PRIORITY_OPTIONS[2].value };
@@ -27,9 +31,13 @@ const SLA_BADGE_CLASS = {
 };
 
 const ServiceTickets = () => {
-  const { can, scopeFor } = usePermissions();
+  const { can, scopeFor, role } = usePermissions();
+  const queryClient = useQueryClient();
   const canCreate = can(PERMISSIONS.TICKETS_CREATE);
   const canViewList = can(PERMISSIONS.TICKETS_RESOLVE) || can(PERMISSIONS.TICKETS_EDIT) || can(PERMISSIONS.TICKETS_VIEW);
+  // Service agents get the Queue / My tickets workspace instead of the flat list (Decision 4).
+  // Every other role renders exactly as before.
+  const isAgent = role === USER_ROLES.SERVICE_AGENT;
 
   const [tickets, setTickets] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -44,13 +52,24 @@ const ServiceTickets = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
+  const [loadError, setLoadError] = useState('');
+
+  const refreshSummary = () => getTicketSummary().then(setSummary).catch(() => setSummary(null));
 
   const refresh = () => {
-    listTickets({ status: statusFilter, priority: priorityFilter, search })
-      .then((data) => setTickets(data ?? []))
-      .catch(() => setTickets([]))
-      .finally(() => setLoading(false));
-    getTicketSummary().then(setSummary).catch(() => setSummary(null));
+    if (!isAgent) {
+      listTickets({ status: statusFilter, priority: priorityFilter, search })
+        .then((data) => {
+          setTickets(data ?? []);
+          setLoadError('');
+        })
+        .catch((err) => {
+          setTickets([]);
+          setLoadError(apiErrorMessage(err));
+        })
+        .finally(() => setLoading(false));
+    }
+    refreshSummary();
   };
 
   useEffect(() => {
@@ -81,6 +100,7 @@ const ServiceTickets = () => {
       setForm(INITIAL_FORM);
       setShowForm(false);
       refresh();
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
       setToast({ type: 'success', message: 'Your service ticket was raised successfully.' });
     } catch (err) {
       setToast({
@@ -169,7 +189,9 @@ const ServiceTickets = () => {
         </div>
       )}
 
-      {canViewList && (
+      {isAgent && <AgentTicketQueue onClaimed={refreshSummary} />}
+
+      {canViewList && !isAgent && (
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 className="text-base font-bold text-slate-900">Ticket queue</h2><p className="mt-1 text-xs text-slate-500">Track support requests, urgency, and SLA health.</p></div>
@@ -204,6 +226,8 @@ const ServiceTickets = () => {
 
           {loading ? (
             <div className="space-y-3 p-5" role="status" aria-label="Loading tickets">{[0, 1, 2].map((row) => <div key={row} className="h-12 animate-pulse rounded-md bg-slate-100" />)}</div>
+          ) : loadError ? (
+            <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-rose-50 text-rose-700"><CircleAlert size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">Couldn't load tickets</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{loadError}</p><Button className="mt-5" variant="outline" onClick={() => { setLoading(true); refresh(); }}>Retry</Button></div>
           ) : tickets.length === 0 ? (
             <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Ticket size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">{search || statusFilter || priorityFilter ? 'No matching tickets' : 'No service tickets yet'}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || statusFilter || priorityFilter ? 'Try changing your search or filters.' : canCreate ? 'Raise a ticket to start tracking a customer support request.' : 'Tickets assigned to you will appear here with their customer, priority, and SLA.'}</p>{canCreate && !search && !statusFilter && !priorityFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Raise first ticket</Button>}</div>
           ) : (

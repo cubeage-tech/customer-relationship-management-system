@@ -6,6 +6,7 @@ import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import { ROLE_LABELS, ROLE_OPTIONS, TEAM_ROLES } from '../../core/constants/app.constant';
 import { listUsers, createUser } from '../../core/services/user.service';
+import { apiErrorMessage } from '../../core/utils/apiError';
 
 const TEAM_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => TEAM_ROLES.includes(option.value));
 
@@ -22,11 +23,18 @@ const Users = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
   const refresh = () => {
     listUsers()
-      .then((data) => setUsers(data ?? []))
-      .catch(() => setUsers([]))
+      .then((data) => {
+        setUsers(data ?? []);
+        setLoadError('');
+      })
+      .catch((err) => {
+        setUsers([]);
+        setLoadError(apiErrorMessage(err));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -149,6 +157,8 @@ const Users = () => {
 
         {loading ? (
           <div className="space-y-3 p-5" role="status" aria-label="Loading users">{[0, 1, 2].map((row) => <div key={row} className="h-12 animate-pulse rounded-md bg-slate-100" />)}</div>
+        ) : loadError ? (
+          <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-rose-50 text-rose-700"><CircleAlert size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">Couldn't load users</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{loadError}</p><Button className="mt-5" variant="outline" onClick={() => { setLoading(true); refresh(); }}>Retry</Button></div>
         ) : visibleUsers.length === 0 ? (
           <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><UserRound size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">{search || roleFilter ? 'No matching users' : 'No users to show'}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || roleFilter ? 'Try changing your search or role filter.' : canManage ? 'Add a team member and assign them a CRM role to get started.' : 'Users in your team will be listed here.'}</p>{canManage && !search && !roleFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Add first user</Button>}</div>
         ) : (

@@ -12,6 +12,7 @@ import {
   QUOTATION_STATUSES,
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
+import { apiErrorMessage } from '../../core/utils/apiError';
 import {
   getQuotation,
   sendQuotation,
@@ -33,6 +34,7 @@ const QuotationDetail = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const refresh = () => {
     getQuotation(id)
@@ -56,22 +58,40 @@ const QuotationDetail = () => {
     }
   };
 
-  const handleCustomerStatus = async (e) => {
-    const status = e.target.value;
-    if (!status) return;
-    const saved = await setQuotationCustomerStatus(id, status);
-    setQuotation(saved);
+  // Shared wrapper for the approval/status actions: one request at a time, errors shown inline.
+  const run = async (request, fallback) => {
+    setBusy(true);
+    setActionError('');
+    try {
+      setQuotation(await request());
+      return true;
+    } catch (err) {
+      setActionError(apiErrorMessage(err, fallback));
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleApproveDiscount = async () => {
-    const saved = await approveQuotationDiscount(id);
-    setQuotation(saved);
+  const handleCustomerStatus = async (e) => {
+    const select = e.target;
+    const status = select.value;
+    if (!status) return;
+    const ok = await run(() => setQuotationCustomerStatus(id, status), 'Could not record the customer response.');
+    if (!ok) select.value = '';
   };
+
+  const handleApproveDiscount = () =>
+    run(() => approveQuotationDiscount(id), 'Could not approve this discount.');
 
   const handleRejectDiscount = async () => {
     const reason = window.prompt('Why is this discount being rejected?');
-    const saved = await rejectQuotationDiscount(id, reason || '');
-    setQuotation(saved);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setActionError('A reason is required to reject a discount.');
+      return;
+    }
+    await run(() => rejectQuotationDiscount(id, reason.trim()), 'Could not reject this discount.');
   };
 
   if (loading) return null;
@@ -131,8 +151,8 @@ const QuotationDetail = () => {
 
           {canApproveDiscount && quotation.discountApprovalStatus === 'pending' && (
             <>
-              <Button variant="success" onClick={handleApproveDiscount}>Approve discount</Button>
-              <Button variant="destructive" onClick={handleRejectDiscount}>Reject discount</Button>
+              <Button variant="success" onClick={handleApproveDiscount} disabled={busy}>Approve discount</Button>
+              <Button variant="destructive" onClick={handleRejectDiscount} disabled={busy}>Reject discount</Button>
             </>
           )}
 
@@ -140,6 +160,7 @@ const QuotationDetail = () => {
             <select
               onChange={handleCustomerStatus}
               defaultValue=""
+              disabled={busy}
               className="border border-slate-300 rounded px-2 py-1 text-sm"
             >
               <option value="" disabled>Record customer response…</option>

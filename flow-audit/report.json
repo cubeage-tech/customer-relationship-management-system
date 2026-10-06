@@ -1,0 +1,2533 @@
+{
+  "meta": {
+    "project": "SmartCRM AI (CRM Project)",
+    "generatedAt": "2026-10-06",
+    "frontendPath": "frontend-v1",
+    "backendPath": "backend-v1",
+    "stack": {
+      "frontend": "React 19 + Vite 8, react-router-dom 7 (BrowserRouter, lazy routes), Zustand auth store, TanStack Query 5 (one component), axios via ApiInterceptor, Tailwind 4 + MUI",
+      "backend": "Spring Boot (Java), Spring Security stateless JWT (HS256, jjwt), @PreAuthorize role checks, Spring Data JPA, Flyway migrations V1-V19, PostgreSQL",
+      "auth": "POST /auth/login returns { token, user }; token kept in sessionStorage, Bearer header added by the axios request interceptor; no refresh token; client RBAC in permission.constant.js mirrors server @PreAuthorize",
+      "payments": "Razorpay checkout; order created and verified on the server, webhook at /api/payments/webhook",
+      "apiEnvelope": "{ success, message, data, errorCode? }; ApiService unwraps res.data.data"
+    },
+    "totalFlows": 16,
+    "totalIssues": 0
+  },
+  "summary": {
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "byFlow": {
+      "FLOW-001": 0,
+      "FLOW-002": 0,
+      "FLOW-003": 0,
+      "FLOW-004": 0,
+      "FLOW-005": 0,
+      "FLOW-006": 0,
+      "FLOW-007": 0,
+      "FLOW-008": 0,
+      "FLOW-009": 0,
+      "FLOW-010": 0,
+      "FLOW-011": 0,
+      "FLOW-012": 0,
+      "FLOW-013": 0,
+      "FLOW-014": 0,
+      "FLOW-015": 0,
+      "FLOW-016": 0
+    },
+    "byCategory": {
+      "routing": 0,
+      "security": 0,
+      "error-handling": 0,
+      "state": 0,
+      "ux": 0,
+      "auth": 0,
+      "data-model": 0,
+      "config": 0,
+      "api-mismatch": 0,
+      "validation": 0
+    },
+    "byStatus": {
+      "working": 13,
+      "partially-broken": 3,
+      "broken": 0
+    }
+  },
+  "flows": [
+    {
+      "flowId": "FLOW-001",
+      "name": "Tenant signup (self-service admin registration)",
+      "description": "Visitor creates a new tenant plus its admin (owner) account from /signup.",
+      "steps": [
+        "Signup.jsx form -> validateSignupForm (name, email, org, 9-18 digit bank account, password strength, terms)",
+        "auth.service.signup -> ApiService.signup -> POST /auth/signup { name, email, password, organizationName, bankAccountNumber, role:'admin' }",
+        "AuthController.signup -> AuthService.signupAdmin: rejects non-admin role, 409 on duplicate email, creates Tenant + User (PENDING_VERIFICATION)",
+        "EmailVerificationTokenService.issueToken -> email sent after commit",
+        "UI navigates to /login"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-019",
+        "ISS-020"
+      ]
+    },
+    {
+      "flowId": "FLOW-002",
+      "name": "Email verification",
+      "description": "User clicks the emailed /verify-email?token=... link; account becomes ACTIVE and the trial starts.",
+      "steps": [
+        "MailService builds link from app.frontend.url + /verify-email?token=",
+        "VerifyEmail.jsx effect -> POST /auth/verify-email { token }",
+        "EmailVerificationTokenService.verify: invalid / already-used / expired checks, activates user, starts trial for admins",
+        "UI shows success and redirects to /login?verified=true"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-007",
+        "ISS-008"
+      ]
+    },
+    {
+      "flowId": "FLOW-003",
+      "name": "Login and role-based landing",
+      "description": "User signs in with email and password and lands on the dashboard for their role.",
+      "steps": [
+        "Login.jsx -> validateEmail/required",
+        "auth.service.login -> POST /auth/login { email, password } (no Authorization header for auth paths)",
+        "AuthService.login: password check, account status check, tenant status check, records LoginAttempt, issues JWT with userId/role/tenantId/plan claims",
+        "useAuthStore.login stores token + user (sessionStorage)",
+        "navigate(getRoleHomeRoute(user.role))"
+      ],
+      "status": "partially-broken",
+      "issueIds": [
+        "ISS-003",
+        "ISS-004",
+        "ISS-005",
+        "ISS-006",
+        "ISS-022",
+        "ISS-023",
+        "ISS-025",
+        "ISS-026"
+      ]
+    },
+    {
+      "flowId": "FLOW-004",
+      "name": "Session expiry and logout",
+      "description": "Expired or revoked sessions are detected and the user is sent back to /login; the user can log out manually.",
+      "steps": [
+        "Request interceptor decodes JWT exp (60s skew) -> clearAuthAndRedirect",
+        "Response interceptor: 401 on an authenticated, non-auth request -> clear storage + window.location.replace('/login')",
+        "JwtAuthFilter re-checks user enabled + tenant ACTIVE on every request; entry point returns 401",
+        "UserNavbar Logout -> authStore.logout() (client only) -> navigate('/login')"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-009",
+        "ISS-010"
+      ]
+    },
+    {
+      "flowId": "FLOW-005",
+      "name": "Forgot / reset password",
+      "description": "User requests a reset link and sets a new password.",
+      "steps": [
+        "Login.jsx 'Forgot password?' link (href='#')",
+        "Backend: POST /auth/forgot-password creates PasswordResetToken (1h) and only logs it",
+        "Backend: POST /auth/reset-password { token, newPassword }",
+        "No frontend page or route exists for either step"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-001",
+        "ISS-002"
+      ]
+    },
+    {
+      "flowId": "FLOW-006",
+      "name": "Role-based navigation and dashboards",
+      "description": "Sidebar, top navbar and per-role dashboards gated by ProtectedRoute (roles/permissions).",
+      "steps": [
+        "AppRoutes: DashboardLayout -> ProtectedRoute(allowedRoles | requiredPermissions)",
+        "SidebarConfig.getSidebarMenu filters items by permission",
+        "UserNavbar: Profile / Settings / Logout dropdown",
+        "Role dashboards render DashboardShell (super admin -> GET /api/dashboard/super-admin; admin -> list endpoints; others static)"
+      ],
+      "status": "partially-broken",
+      "issueIds": [
+        "ISS-011",
+        "ISS-012",
+        "ISS-013",
+        "ISS-024"
+      ]
+    },
+    {
+      "flowId": "FLOW-007",
+      "name": "Customer management",
+      "description": "List/search customers, create, edit, archive/restore, manage contacts.",
+      "steps": [
+        "Customers.jsx / CustomerDetail.jsx -> customer.service",
+        "GET/POST /api/customers, GET/PUT /api/customers/{id}, PATCH /archive|/restore, POST/PUT/DELETE /contacts",
+        "CustomerController role checks (create/archive: ADMIN, SALES_MANAGER; edit/contacts: + SALES_EXECUTIVE) match the frontend permission matrix",
+        "CustomerReqDto { companyName, industry, email, phone, website, address, notes, ownerId }"
+      ],
+      "status": "working",
+      "issueIds": []
+    },
+    {
+      "flowId": "FLOW-008",
+      "name": "Lead management",
+      "description": "Create, list, edit, delete leads, change stage (with skip-force), assign owner.",
+      "steps": [
+        "Leads.jsx / LeadDetail.jsx -> lead.service",
+        "POST/GET /api/leads, PUT/DELETE /api/leads/{id}, PATCH /stage { stage, force }, PATCH /assign { ownerId }",
+        "followUpDate sent as 'YYYY-MM-DDT00:00:00', which matches the LocalDateTime DTO field",
+        "Role lists match: view includes MARKETING/FINANCE/EXEC_OWNER; assign is ADMIN + SALES_MANAGER only"
+      ],
+      "status": "working",
+      "issueIds": []
+    },
+    {
+      "flowId": "FLOW-009",
+      "name": "Opportunity pipeline",
+      "description": "Create and manage opportunities, change stage with loss reason.",
+      "steps": [
+        "Opportunities.jsx / OpportunityDetail.jsx -> opportunity.service",
+        "GET/POST /api/opportunities, GET /summary, GET/PUT/DELETE /{id}, PATCH /{id}/stage { stage, lossReason }",
+        "OpportunityReqDto { customerId, productService, dealValue, expectedClosingDate, ownerId }"
+      ],
+      "status": "working",
+      "issueIds": []
+    },
+    {
+      "flowId": "FLOW-010",
+      "name": "Quotations and discount approval",
+      "description": "Build quotations with line items, send them, record the customer response, approve or reject discounts, download a PDF.",
+      "steps": [
+        "Quotations.jsx create -> POST /api/quotations { customerId, opportunityId, validUntil, notes, lineItems[] }",
+        "QuotationDetail.jsx -> PATCH /send, /customer-status { status }, /discount/approve, /discount/reject { reason }",
+        "GET /api/quotations/{id}/pdf as a blob download",
+        "Approvals page (sidebar) is meant to queue pending discounts"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-014",
+        "ISS-015",
+        "ISS-016"
+      ]
+    },
+    {
+      "flowId": "FLOW-011",
+      "name": "Service tickets (raise, agent queue, claim, resolve)",
+      "description": "Sales executives/agents raise tickets; agents work a queue with atomic claim; status and feedback updates.",
+      "steps": [
+        "ServiceTickets.jsx: non-agents get a flat list (GET /api/tickets), agents get AgentTicketQueue (React Query, scope=queue|mine, paged)",
+        "POST /api/tickets/{id}/claim -> atomic UPDATE ... WHERE assigned IS NULL, 409 on lost race",
+        "ServiceTicketDetail.jsx -> PATCH /assign { technicianId }, /status { status }, /feedback { score 1-5, comment }",
+        "Sales executive (create only) never calls the list endpoint it can't read"
+      ],
+      "status": "working",
+      "issueIds": []
+    },
+    {
+      "flowId": "FLOW-012",
+      "name": "Marketing campaigns",
+      "description": "Marketing executives create, edit, change status, and view the leads attributed to a campaign.",
+      "steps": [
+        "Campaigns.jsx / CampaignDetail.jsx -> campaign.service",
+        "GET/POST /api/campaigns, GET /summary, GET/PUT/DELETE /{id}, PATCH /{id}/status, GET /{id}/leads",
+        "VIEW: ADMIN, MARKETING_EXECUTIVE, EXECUTIVE_OWNER; MANAGE: ADMIN, MARKETING_EXECUTIVE (matches CAMPAIGNS_VIEW/MANAGE)"
+      ],
+      "status": "working",
+      "issueIds": []
+    },
+    {
+      "flowId": "FLOW-013",
+      "name": "Team user management",
+      "description": "Tenant admin adds team members with a CRM role; managers can view the roster.",
+      "steps": [
+        "Users.jsx (USERS_VIEW) -> GET /api/users (any authenticated, tenant-scoped in UserService)",
+        "Add user (USERS_MANAGE, admin only) -> POST /api/users { fullName, email, password, role }",
+        "UserService.createTeamUser: team roles only, plan user limit, 409 duplicate, PENDING_VERIFICATION + verification email"
+      ],
+      "status": "partially-broken",
+      "issueIds": [
+        "ISS-018"
+      ]
+    },
+    {
+      "flowId": "FLOW-014",
+      "name": "Subscription, upgrade/renewal and payment",
+      "description": "Tenant admin views plan usage, upgrades or renews via Razorpay, and the server verifies payment.",
+      "steps": [
+        "MyPlan.jsx -> GET /api/subscriptions/current, /plans",
+        "Upgrade -> POST /api/subscriptions/upgrade { planId, billingCycle }; Renew -> POST /api/payments/create-order { plan, billingCycle }",
+        "openCheckout(order{orderId,keyId,amount,currency}) -> Razorpay widget",
+        "POST /api/payments/verify { razorpay_order_id, razorpay_payment_id, razorpay_signature } -> activate plan; webhook as fallback",
+        "SubscriptionAccessInterceptor makes lapsed tenants read-only (402) except billing endpoints"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-021"
+      ]
+    },
+    {
+      "flowId": "FLOW-015",
+      "name": "Platform administration (super admin)",
+      "description": "Super admin views the platform dashboard, lists tenants, deactivates/restores tenants, edits plan prices.",
+      "steps": [
+        "ServiceDashboard.jsx (super admin route) -> GET /api/dashboard/super-admin",
+        "Tenants.jsx -> GET /api/tenants, PATCH /api/tenants/{id}/deactivate|restore",
+        "SubscriptionPlans.jsx -> GET /api/plans/prices (public), PUT /api/plans/{plan}/price (SUPER_ADMIN)",
+        "Roles & Permissions, System Settings, Reports, Audit Logs pages are static placeholders"
+      ],
+      "status": "working",
+      "issueIds": []
+    },
+    {
+      "flowId": "FLOW-016",
+      "name": "Sales team management and TEAM data scope",
+      "description": "Admins group sales executives into teams so sales managers see only their team's records.",
+      "steps": [
+        "Migration V17 adds sales_teams; DataScopeResolver.teamScope reads teams a manager manages",
+        "SalesTeamController and SalesTeamService are empty classes: no endpoint creates or edits teams",
+        "No frontend Teams page or route exists"
+      ],
+      "status": "working",
+      "issueIds": [
+        "ISS-017"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-001",
+      "flowId": "FLOW-005",
+      "title": "Password reset flow is unreachable end to end",
+      "severity": "high",
+      "category": "routing",
+      "layer": "both",
+      "confidence": "high",
+      "description": "The backend exposes /auth/forgot-password and /auth/reset-password, and the frontend has ServerUrl constants and ApiService methods for them, but no page, route or link uses them. The 'Forgot password?' link is href=\"#\", RoutePath.FORGOT_PASSWORD is declared but never routed, and there is no reset-password route at all. The backend also never emails the reset link; it only writes the token to the log.",
+      "impact": "A user who forgets their password cannot recover the account without an operator reading server logs or editing the database.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/Login.jsx",
+          "lines": "227-231",
+          "symbol": "Forgot password link"
+        },
+        {
+          "file": "frontend-v1/src/routes/AppRoutes.jsx",
+          "lines": "93-98",
+          "symbol": "AUTH ROUTES"
+        },
+        {
+          "file": "frontend-v1/src/core/constants/routes.constant.js",
+          "lines": "17",
+          "symbol": "RoutePath.FORGOT_PASSWORD"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+          "lines": "137-152",
+          "symbol": "forgotPassword"
+        }
+      ],
+      "stepsToReproduce": [
+        "Open /login",
+        "Click 'Forgot password?'",
+        "Observe the URL only gains '#' and nothing happens; /forgot-password renders the NotFound page"
+      ],
+      "expectedBehavior": "The link opens a forgot-password form, the backend emails a link to /reset-password?token=..., and that page submits the new password.",
+      "actualBehavior": "The link is dead, there are no pages for either step, and the backend never sends an email.",
+      "evidence": "Login.jsx: <a href=\"#\" ...>Forgot password?</a>\nAppRoutes.jsx routes only LOGIN, SIGNUP, VERIFY_EMAIL under PublicOnlyRoute\nAuthService.forgotPassword: passwordResetTokenRepository.save(token); log.info(\"Password reset token for {}: {} ...\")  // no mail",
+      "suggestedFix": {
+        "summary": "Add ForgotPassword and ResetPassword pages and routes, and email the reset link.",
+        "details": "Create pages/auth/ForgotPassword.jsx (POST /auth/forgot-password { email }, then always show 'check your inbox') and pages/auth/ResetPassword.jsx (reads ?token=, POST /auth/reset-password { token, newPassword }, then redirects to /login). Register both under PublicOnlyRoute, add RoutePath.RESET_PASSWORD, replace href=\"#\" with <Link to={RoutePath.FORGOT_PASSWORD}>. In AuthService.forgotPassword, send the link through MailService after commit (as EmailVerificationTokenService does), and invalidate earlier unused reset tokens.",
+        "codeSuggestion": "// AppRoutes.jsx (inside the auth PublicOnlyRoute)\n<Route path={RoutePath.FORGOT_PASSWORD} element={<ForgotPassword />} />\n<Route path={RoutePath.RESET_PASSWORD} element={<ResetPassword />} />\n\n// Login.jsx\n<Link to={RoutePath.FORGOT_PASSWORD} className=\"font-semibold text-indigo-600\">Forgot password?</Link>\n\n// AuthService.forgotPassword (after save)\nmailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), token.getToken());"
+      },
+      "effort": "M",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T08:45:07Z",
+        "triggeredBy": "Fix only ISS-001",
+        "summary": "Added /forgot-password and /reset-password pages and routes, wired the Login link to them, and the backend now emails the reset link after commit and expires earlier unused reset tokens.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/auth/ForgotPassword.jsx",
+            "lines": "1-93",
+            "type": "created"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/ResetPassword.jsx",
+            "lines": "1-125",
+            "type": "created"
+          },
+          {
+            "file": "frontend-v1/src/routes/AppRoutes.jsx",
+            "lines": "21-22, 100-101",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/constants/routes.constant.js",
+            "lines": "18",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/auth.service.js",
+            "lines": "59-68",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "6, 228-230",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+            "lines": "18, 32-33, 57, 149-176",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/common/mail/MailService.java",
+            "lines": "41-77",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/repository/PasswordResetTokenRepository.java",
+            "lines": "6-7, 12-13",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "The reset email uses the existing SMTP config and app.frontend.url, so nothing new is needed. The raw reset token is still logged at INFO; that is ISS-002 and was left alone on purpose."
+      }
+    },
+    {
+      "id": "ISS-002",
+      "flowId": "FLOW-005",
+      "title": "Password-reset and email-verification tokens are written to logs in plaintext",
+      "severity": "high",
+      "category": "security",
+      "layer": "backend",
+      "confidence": "high",
+      "description": "AuthService.forgotPassword and EmailVerificationTokenService.issueToken log the raw single-use token at INFO level, next to the user's email. Anyone with log access (log aggregation, support staff, a leaked log file) can reset any user's password or activate an account.",
+      "impact": "Account takeover for any user who requests a reset, for anyone who can read the logs.",
+      "location": [
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+          "lines": "151",
+          "symbol": "forgotPassword"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java",
+          "lines": "51",
+          "symbol": "issueToken"
+        }
+      ],
+      "stepsToReproduce": [
+        "POST /auth/forgot-password { email: <victim> }",
+        "Read the application log line 'Password reset token for <victim>: <token>'",
+        "POST /auth/reset-password { token, newPassword }"
+      ],
+      "expectedBehavior": "Tokens are delivered only by email and never logged.",
+      "actualBehavior": "The raw tokens appear in INFO logs.",
+      "evidence": "log.info(\"Password reset token for {}: {} (expires in {}h)\", user.getEmail(), token.getToken(), ...);\nlog.info(\"Email verification token for {}: {} (expires in {}h)\", user.getEmail(), token.getToken(), EXPIRY_HOURS);",
+      "suggestedFix": {
+        "summary": "Remove the token from log messages; log only that a token was issued.",
+        "details": "If local development needs the token, put it behind a dev-only profile flag. Consider storing a hash of the token instead of the raw value so a database read doesn't expose live tokens either.",
+        "codeSuggestion": "log.info(\"Password reset requested for userId={}\", user.getId());"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T08:47:21Z",
+        "triggeredBy": "Fix only ISS-002",
+        "summary": "Password-reset and email-verification log lines now record only the userId and expiry, not the email address or the raw token.",
+        "filesChanged": [
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+            "lines": "161",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java",
+            "lines": "51",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Optional hardening from the suggested fix, not done because it is beyond the minimum change: store a hash of each token instead of the raw value (needs a migration and a lookup change)."
+      }
+    },
+    {
+      "id": "ISS-003",
+      "flowId": "FLOW-003",
+      "title": "No rate limiting or lockout on login, forgot-password or resend-verification",
+      "severity": "high",
+      "category": "security",
+      "layer": "backend",
+      "confidence": "high",
+      "description": "AuthService.login records every attempt in login_attempts but never reads them, so there is no lockout or throttle. /auth/forgot-password and /auth/resend-verification are also unthrottled and public (permitAll on POST /auth/**). The frontend claims 'Protected by SSO, MFA'.",
+      "impact": "Unlimited online password guessing against any account, and mail flooding of arbitrary addresses through resend-verification.",
+      "location": [
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+          "lines": "56-95",
+          "symbol": "login"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/common/security/Security.java",
+          "lines": "46-47",
+          "symbol": "filterChain"
+        }
+      ],
+      "stepsToReproduce": [
+        "Script repeated POST /auth/login with the same email and different passwords",
+        "Observe every request is evaluated; none is blocked or delayed"
+      ],
+      "expectedBehavior": "After N failures per account/IP within a window, further attempts are rejected (429) or delayed.",
+      "actualBehavior": "Attempts are logged but never limited.",
+      "evidence": "recordAttempt(user, request.getEmail(), false, ...);\nthrow ApiException.unauthorized(\"Invalid email or password\");\n// no query of loginAttemptRepository before checking the password",
+      "suggestedFix": {
+        "summary": "Enforce a failure threshold using the existing login_attempts table, and add an IP rate limiter on /auth/**.",
+        "details": "Before the password check, count failed attempts for the email in the last 15 minutes and return 429 above a threshold. Add a servlet filter (e.g. Bucket4j) keyed by IP for /auth/login, /auth/forgot-password and /auth/resend-verification.",
+        "codeSuggestion": "long recentFailures = loginAttemptRepository.countByEmailAttemptedAndSuccessfulFalseAndCreatedAtAfter(\n        request.getEmail(), LocalDateTime.now().minusMinutes(15));\nif (recentFailures >= 5) throw ApiException.tooManyRequests(\"Too many attempts. Try again later.\");"
+      },
+      "effort": "M",
+      "status": "partially-fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T08:51:47Z",
+        "triggeredBy": "Fix only ISS-003",
+        "summary": "Login returns 429 after 5 failed attempts for an email within 15 minutes (counted from login_attempts); forgot-password and resend-verification silently stop sending after 3 requests per account in 15 minutes; Login.jsx shows the 429 message.",
+        "filesChanged": [
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+            "lines": "46-48, 65-70, 161-165",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java",
+            "lines": "30-31, 62-64",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/repository/LoginAttemptRepository.java",
+            "lines": "6-7, 9",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/repository/PasswordResetTokenRepository.java",
+            "lines": "14-15",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/repository/EmailVerificationTokenRepository.java",
+            "lines": "15-16",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/common/exception/ApiException.java",
+            "lines": "44-47",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "55-57",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Per-IP rate limiting on /auth/login, /auth/forgot-password and /auth/resend-verification is not done: the suggested approach needs a new dependency (com.bucket4j:bucket4j-core, or an equivalent), which this run may not add. Until then, one IP can still try many different emails, and per-account lockout lets an attacker lock a known account out for 15 minutes."
+      }
+    },
+    {
+      "id": "ISS-004",
+      "flowId": "FLOW-003",
+      "title": "Committed fallback values for JWT secret, seed super-admin password, mail password and DB password",
+      "severity": "high",
+      "category": "security",
+      "layer": "backend",
+      "confidence": "medium",
+      "description": "application.properties gives app.jwt.secret, app.seed.super-admin-password and spring.mail.password a ${ENV:default} fallback, and spring.datasource.password is a literal value. If a deployment forgets the env var, the app starts with the value that is in git: anyone with repo access could forge JWTs for any role, including SUPER_ADMIN, or sign in as the seeded super admin. (Values deliberately not reproduced in this report.)",
+      "impact": "Full platform compromise in any environment that relies on the defaults.",
+      "location": [
+        {
+          "file": "backend-v1/src/main/resources/application.properties",
+          "lines": "15",
+          "symbol": "spring.datasource.password"
+        },
+        {
+          "file": "backend-v1/src/main/resources/application.properties",
+          "lines": "55",
+          "symbol": "app.jwt.secret"
+        },
+        {
+          "file": "backend-v1/src/main/resources/application.properties",
+          "lines": "65",
+          "symbol": "spring.mail.password"
+        },
+        {
+          "file": "backend-v1/src/main/resources/application.properties",
+          "lines": "87",
+          "symbol": "app.seed.super-admin-password"
+        }
+      ],
+      "stepsToReproduce": [
+        "Deploy without setting the JWT secret env var",
+        "Sign a token with the in-repo default and role claim of a target user's email",
+        "Call any /api endpoint with it"
+      ],
+      "expectedBehavior": "Startup fails when secrets are missing outside a dev profile.",
+      "actualBehavior": "Startup silently uses the committed defaults.",
+      "evidence": "app.jwt.secret: env-ref-with-default\napp.seed.super-admin-password: env-ref-with-default\nspring.datasource.password: literal value",
+      "suggestedFix": {
+        "summary": "Remove secret defaults from the base properties and fail fast when they're missing.",
+        "details": "Use ${JWT_SECRET} with no default in application.properties, move dev defaults into an application-dev.properties that is not active in prod, and add a startup check that rejects a short or known-default secret. Rotate any secret that has been committed.",
+        "codeSuggestion": "app.jwt.secret=${JWT_SECRET}\napp.seed.super-admin-password=${SUPER_ADMIN_PASSWORD}\nspring.datasource.password=${DB_PASSWORD}"
+      },
+      "effort": "S",
+      "status": "needs-manual",
+      "fix": {
+        "fixedAt": "2026-10-06T08:59:35Z",
+        "triggeredBy": "Fix only ISS-004",
+        "summary": "Not applied: making these secrets required needs environment variables set in every environment and the committed values rotated first; otherwise the backend stops starting.",
+        "filesChanged": [],
+        "verification": "not-verified",
+        "remainingWork": "Env variables: JWT_SECRET, MAIL_PASSWORD, SUPER_ADMIN_PASSWORD (already referenced, would become required) and DB_PASSWORD (new for the backend; docker-compose already uses it). Steps: 1) rotate all four committed values (they are in git history); 2) set the four variables wherever the backend runs; the backend does not load .env files, so they must be real OS/container env vars; 3) then remove the defaults in backend-v1/src/main/resources/application.properties (lines 15, 55, 65, 87) and the in-code fallback on DataSeeder.java:44 (@Value default for app.seed.super-admin-password); 4) give the three @SpringBootTest classes (SaasFlowIntegrationTest, SchemaMigrationTest, support/PostgresIntegrationTest) test values for app.jwt.secret, spring.mail.password and app.seed.super-admin-password via their existing @DynamicPropertySource. Once 1-2 are done, re-send 'Fix only ISS-004' to apply 3-4."
+      }
+    },
+    {
+      "id": "ISS-005",
+      "flowId": "FLOW-003",
+      "title": "Login always shows 'Invalid email or password', hiding the real reason",
+      "severity": "medium",
+      "category": "error-handling",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "Login.jsx catches every error and shows NOTIFICATION_MESSAGES.LOGIN_FAILED. The backend returns specific 403 messages for 'Please verify your email before logging in', suspended or deactivated accounts, and inactive tenants, plus network or 5xx errors. All of these are shown as a bad password.",
+      "impact": "Newly signed-up admins who haven't verified their email keep retrying their password and never learn they need to verify. Suspended tenants get no guidance, and outages look like bad credentials.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/Login.jsx",
+          "lines": "48-58",
+          "symbol": "submitCredentials"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+          "lines": "66-76",
+          "symbol": "login"
+        }
+      ],
+      "stepsToReproduce": [
+        "Sign up a new tenant and do not click the verification link",
+        "Sign in with the correct password"
+      ],
+      "expectedBehavior": "'Please verify your email before logging in', ideally with a resend option.",
+      "actualBehavior": "'Invalid email or password'.",
+      "evidence": "} catch {\n  setError(NOTIFICATION_MESSAGES.LOGIN_FAILED);\n}",
+      "suggestedFix": {
+        "summary": "Use the existing apiErrorMessage helper.",
+        "details": "core/utils/apiError.js already maps the server message and status codes to safe text.",
+        "codeSuggestion": "} catch (err) {\n  setError(apiErrorMessage(err, NOTIFICATION_MESSAGES.LOGIN_FAILED));\n}"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:04:41Z",
+        "triggeredBy": "Fix only ISS-005",
+        "summary": "Login's catch now uses apiErrorMessage(err, LOGIN_FAILED), so the backend's own 4xx message is shown (unverified email, suspended/deactivated account, inactive tenant, 429 lockout) and network/5xx errors get their own wording. This replaces the 429-only special case added for ISS-003, with the same result for 429.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "8, 57",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "The optional 'resend verification email' button on the unverified-email error was not added."
+      }
+    },
+    {
+      "id": "ISS-006",
+      "flowId": "FLOW-003",
+      "title": "'Keep me signed in' checkbox is ignored",
+      "severity": "medium",
+      "category": "state",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "The remember-me checkbox is uncontrolled and never read. loginUser({ user, token }) is called without rememberMe, so authStore always stores the session in sessionStorage.",
+      "impact": "Users who tick 'Keep me signed in' are logged out whenever they close the tab or browser.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/Login.jsx",
+          "lines": "51-52, 216-221",
+          "symbol": "remember-me input / loginUser call"
+        },
+        {
+          "file": "frontend-v1/src/store/authStore.js",
+          "lines": "13-18",
+          "symbol": "login"
+        }
+      ],
+      "stepsToReproduce": [
+        "Tick 'Keep me signed in' and sign in",
+        "Close the browser and reopen the app"
+      ],
+      "expectedBehavior": "The session persists (localStorage) until the token expires.",
+      "actualBehavior": "The user is signed out.",
+      "evidence": "<input id=\"remember-me\" name=\"remember-me\" type=\"checkbox\" ... />  // no checked/onChange\nloginUser({ user, token });",
+      "suggestedFix": {
+        "summary": "Bind the checkbox to form state and pass rememberMe to loginUser.",
+        "details": "Add rememberMe to form state, and exclude it from the credentials sent to the API.",
+        "codeSuggestion": "const [rememberMe, setRememberMe] = useState(false);\n<input type=\"checkbox\" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />\nloginUser({ user, token, rememberMe });"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:06:32Z",
+        "triggeredBy": "Fix only ISS-006",
+        "summary": "The 'Keep me signed in' checkbox is now bound to a rememberMe state and passed to loginUser, so authStore keeps a remembered session in localStorage; credentials sent to the API are unchanged.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "26, 54, 222-223",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-007",
+      "flowId": "FLOW-002",
+      "title": "No way to resend the verification email, and signup doesn't tell the user to check their inbox",
+      "severity": "medium",
+      "category": "ux",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "The backend has POST /auth/resend-verification, but the frontend has no ServerUrl entry, service call or UI for it. After a successful signup the UI silently navigates to /login and drops the backend's 'please check your email' message. An expired link (48h) or a lost email leaves the account stuck in PENDING_VERIFICATION.",
+      "impact": "New tenants can be permanently locked out of a freshly created account, and that account's email can't be re-registered (409).",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/Signup.jsx",
+          "lines": "72-81",
+          "symbol": "handleSubmit"
+        },
+        {
+          "file": "frontend-v1/src/pages/auth/VerifyEmail.jsx",
+          "lines": "64-70",
+          "symbol": "error state"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/controller/AuthController.java",
+          "lines": "46-50",
+          "symbol": "resendVerification"
+        }
+      ],
+      "stepsToReproduce": [
+        "Sign up, wait for the link to expire (or lose the email)",
+        "Open the link: 'Verification failed', with only a 'Back to login' button",
+        "Log in: 'Invalid email or password' (see ISS-005)"
+      ],
+      "expectedBehavior": "Signup shows a 'check your inbox' screen, and the verify-failure and login screens offer 'Resend verification email'.",
+      "actualBehavior": "There is no resend path and no confirmation message.",
+      "evidence": "await signupRequest({...});\nnavigate(RoutePath.LOGIN);   // message from backend discarded\n// grep: no 'resend-verification' anywhere in frontend-v1/src",
+      "suggestedFix": {
+        "summary": "Add AUTH_RESEND_VERIFICATION and a resend action; show a post-signup confirmation.",
+        "details": "Add the path to interceptor AUTH_PATHS as well, so it never carries or clears a token.",
+        "codeSuggestion": "static AUTH_RESEND_VERIFICATION = ServerUrl.API_MODULE_AUTH + \"/resend-verification\";\nstatic resendVerification(email) { return this.apipost(ServerUrl.AUTH_RESEND_VERIFICATION, { email }); }\n// Signup: navigate(`${RoutePath.LOGIN}?signup=check-email&email=${encodeURIComponent(form.email)}`)"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:09:19Z",
+        "triggeredBy": "Fix only ISS-007",
+        "summary": "Added the resend-verification endpoint to the frontend (ServerUrl, ApiService, auth.service, interceptor AUTH_PATHS). After signup the user lands on /login with a 'check your inbox' banner and a resend button; a login blocked by an unverified email (new backend errorCode EMAIL_NOT_VERIFIED) and the verify-failure page both offer 'Resend'.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/core/constants/serverUrl.constant.js",
+            "lines": "13",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/api.service.js",
+            "lines": "35-37",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/auth.service.js",
+            "lines": "69-72",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/interceptor.service.js",
+            "lines": "70",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/Signup.jsx",
+            "lines": "81",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "4, 27-28, 33-34, 54-62, 66, 74, 175-187, 268-273",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/VerifyEmail.jsx",
+            "lines": "4, 6-7, 21-22, 49-62, 88-100",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+            "lines": "29, 83-85",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-008",
+      "flowId": "FLOW-002",
+      "title": "Verification link reports failure in development because StrictMode sends it twice",
+      "severity": "medium",
+      "category": "state",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "main.jsx renders under <StrictMode>, which mounts effects twice in development. VerifyEmail's effect fires POST /auth/verify-email, the cleanup sets cancelled=true (so the successful first response is ignored), and the second request gets 400 'This token has already been used', which is displayed.",
+      "impact": "Every verification in local or QA dev builds shows 'Verification failed' even though the account was activated. This hides real bugs and misleads testers. Production builds are unaffected.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/VerifyEmail.jsx",
+          "lines": "20-43",
+          "symbol": "useEffect"
+        },
+        {
+          "file": "frontend-v1/src/main.jsx",
+          "lines": "6-10",
+          "symbol": "StrictMode"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java",
+          "lines": "68-70",
+          "symbol": "verify"
+        }
+      ],
+      "stepsToReproduce": [
+        "Run `vite dev`, sign up, open the emailed link",
+        "Observe 'Verification failed: This token has already been used'"
+      ],
+      "expectedBehavior": "'Email confirmed', then redirect.",
+      "actualBehavior": "The error screen appears even though the backend verified the account.",
+      "evidence": "verifyEmail(token).then(() => { if (cancelled) return; ... })\nreturn () => { cancelled = true; };",
+      "suggestedFix": {
+        "summary": "Deduplicate the request with a ref, or make re-verification of an already-verified token idempotent.",
+        "details": "On the frontend, guard with a module or ref-level promise per token. On the backend, return success when the token was used by the same already-ACTIVE user.",
+        "codeSuggestion": "const requested = useRef(null);\nuseEffect(() => {\n  if (!token) return;\n  requested.current ??= verifyEmail(token);\n  let cancelled = false;\n  requested.current.then(...).catch(...);\n  return () => { cancelled = true; };\n}, [token]);"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:11:04Z",
+        "triggeredBy": "Fix only ISS-008",
+        "summary": "VerifyEmail keeps the verify request in a ref keyed by token, so StrictMode's second effect run reuses the first request's result instead of re-sending the single-use token.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/auth/VerifyEmail.jsx",
+            "lines": "1, 23-24, 31-35",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "The optional backend change (treat re-verifying an already-used token of an ACTIVE user as success) was not made; the frontend fix alone resolves the reported dev-mode failure."
+      }
+    },
+    {
+      "id": "ISS-009",
+      "flowId": "FLOW-004",
+      "title": "Auth state is derived from the cached user object, not token validity",
+      "severity": "medium",
+      "category": "auth",
+      "layer": "frontend",
+      "confidence": "medium",
+      "description": "useAuth.isAuthenticated = Boolean(user). ProtectedRoute and PublicOnlyRoute never check whether the token exists or has expired; only the axios interceptor does, and only when a request is made. Several role dashboards make no API calls, so an expired session there is never detected. Visiting /login with an expired session redirects back to the dashboard. PublicOnlyRoute also reads a non-existent isLoading from useAuth.",
+      "impact": "Users with expired sessions see stale dashboards and can't reach the login page until they click into a page that calls the API, which then hard-reloads them to /login.",
+      "location": [
+        {
+          "file": "frontend-v1/src/core/hooks/useAuth.js",
+          "lines": "3-10",
+          "symbol": "useAuth"
+        },
+        {
+          "file": "frontend-v1/src/routes/ProtectedRoute.jsx",
+          "lines": "12-17",
+          "symbol": "ProtectedRoute"
+        },
+        {
+          "file": "frontend-v1/src/routes/PublicOnlyRoute.jsx",
+          "lines": "8-16",
+          "symbol": "PublicOnlyRoute"
+        }
+      ],
+      "stepsToReproduce": [
+        "Log in as sales_manager (dashboard is static)",
+        "Wait for the JWT to expire (or edit the exp claim)",
+        "Reload the dashboard: still shown as logged in; navigate to /login: bounced back to the dashboard"
+      ],
+      "expectedBehavior": "An expired or missing token is treated as signed out on route entry.",
+      "actualBehavior": "The user stays 'signed in' until an API call fails.",
+      "evidence": "const isAuthenticated = useAuthStore((state) => Boolean(state.user));\n// PublicOnlyRoute: const { user, isLoading } = useAuth();  // isLoading is always undefined",
+      "suggestedFix": {
+        "summary": "Make isAuthenticated require a present, unexpired token and clear the store when it isn't.",
+        "details": "Reuse UserAuthService.checkIsLoggedIn() (currently unused) in useAuth and logout via the store when it returns false, so user and token are cleared together.",
+        "codeSuggestion": "const isAuthenticated = useAuthStore((s) => Boolean(s.user)) && UserAuthService.checkIsLoggedIn();"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:42:31Z",
+        "triggeredBy": "Fix only ISS-009",
+        "summary": "useAuth.isAuthenticated now also requires UserAuthService.checkIsLoggedIn() (token present and unexpired) and clears the cached user in an effect when it fails; PublicOnlyRoute uses isAuthenticated instead of user/undefined isLoading; checkIsLoggedIn accepts the dev mock token only in mock-auth mode.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/core/hooks/useAuth.js",
+            "lines": "1-3, 7-8, 12-15",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/routes/PublicOnlyRoute.jsx",
+            "lines": "9-11",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/auth.service.js",
+            "lines": "77",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Expiry is checked on render/route entry; a page left open past expiry without navigating or calling the API is only detected on the next navigation or request."
+      }
+    },
+    {
+      "id": "ISS-010",
+      "flowId": "FLOW-004",
+      "title": "React Query cache survives logout",
+      "severity": "low",
+      "category": "state",
+      "layer": "frontend",
+      "confidence": "medium",
+      "description": "Logout clears storage and navigates within the SPA but never calls queryClient.clear(). The ['tickets', params] keys don't include a user or tenant, so after a different user signs in on the same tab, AgentTicketQueue can briefly render the previous user's cached queue or 'My tickets' before refetching.",
+      "impact": "A brief cross-user (possibly cross-tenant) data flash on shared machines.",
+      "location": [
+        {
+          "file": "frontend-v1/src/components/sidebar/UserNavbar.jsx",
+          "lines": "38-41",
+          "symbol": "handleLogout"
+        },
+        {
+          "file": "frontend-v1/src/store/authStore.js",
+          "lines": "20-24",
+          "symbol": "logout"
+        },
+        {
+          "file": "frontend-v1/src/components/service/AgentTicketQueue.jsx",
+          "lines": "55-60",
+          "symbol": "useQuery"
+        }
+      ],
+      "stepsToReproduce": [
+        "Agent A opens Service Tickets > My tickets, then logs out",
+        "Agent B (another tenant) logs in on the same tab and opens Service Tickets within 30s"
+      ],
+      "expectedBehavior": "No previous-user data is ever rendered.",
+      "actualBehavior": "Cached data can render before the refetch.",
+      "evidence": "logout: () => { StorageService.removeData(TOKEN); StorageService.removeData(USER_DETAILS); set({ user: null }); }",
+      "suggestedFix": {
+        "summary": "Clear the query cache on logout and on interceptor-driven sign-out.",
+        "details": "",
+        "codeSuggestion": "import { queryClient } from '../core/query/queryClient';\nlogout: () => { queryClient.clear(); StorageService.removeData(TOKEN); StorageService.removeData(USER_DETAILS); set({ user: null }); }"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:59:25Z",
+        "triggeredBy": "Fix only ISS-010",
+        "summary": "queryClient.clear() now runs in authStore.logout (navbar logout and the ISS-009 expired-token sign-out both go through it) and in the interceptor's clearAuthAndRedirect, so no cached query data survives into the next user's session.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/store/authStore.js",
+            "lines": "4, 22-23",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/interceptor.service.js",
+            "lines": "4, 100",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-011",
+      "flowId": "FLOW-006",
+      "title": "Navbar 'Settings' navigates to an undefined route",
+      "severity": "medium",
+      "category": "routing",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "UserNavbar calls navigate(RoutePath.SETTINGS), but RoutePath has no SETTINGS member (only ADMIN_SETTINGS and PLATFORM_SETTINGS), so navigate(undefined) is called. The item is also shown to roles without SETTINGS_VIEW.",
+      "impact": "The Settings menu item does nothing (or throws in the router) for every role.",
+      "location": [
+        {
+          "file": "frontend-v1/src/components/sidebar/UserNavbar.jsx",
+          "lines": "172-182",
+          "symbol": "Settings button"
+        },
+        {
+          "file": "frontend-v1/src/core/constants/routes.constant.js",
+          "lines": "100, 110",
+          "symbol": "ADMIN_SETTINGS / PLATFORM_SETTINGS"
+        }
+      ],
+      "stepsToReproduce": [
+        "Log in as any role",
+        "Open the profile dropdown and click Settings"
+      ],
+      "expectedBehavior": "Opens /admin/settings (tenant roles with SETTINGS_VIEW) or /platform/settings (super admin), or is hidden.",
+      "actualBehavior": "Nothing happens.",
+      "evidence": "navigate(RoutePath.SETTINGS);  // RoutePath.SETTINGS is undefined",
+      "suggestedFix": {
+        "summary": "Resolve the settings path per role and hide it when not permitted.",
+        "details": "",
+        "codeSuggestion": "const settingsPath = isSuperAdmin(user) ? RoutePath.PLATFORM_SETTINGS\n  : hasPermission(user, PERMISSIONS.SETTINGS_VIEW) ? RoutePath.ADMIN_SETTINGS : null;\n{settingsPath && <button onClick={() => navigate(settingsPath)}>Settings</button>}"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:43:51Z",
+        "triggeredBy": "Fix only ISS-011",
+        "summary": "Navbar Settings now goes to PLATFORM_SETTINGS for super admin and ADMIN_SETTINGS for roles with SETTINGS_VIEW (matching the route guards), and is hidden for everyone else.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/components/sidebar/UserNavbar.jsx",
+            "lines": "15-16, 39-45, 180-192",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-012",
+      "flowId": "FLOW-006",
+      "title": "Six role dashboards and the navbar show hard-coded or placeholder figures",
+      "severity": "medium",
+      "category": "ux",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "Sales manager, sales executive, marketing, service agent, finance and executive dashboards are static DashboardShell pages with '—' values. ServiceAgentDashboard hard-codes 'Assigned tickets: 3', and UserNavbar hard-codes notification (5) and message (2) badges. The backend already provides real data (ticket summary, opportunity summary/kpis, lead summary, campaign summary), and SalesManagerDashboardResDto exists but has no endpoint. The search box and AI Assistant button are inert.",
+      "impact": "Most roles land on a dashboard with fake or empty numbers, which reads as broken. The fixed '3 tickets' and '5 notifications' are misleading.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/dashboard/ServiceAgentDashboard.jsx",
+          "lines": "4-9",
+          "symbol": "STATS"
+        },
+        {
+          "file": "frontend-v1/src/pages/dashboard/SalesManagerDashboard.jsx",
+          "lines": "4-9",
+          "symbol": "STATS"
+        },
+        {
+          "file": "frontend-v1/src/components/sidebar/UserNavbar.jsx",
+          "lines": "25-27, 69-97",
+          "symbol": "notificationCount / messageCount / search"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/dashboard/dto/response/SalesManagerDashboardResDto.java",
+          "lines": "1-",
+          "symbol": "SalesManagerDashboardResDto (unused)"
+        }
+      ],
+      "stepsToReproduce": [
+        "Log in as service_agent: the dashboard shows 'Assigned tickets 3' regardless of real data",
+        "Any role: the bell shows 5 and messages shows 2, and clicking them does nothing"
+      ],
+      "expectedBehavior": "Tiles show live numbers from existing summary endpoints, or clearly labelled 'coming soon' with no fake numbers.",
+      "actualBehavior": "Placeholder or fabricated numbers.",
+      "evidence": "{ label: 'Assigned tickets', value: '3', hint: 'Open and assigned to you' },\nconst notificationCount = 5;\nconst messageCount = 2;",
+      "suggestedFix": {
+        "summary": "Wire tiles to the existing /summary and /kpis endpoints, and remove the fake badge counts.",
+        "details": "For example, ServiceAgentDashboard can use GET /api/tickets/summary, and the sales dashboards can use GET /api/opportunities/kpis and /api/leads/summary. Hide the badges until a notifications API exists.",
+        "codeSuggestion": "const { data } = useQuery({ queryKey: QUERY_KEYS.dashboard('tickets'), queryFn: getTicketSummary });\nconst STATS = [{ label: 'Assigned tickets', value: data?.assigned ?? '—' }, ...];"
+      },
+      "effort": "M",
+      "status": "partially-fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:45:17Z",
+        "triggeredBy": "Fix only ISS-012",
+        "summary": "Removed the fabricated numbers: ServiceAgentDashboard tiles now come from GET /api/tickets/summary (open, dueWithin24h, resolvedThisWeek, averageResolutionHours, scoped to the agent), and the navbar notification/message badges are hidden (counts 0) until an API exists.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/dashboard/ServiceAgentDashboard.jsx",
+            "lines": "1-28, 38-40",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/components/sidebar/UserNavbar.jsx",
+            "lines": "26-28",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Not done: wiring the SalesManager, SalesExecutive, Marketing, Finance and Executive dashboards (they show '—' placeholders, not fake numbers) to the existing summary/kpis endpoints; a sales-manager dashboard endpoint for the unused SalesManagerDashboardResDto; the inert navbar search box and AI Assistant button."
+      }
+    },
+    {
+      "id": "ISS-013",
+      "flowId": "FLOW-006",
+      "title": "Super-admin dashboard route loads a file named ServiceDashboard; SuperAdminDashboard.jsx is orphaned",
+      "severity": "low",
+      "category": "routing",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "In AppRoutes, SuperAdminDashboard is lazy-loaded from pages/dashboard/ServiceDashboard (which is actually the platform dashboard calling /api/dashboard/super-admin), while the ServiceDashboard route variable is loaded from ServiceAgentDashboard. pages/dashboard/SuperAdminDashboard.jsx is never imported. It works today, but the swapped names invite a regression.",
+      "impact": "High risk of someone 'fixing' the import and breaking the super-admin or service dashboard. The dead file duplicates logic.",
+      "location": [
+        {
+          "file": "frontend-v1/src/routes/AppRoutes.jsx",
+          "lines": "23, 28",
+          "symbol": "lazy imports"
+        },
+        {
+          "file": "frontend-v1/src/pages/dashboard/SuperAdminDashboard.jsx",
+          "lines": "1-48",
+          "symbol": "SuperAdminDashboard (unused)"
+        }
+      ],
+      "stepsToReproduce": [
+        "Read AppRoutes.jsx lines 23-30"
+      ],
+      "expectedBehavior": "File names match the component and route they serve.",
+      "actualBehavior": "Names are swapped, and one file is dead.",
+      "evidence": "const SuperAdminDashboard = lazy(() => import(\"../pages/dashboard/ServiceDashboard\"));\nconst ServiceDashboard = lazy(() => import(\"../pages/dashboard/ServiceAgentDashboard\"));",
+      "suggestedFix": {
+        "summary": "Rename ServiceDashboard.jsx to PlatformDashboard.jsx, delete the unused SuperAdminDashboard.jsx, and update imports.",
+        "details": "",
+        "codeSuggestion": "const SuperAdminDashboard = lazy(() => import(\"../pages/dashboard/PlatformDashboard\"));"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:02:43Z",
+        "triggeredBy": "Fix only ISS-013",
+        "summary": "Renamed pages/dashboard/ServiceDashboard.jsx (the platform dashboard calling /api/dashboard/super-admin) to PlatformDashboard.jsx with a matching component name, pointed the SuperAdminDashboard lazy import at it, and deleted the never-imported SuperAdminDashboard.jsx.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/dashboard/PlatformDashboard.jsx",
+            "lines": "1-144 (renamed from ServiceDashboard.jsx; component renamed at 39, 144)",
+            "type": "created"
+          },
+          {
+            "file": "frontend-v1/src/pages/dashboard/ServiceDashboard.jsx",
+            "lines": "removed (renamed to PlatformDashboard.jsx)",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/dashboard/SuperAdminDashboard.jsx",
+            "lines": "deleted (unused; recoverable from git history)",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/routes/AppRoutes.jsx",
+            "lines": "25",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "The route variable for the service agent dashboard is still named ServiceDashboard (loading ServiceAgentDashboard.jsx); it no longer collides with a file name, so it was left as is."
+      }
+    },
+    {
+      "id": "ISS-014",
+      "flowId": "FLOW-010",
+      "title": "Approvals page is a static placeholder although discount approval works in the backend",
+      "severity": "medium",
+      "category": "ux",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "The sidebar 'Approvals' item (finance approver, sales manager, admin) always renders 'Nothing to approve'. It never queries quotations with a pending discount. Approve and reject actions exist only on each QuotationDetail page, which finance approvers must find manually.",
+      "impact": "Finance approvers think there's nothing pending, so quotations above the discount threshold stay unsendable indefinitely.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/finance/Approvals.jsx",
+          "lines": "6-22",
+          "symbol": "Approvals"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/quotation/controller/QuotationController.java",
+          "lines": "116-131",
+          "symbol": "discount/approve, discount/reject"
+        }
+      ],
+      "stepsToReproduce": [
+        "As a sales exec, create a quotation with a discount above the threshold",
+        "Log in as finance_approver and open Approvals"
+      ],
+      "expectedBehavior": "The quotation is listed with Approve and Reject actions.",
+      "actualBehavior": "'Nothing to approve'.",
+      "evidence": "<EmptyState title=\"Nothing to approve\" message=\"Quotations submitted for approval will be queued here.\" />",
+      "suggestedFix": {
+        "summary": "List quotations with discountApprovalStatus=pending and link to or act on them.",
+        "details": "Use GET /api/quotations with a filter (add a discountStatus query param server-side if not supported), then render rows with Approve and Reject buttons that reuse the QuotationDetail handlers.",
+        "codeSuggestion": "const { data = [] } = useQuery({ queryKey: QUERY_KEYS.quotations({ discountStatus: 'pending' }),\n  queryFn: () => listQuotations({ discountStatus: 'pending' }) });"
+      },
+      "effort": "M",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:47:11Z",
+        "triggeredBy": "Fix only ISS-014",
+        "summary": "Approvals now loads GET /api/quotations (already data-scoped: tenant-wide for finance/admin, team for sales managers), keeps those with discountApprovalStatus 'pending', and lists them with a link to the quotation plus Approve and Reject (reason required; Cancel does nothing).",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/finance/Approvals.jsx",
+            "lines": "1-120",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Filtering is client-side because the list endpoint has no discount-status parameter; a server-side filter would be worth adding if quotation volume grows."
+      }
+    },
+    {
+      "id": "ISS-015",
+      "flowId": "FLOW-010",
+      "title": "Cancelling the 'reject discount' prompt still rejects the discount",
+      "severity": "high",
+      "category": "ux",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "handleRejectDiscount uses window.prompt and then calls rejectQuotationDiscount(id, reason || '') unconditionally. Clicking Cancel returns null, which becomes '', and the rejection is still sent.",
+      "impact": "An approver who changes their mind and clicks Cancel irreversibly rejects the discount, with no reason recorded.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/quotations/QuotationDetail.jsx",
+          "lines": "71-75",
+          "symbol": "handleRejectDiscount"
+        }
+      ],
+      "stepsToReproduce": [
+        "Open a quotation with a pending discount as finance_approver",
+        "Click Reject, then click Cancel in the prompt"
+      ],
+      "expectedBehavior": "Nothing happens.",
+      "actualBehavior": "The discount is rejected.",
+      "evidence": "const reason = window.prompt('Why is this discount being rejected?');\nconst saved = await rejectQuotationDiscount(id, reason || '');",
+      "suggestedFix": {
+        "summary": "Abort when the prompt returns null; preferably use a modal with a required reason.",
+        "details": "",
+        "codeSuggestion": "const reason = window.prompt('Why is this discount being rejected?');\nif (reason === null) return;\nif (!reason.trim()) { setActionError('A reason is required.'); return; }"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:03:24Z",
+        "triggeredBy": "Fix only ISS-015",
+        "summary": "handleRejectDiscount now returns without calling the API when the prompt is cancelled, and shows an error instead of rejecting when the reason is blank.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/quotations/QuotationDetail.jsx",
+            "lines": "73-79",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "The suggested modal with a required reason field was not built; window.prompt is kept as the minimal change."
+      }
+    },
+    {
+      "id": "ISS-016",
+      "flowId": "FLOW-010",
+      "title": "Quotation approve, reject and customer-status actions have no error handling",
+      "severity": "medium",
+      "category": "error-handling",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "handleApproveDiscount, handleRejectDiscount and handleCustomerStatus await API calls without try/catch, loading state or disabling, unlike handleSend just above them. Any 400, 402 (lapsed subscription), 403 or 409 becomes an unhandled promise rejection with no feedback, and the customer-status select keeps showing the value that failed. Double clicks send duplicate requests.",
+      "impact": "Silent failures. The user believes the approval or status change happened when it didn't.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/quotations/QuotationDetail.jsx",
+          "lines": "59-75",
+          "symbol": "handleCustomerStatus / handleApproveDiscount / handleRejectDiscount"
+        }
+      ],
+      "stepsToReproduce": [
+        "Let the tenant subscription lapse (writes return 402)",
+        "Click Approve on a pending discount"
+      ],
+      "expectedBehavior": "An error message is shown and the buttons are disabled while the request is in flight.",
+      "actualBehavior": "Nothing visible; a console 'Uncaught (in promise)' error.",
+      "evidence": "const handleApproveDiscount = async () => {\n  const saved = await approveQuotationDiscount(id);\n  setQuotation(saved);\n};",
+      "suggestedFix": {
+        "summary": "Wrap these handlers the way handleSend is wrapped, and add a busy flag.",
+        "details": "",
+        "codeSuggestion": "const run = async (fn, fallback) => {\n  setBusy(true); setActionError('');\n  try { setQuotation(await fn()); }\n  catch (err) { setActionError(apiErrorMessage(err, fallback)); }\n  finally { setBusy(false); }\n};"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:48:26Z",
+        "triggeredBy": "Fix only ISS-016",
+        "summary": "Approve, reject and customer-status actions now go through a shared run() helper: a busy flag disables those controls while a request is in flight, errors (incl. 400/402/403/409) are shown via apiErrorMessage, and a failed status change resets the select to its placeholder.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/quotations/QuotationDetail.jsx",
+            "lines": "15, 37, 61-85, 94, 154-155, 163",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-017",
+      "flowId": "FLOW-016",
+      "title": "Sales teams can't be created, so sales managers always see the whole tenant",
+      "severity": "medium",
+      "category": "auth",
+      "layer": "both",
+      "confidence": "high",
+      "description": "Migration V17 and DataScopeResolver implement TEAM scope, but SalesTeamController and SalesTeamService are empty classes and there is no frontend Teams page. With no way to create teams, findIdsManagedBy is always empty and teamScope falls back to DataScope.tenant(). The frontend labels the scope 'Team records', which is misleading. AnalyticsController and CommunicationController are empty in the same way.",
+      "impact": "The intended data-visibility restriction for sales managers (and the 'Team records' label) is never enforced in practice.",
+      "location": [
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/sales_team/controller/SalesTeamController.java",
+          "lines": "1-5",
+          "symbol": "SalesTeamController"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/sales_team/service/SalesTeamService.java",
+          "lines": "1-5",
+          "symbol": "SalesTeamService"
+        },
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/common/scope/DataScopeResolver.java",
+          "lines": "56-68",
+          "symbol": "teamScope"
+        }
+      ],
+      "stepsToReproduce": [
+        "As an admin, try to create a sales team: there is no UI and no endpoint",
+        "Log in as sales_manager and open Leads: every tenant lead is visible"
+      ],
+      "expectedBehavior": "Admins can manage teams; managers see only their team's records.",
+      "actualBehavior": "No team management exists; managers see the whole tenant.",
+      "evidence": "public class SalesTeamController {\n}\nif (teamIds.isEmpty()) { log.warn(...falling back to tenant-wide visibility...); return DataScope.tenant(); }",
+      "suggestedFix": {
+        "summary": "Implement CRUD for /api/sales-teams (ADMIN) and an admin Teams page, or disable the feature flag and relabel the scope until then.",
+        "details": "Endpoints: GET/POST /api/sales-teams, PUT /{id}, PUT /{id}/members, all tenant-scoped and audited. Frontend: RoutePath.ADMIN_TEAMS with a USERS_MANAGE guard.",
+        "codeSuggestion": "@RestController @RequestMapping(\"/api/sales-teams\")\n@PreAuthorize(RoleExpressions.TENANT_ADMIN)\npublic class SalesTeamController { ... }"
+      },
+      "effort": "L",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:54:03Z",
+        "triggeredBy": "Fix only ISS-017",
+        "summary": "Root cause: the full sales-team feature added in 1d71dbc was removed by commit 7d04019 ('fixed the broken flow'). With the user's approval, reapplied exactly what 7d04019 removed: admin-only /api/sales-teams CRUD + members (SalesTeamController/Service/DTOs/mapper/repository, UserRepository queries, AuditAction entries), the /admin/teams page, route, sidebar item, teams.manage permission, API calls and query key, and the original TeamScopeIntegrationTest/TestTenants. app.features.sales-team-scope defaults to true, so managers with a team now get TEAM scope.",
+        "filesChanged": [
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/common/audit/AuditAction.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/controller/SalesTeamController.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/dto/request/SalesTeamMembersReqDto.java",
+            "lines": "restored from 1d71dbc",
+            "type": "created"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/dto/request/SalesTeamReqDto.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/dto/responce/SalesTeamResDto.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/mapper/SalesTeamMapper.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/repository/SalesTeamRepository.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/sales_team/service/SalesTeamService.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/user/repository/UserRepository.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/test/java/com/company/crm/dashboard/DashboardSummaryIntegrationTest.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/test/java/com/company/crm/scope/TeamScopeIntegrationTest.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/src/test/java/com/company/crm/support/TestTenants.java",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/components/sidebar/SidebarConfig.js",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/constants/permission.constant.js",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/constants/routes.constant.js",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/constants/serverUrl.constant.js",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/query/queryKeys.js",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/api.service.js",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/core/services/salesTeam.service.js",
+            "lines": "restored from 1d71dbc",
+            "type": "created"
+          },
+          {
+            "file": "frontend-v1/src/pages/admin/Teams.jsx",
+            "lines": "restored from 1d71dbc",
+            "type": "created"
+          },
+          {
+            "file": "frontend-v1/src/routes/AppRoutes.jsx",
+            "lines": "restored from 1d71dbc",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Commit 7d04019's message does not say why the feature was removed; if that was for a reason not caught by the tests (TeamScopeIntegrationTest 2/2, DataScopeResolverTest 10/10, DashboardSummaryIntegrationTest 1/1 pass), it should be re-checked. The empty AnalyticsController and CommunicationController mentioned in the description were not touched."
+      }
+    },
+    {
+      "id": "ISS-018",
+      "flowId": "FLOW-013",
+      "title": "List pages swallow fetch errors and render an empty state",
+      "severity": "medium",
+      "category": "error-handling",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "Users, ServiceTickets, Quotations (and the same pattern elsewhere) do .catch(() => setX([])), so a 403, 500 or network failure looks exactly like 'no records'. There is no error banner or retry.",
+      "impact": "Outages and permission mismatches are invisible. Admins may conclude data was deleted, or try to re-create users or records.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/admin/Users.jsx",
+          "lines": "26-31",
+          "symbol": "refresh"
+        },
+        {
+          "file": "frontend-v1/src/pages/service/ServiceTickets.jsx",
+          "lines": "57-64",
+          "symbol": "refresh"
+        },
+        {
+          "file": "frontend-v1/src/pages/quotations/Quotations.jsx",
+          "lines": "48-53",
+          "symbol": "refresh"
+        }
+      ],
+      "stepsToReproduce": [
+        "Stop the backend (or force a 500)",
+        "Open /admin/users"
+      ],
+      "expectedBehavior": "'Couldn't load users. Retry.'",
+      "actualBehavior": "An empty table and an empty-state message.",
+      "evidence": "listUsers()\n  .then((data) => setUsers(data ?? []))\n  .catch(() => setUsers([]))",
+      "suggestedFix": {
+        "summary": "Track an error state and render it, using apiErrorMessage.",
+        "details": "Migrating these lists to useQuery gives isError, error and refetch for free.",
+        "codeSuggestion": "const usersQuery = useQuery({ queryKey: QUERY_KEYS.users, queryFn: listUsers });\nif (usersQuery.isError) return <EmptyState title=\"Couldn't load users\" message={apiErrorMessage(usersQuery.error)} action={<Button onClick={() => usersQuery.refetch()}>Retry</Button>} />;"
+      },
+      "effort": "M",
+      "status": "partially-fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T09:58:01Z",
+        "triggeredBy": "Fix only ISS-018",
+        "summary": "Users, Quotations and ServiceTickets now keep a loadError (apiErrorMessage) when the main list fetch fails and render a 'Couldn't load …' panel with the reason and a Retry button instead of the empty state; the error clears on the next successful load.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/admin/Users.jsx",
+            "lines": "9, 26, 30-37, 160-161",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/quotations/Quotations.jsx",
+            "lines": "15, 46, 53-60, 337-338",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/service/ServiceTickets.jsx",
+            "lines": "21, 55, 62-69, 229-230",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Same swallow-to-empty pattern remains on the main lists of Customers.jsx, Leads.jsx, Opportunities.jsx, Campaigns.jsx and platform/Tenants.jsx (and on secondary lookups such as customer/product dropdowns and the detail pages' related lists). Not migrated to useQuery; the minimal state + retry approach was used."
+      }
+    },
+    {
+      "id": "ISS-019",
+      "flowId": "FLOW-001",
+      "title": "Signup stores the address field as the tenant's legal name; website is dropped",
+      "severity": "low",
+      "category": "data-model",
+      "layer": "backend",
+      "confidence": "high",
+      "description": "AuthService.signupAdmin does tenant.setLegalName(request.getAddress()). The signup form sends no address, so legalName is always null, and if a client did send an address it would be stored as the legal name. request.getWebsite() is ignored. The Platform > Tenants page displays legalName.",
+      "impact": "Wrong or empty tenant legal names in platform admin; the website value is lost.",
+      "location": [
+        {
+          "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+          "lines": "106-110",
+          "symbol": "signupAdmin"
+        },
+        {
+          "file": "frontend-v1/src/pages/platform/Tenants.jsx",
+          "lines": "120-121",
+          "symbol": "legalName cell"
+        }
+      ],
+      "stepsToReproduce": [
+        "POST /auth/signup with address='12 Main St'",
+        "Check Platform > Tenants: Legal name shows '12 Main St'"
+      ],
+      "expectedBehavior": "legalName comes from a legal-name field (or defaults to organizationName), and the address is stored separately.",
+      "actualBehavior": "The address is mapped to legal name.",
+      "evidence": "tenant.setCompanyName(request.getOrganizationName());\ntenant.setLegalName(request.getAddress());",
+      "suggestedFix": {
+        "summary": "Map fields correctly; default legalName to organizationName.",
+        "details": "Add address and website columns on Tenant via a new Flyway migration if they're needed.",
+        "codeSuggestion": "tenant.setLegalName(request.getOrganizationName());"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:06:52Z",
+        "triggeredBy": "Fix only ISS-019",
+        "summary": "signupAdmin now sets tenant.legalName from organizationName instead of the address field.",
+        "filesChanged": [
+          {
+            "file": "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+            "lines": "125-126",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Address and website are still not persisted: Tenant has no columns for them and the signup form doesn't send them; storing them needs a Flyway migration plus entity fields. Tenants created before this fix keep a null legal name (no backfill was done)."
+      }
+    },
+    {
+      "id": "ISS-020",
+      "flowId": "FLOW-001",
+      "title": "Login and signup buttons have no submitting state (double submit)",
+      "severity": "low",
+      "category": "state",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "Neither form disables its submit button or shows progress while the request is in flight. A double click on 'Create account' sends two signups. The second gets 409 and its error is set after navigation, on an unmounted component.",
+      "impact": "Confusing duplicate requests and no feedback on slow networks.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/Signup.jsx",
+          "lines": "61-87, 378-383",
+          "symbol": "handleSubmit / submit button"
+        },
+        {
+          "file": "frontend-v1/src/pages/auth/Login.jsx",
+          "lines": "48-75, 236-241",
+          "symbol": "submitCredentials / submit button"
+        }
+      ],
+      "stepsToReproduce": [
+        "Throttle the network and double-click 'Create account'"
+      ],
+      "expectedBehavior": "The button is disabled with a spinner until the response arrives.",
+      "actualBehavior": "Two requests are sent.",
+      "evidence": "<button type=\"submit\" className=\"...\">Create account</button>  // no disabled",
+      "suggestedFix": {
+        "summary": "Add a submitting flag.",
+        "details": "",
+        "codeSuggestion": "const [submitting, setSubmitting] = useState(false);\n// in handler: if (submitting) return; setSubmitting(true); try {...} finally { setSubmitting(false); }\n<button type=\"submit\" disabled={submitting}>{submitting ? 'Creating…' : 'Create account'}</button>"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:14:17Z",
+        "triggeredBy": "Fix only ISS-020",
+        "summary": "Login (submitCredentials, so dev quick-login too) and Signup now track a submitting flag: repeat submits are ignored while a request is in flight, and the submit button is disabled and reads 'Signing in…' / 'Creating account…'.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "29, 66-67, 78-80, 282-285",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/pages/auth/Signup.jsx",
+            "lines": "29, 73-74, 89-91, 385-388",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-021",
+      "flowId": "FLOW-014",
+      "title": "Dead or broken client code: core/utils/axios.js and an unused UpgradePopup",
+      "severity": "low",
+      "category": "config",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "core/utils/axios.js imports named exports API_BASE_URL and API_TIMEOUT_MS that serverUrl.constant.js doesn't export, so it would create an axios instance with an undefined baseURL and no auth interceptor if anyone imported it. components/common/UpgradePopup.jsx (365 lines) has a second Razorpay checkout implementation but is never rendered. ServerUrl.BASE_URL and ApiService.logout are also unused.",
+      "impact": "Traps for future contributors: importing either piece bypasses auth handling or diverges from the verified MyPlan checkout.",
+      "location": [
+        {
+          "file": "frontend-v1/src/core/utils/axios.js",
+          "lines": "1-12",
+          "symbol": "axiosInstance"
+        },
+        {
+          "file": "frontend-v1/src/components/common/UpgradePopup.jsx",
+          "lines": "1-365",
+          "symbol": "UpgradePopup"
+        }
+      ],
+      "stepsToReproduce": [
+        "grep for imports of 'utils/axios' or 'UpgradePopup': none found"
+      ],
+      "expectedBehavior": "A single API client and a single checkout path.",
+      "actualBehavior": "Duplicate, unused, and partly broken modules.",
+      "evidence": "import { API_BASE_URL, API_TIMEOUT_MS } from '../constants/serverUrl.constant';  // only a default export exists",
+      "suggestedFix": {
+        "summary": "Delete core/utils/axios.js and UpgradePopup.jsx (or rebuild UpgradePopup on subscription.service + paymentCheckout).",
+        "details": "",
+        "codeSuggestion": ""
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:17:10Z",
+        "triggeredBy": "Fix only ISS-021",
+        "summary": "Deleted the unreferenced core/utils/axios.js (broken named imports, no auth interceptor) and the never-rendered UpgradePopup.jsx (duplicate Razorpay checkout); confirmed no imports and a clean vite build.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/core/utils/axios.js",
+            "lines": "deleted (1-12; unreferenced, recoverable from git history)",
+            "type": "modified"
+          },
+          {
+            "file": "frontend-v1/src/components/common/UpgradePopup.jsx",
+            "lines": "deleted (1-366; unreferenced, recoverable from git history)",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "ServerUrl.BASE_URL and ApiService.logout, also mentioned as unused, were left in place (out of the suggested fix)."
+      }
+    },
+    {
+      "id": "ISS-022",
+      "flowId": "FLOW-003",
+      "title": "Dev fallback API base URL points to the wrong port and path",
+      "severity": "low",
+      "category": "config",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "When VITE_API_URL is unset in development, resolveBaseURL returns 'http://localhost:3000/api'. The backend listens on 8080 and serves /auth and /api from the root, so every call (e.g. /api/auth/login, /api/api/customers) fails. The .env.example note explicitly warns against a path prefix.",
+      "impact": "A fresh clone without a .env can't log in, and the cause isn't obvious.",
+      "location": [
+        {
+          "file": "frontend-v1/src/core/services/interceptor.service.js",
+          "lines": "15-37",
+          "symbol": "resolveBaseURL"
+        }
+      ],
+      "stepsToReproduce": [
+        "Remove VITE_API_URL and run vite dev",
+        "Try to sign in"
+      ],
+      "expectedBehavior": "The fallback matches the backend default (http://localhost:8080).",
+      "actualBehavior": "Requests go to localhost:3000/api/...",
+      "evidence": "return \"http://localhost:3000/api\";",
+      "suggestedFix": {
+        "summary": "Change the fallback to the backend's default origin.",
+        "details": "",
+        "codeSuggestion": "return \"http://localhost:8080\";"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:18:12Z",
+        "triggeredBy": "Fix only ISS-022",
+        "summary": "The dev-only fallback base URL used when VITE_API_URL is unset is now http://localhost:8080 (backend server.port, no path prefix) instead of http://localhost:3000/api.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/core/services/interceptor.service.js",
+            "lines": "34",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": ""
+      }
+    },
+    {
+      "id": "ISS-023",
+      "flowId": "FLOW-003",
+      "title": "backend-v1/.env.example is a copy of the frontend env file",
+      "severity": "low",
+      "category": "config",
+      "layer": "backend",
+      "confidence": "high",
+      "description": "backend-v1/.env.example lists only VITE_* variables (and names VITE_API_BASE_URL, which the frontend doesn't read). None of the backend env names referenced in application.properties are documented there (JWT secret, CORS origins, frontend URL, mail, payment gateway, seed admin, DB).",
+      "impact": "Operators don't know which variables to set, which makes ISS-004's insecure defaults more likely in deployments.",
+      "location": [
+        {
+          "file": "backend-v1/.env.example",
+          "lines": "1-20",
+          "symbol": ""
+        },
+        {
+          "file": "backend-v1/src/main/resources/application.properties",
+          "lines": "37-87",
+          "symbol": "${ENV} references"
+        }
+      ],
+      "stepsToReproduce": [
+        "Open backend-v1/.env.example"
+      ],
+      "expectedBehavior": "Lists the backend's env variable names with empty values.",
+      "actualBehavior": "Lists frontend VITE_* variables.",
+      "evidence": "VITE_API_BASE_URL=...\nVITE_FIREBASE_API_KEY=\n...\nVITE_ENABLE_MOCK_AUTH=...",
+      "suggestedFix": {
+        "summary": "Replace it with the backend env names (values blank).",
+        "details": "Derive the list from the ${...} placeholders in application.properties.",
+        "codeSuggestion": "JWT_SECRET=\nCORS_ALLOWED_ORIGINS=\nFRONTEND_URL=\nDB_URL=\nDB_USERNAME=\nDB_PASSWORD=\n..."
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:20:01Z",
+        "triggeredBy": "Fix only ISS-023",
+        "summary": "Replaced the copied frontend VITE_* list in backend-v1/.env.example with the 26 env variable names referenced by application.properties, grouped, all values blank, plus a note that Spring doesn't load .env files and the datasource isn't env-driven yet.",
+        "filesChanged": [
+          {
+            "file": "backend-v1/.env.example",
+            "lines": "1-49",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "DB_URL / DB_USERNAME / DB_PASSWORD are not listed because application.properties doesn't reference them yet; add them when ISS-004 is applied."
+      }
+    },
+    {
+      "id": "ISS-024",
+      "flowId": "FLOW-006",
+      "title": "Signed-in users are redirected away from public pages (Home, About, Plans, Contact)",
+      "severity": "low",
+      "category": "routing",
+      "layer": "frontend",
+      "confidence": "medium",
+      "description": "The marketing routes are wrapped in PublicOnlyRoute, which redirects any user with a cached session to their dashboard. A signed-in admin can't open /plans to compare pricing or /contact for support. This may be intentional, but it differs from typical SaaS behaviour.",
+      "impact": "Public content is unreachable while logged in.",
+      "location": [
+        {
+          "file": "frontend-v1/src/routes/AppRoutes.jsx",
+          "lines": "82-91",
+          "symbol": "PUBLIC ROUTES"
+        }
+      ],
+      "stepsToReproduce": [
+        "Log in, then visit /plans"
+      ],
+      "expectedBehavior": "The page renders.",
+      "actualBehavior": "Redirect to the role dashboard.",
+      "evidence": "<Route element={<PublicOnlyRoute />}>\n  <Route path={RoutePath.HOME} ... /> <Route path={RoutePath.PLANS} ... /> ...",
+      "suggestedFix": {
+        "summary": "Keep PublicOnlyRoute only around login, signup and verify-email.",
+        "details": "",
+        "codeSuggestion": "<Route element={<MainLayout />}>\n  <Route path={RoutePath.HOME} element={<Home />} />\n  ...\n</Route>"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:23:40Z",
+        "triggeredBy": "Fix only ISS-024",
+        "summary": "Per the user's choice, About, Plans and Contact are no longer wrapped in PublicOnlyRoute, so signed-in users can open them; Home (/) stays wrapped, keeping the redirect to the role dashboard that commit d47511f ('fixed the login bug') introduced.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/routes/AppRoutes.jsx",
+            "lines": "86-92",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "The public Navbar doesn't know about the session, so a signed-in user on these pages still sees the signed-out navigation (Login/Sign up links, which redirect them to their dashboard)."
+      }
+    },
+    {
+      "id": "ISS-025",
+      "flowId": "FLOW-003",
+      "title": "Non-functional SSO buttons and dead legal links on auth pages",
+      "severity": "low",
+      "category": "ux",
+      "layer": "frontend",
+      "confidence": "high",
+      "description": "'Google Workspace' and 'Microsoft SSO' buttons have no handlers, and the copy claims 'Protected by SSO, MFA'. Terms of Service and Privacy Policy links are href=\"#\". The 'Create an account' link is a raw <a href=\"signup\">, which forces a full page reload.",
+      "impact": "Users click dead controls, and the product makes security claims that aren't implemented.",
+      "location": [
+        {
+          "file": "frontend-v1/src/pages/auth/Login.jsx",
+          "lines": "254-270",
+          "symbol": "SSO buttons / signup link"
+        },
+        {
+          "file": "frontend-v1/src/pages/auth/Signup.jsx",
+          "lines": "370-372",
+          "symbol": "terms links"
+        }
+      ],
+      "stepsToReproduce": [
+        "Click 'Google Workspace' on /login"
+      ],
+      "expectedBehavior": "SSO works, or the buttons are hidden.",
+      "actualBehavior": "Nothing happens.",
+      "evidence": "<button className=\"...\"><span className=\"mr-2\">Google Workspace</span></button>",
+      "suggestedFix": {
+        "summary": "Hide the SSO buttons and claims until implemented, use <Link> for internal navigation, and point the legal links to real pages.",
+        "details": "",
+        "codeSuggestion": "<Link to={RoutePath.SIGNUP} className=\"font-semibold text-indigo-600\">Create an account</Link>"
+      },
+      "effort": "S",
+      "status": "partially-fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:27:28Z",
+        "triggeredBy": "Fix only ISS-025",
+        "summary": "Login: removed the handler-less Google Workspace / Microsoft SSO buttons and their 'Or continue with' divider, changed 'Protected by SSO, MFA and role-based access control' to 'Protected by role-based access control', and replaced the raw <a href=\"signup\"> with <Link to={RoutePath.SIGNUP}>.",
+        "filesChanged": [
+          {
+            "file": "frontend-v1/src/pages/auth/Login.jsx",
+            "lines": "289, 293, 297",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "Signup.jsx:376 Terms of Service and Privacy Policy links still point to '#': no legal pages or routes exist, and their content has to come from the business. Once pages exist, add routes and point the links at them."
+      }
+    },
+    {
+      "id": "ISS-026",
+      "flowId": "FLOW-003",
+      "title": "SQL statement logging and DEBUG app logging are on in the base config",
+      "severity": "low",
+      "category": "security",
+      "layer": "backend",
+      "confidence": "high",
+      "description": "spring.jpa.show-sql=true and logging.level.com.company.crm=DEBUG are set in the shared application.properties with no profile split, so production inherits verbose logs.",
+      "impact": "Log volume, performance cost, and possible leakage of business data in logs (and of tokens, see ISS-002).",
+      "location": [
+        {
+          "file": "backend-v1/src/main/resources/application.properties",
+          "lines": "20, 28",
+          "symbol": "spring.jpa.show-sql / logging.level"
+        }
+      ],
+      "stepsToReproduce": [
+        "Start the backend with default config and make any API call; SQL statements are printed"
+      ],
+      "expectedBehavior": "Verbose logging only in a dev profile.",
+      "actualBehavior": "Verbose logging everywhere.",
+      "evidence": "spring.jpa.show-sql=true\nlogging.level.com.company.crm=DEBUG",
+      "suggestedFix": {
+        "summary": "Move these to application-dev.properties; default to show-sql=false and INFO.",
+        "details": "",
+        "codeSuggestion": "spring.jpa.show-sql=${SHOW_SQL:false}\nlogging.level.com.company.crm=${APP_LOG_LEVEL:INFO}"
+      },
+      "effort": "S",
+      "status": "fixed",
+      "fix": {
+        "fixedAt": "2026-10-06T10:32:54Z",
+        "triggeredBy": "Fix only ISS-026",
+        "summary": "spring.jpa.show-sql is now ${SHOW_SQL:false} and logging.level.com.company.crm is ${APP_LOG_LEVEL:INFO}, so the default config no longer prints SQL or app DEBUG logs; developers can opt back in via env. Added both optional names to backend-v1/.env.example.",
+        "filesChanged": [
+          {
+            "file": "backend-v1/src/main/resources/application.properties",
+            "lines": "20, 28",
+            "type": "modified"
+          },
+          {
+            "file": "backend-v1/.env.example",
+            "lines": "39-42",
+            "type": "modified"
+          }
+        ],
+        "verification": "static-trace+checks-passed",
+        "remainingWork": "No application-dev.properties profile was introduced; the env overrides cover local verbose logging. hibernate.format_sql=true was left as is (it only matters when show-sql is on)."
+      }
+    }
+  ],
+  "notes": {
+    "assumptions": [
+      "Status rule: 'broken' = the flow can't be completed; 'partially-broken' = completes but has at least one medium-or-higher issue; 'working' = no medium-or-higher issue found.",
+      "Customers, Leads, Opportunities, Campaigns and Service Tickets were traced at the route -> service -> controller role check -> request DTO level; page-level rendering of every field was not compared line by line.",
+      "Role/permission parity was checked by comparing permission.constant.js ROLE_PERMISSIONS with each controller's @PreAuthorize lists; no mismatch that causes a 403 on a reachable screen was found.",
+      "Tenant-scoping of by-id lookups was taken from the services' use of scoped queries and the latest commit (fe296d6); individual JPQL queries were not all re-verified.",
+      "Secret values in application.properties were classified (literal vs ${ENV} vs ${ENV:default}) but deliberately not read into or reproduced in this report."
+    ],
+    "notAnalyzed": [
+      "Runtime behaviour (nothing was built, run or called, per instructions)",
+      "Public marketing pages content (Home, About, Contact form, HelpCenter) beyond routing",
+      "frontend-v1/src/firebase/firebase.js usage (appears unused by any flow)",
+      "Test suites under backend-v1/src/test",
+      "Razorpay gateway internals (RazorpayPaymentGateway signature math) and SubscriptionExpiryJob scheduling",
+      "Quotation PDF rendering (QuotationPdf) and email templates",
+      "CI workflows under .github/workflows",
+      "docs/*.docx and docs/*.xlsx"
+    ],
+    "filesReviewed": [
+      "frontend-v1/package.json",
+      "frontend-v1/vite.config.js",
+      "frontend-v1/vercel.json",
+      "frontend-v1/.env.example",
+      "frontend-v1/src/main.jsx",
+      "frontend-v1/src/App.jsx",
+      "frontend-v1/src/routes/AppRoutes.jsx",
+      "frontend-v1/src/routes/ProtectedRoute.jsx",
+      "frontend-v1/src/routes/PublicOnlyRoute.jsx",
+      "frontend-v1/src/store/authStore.js",
+      "frontend-v1/src/core/hooks/useAuth.js",
+      "frontend-v1/src/core/hooks/usePermissions.js",
+      "frontend-v1/src/core/constants/serverUrl.constant.js",
+      "frontend-v1/src/core/constants/routes.constant.js",
+      "frontend-v1/src/core/constants/app.constant.js",
+      "frontend-v1/src/core/constants/permission.constant.js",
+      "frontend-v1/src/core/services/interceptor.service.js",
+      "frontend-v1/src/core/services/api.service.js",
+      "frontend-v1/src/core/services/auth.service.js",
+      "frontend-v1/src/core/services/storage.service.js",
+      "frontend-v1/src/core/services/customer.service.js",
+      "frontend-v1/src/core/services/lead.service.js",
+      "frontend-v1/src/core/services/opportunity.service.js",
+      "frontend-v1/src/core/services/quotation.service.js",
+      "frontend-v1/src/core/services/product.service.js",
+      "frontend-v1/src/core/services/serviceTicket.service.js",
+      "frontend-v1/src/core/services/campaign.service.js",
+      "frontend-v1/src/core/services/user.service.js",
+      "frontend-v1/src/core/services/tenant.service.js",
+      "frontend-v1/src/core/services/dashboard.service.js",
+      "frontend-v1/src/core/services/subscription.service.js",
+      "frontend-v1/src/core/utils/axios.js",
+      "frontend-v1/src/core/utils/permission.js",
+      "frontend-v1/src/core/utils/apiError.js",
+      "frontend-v1/src/core/utils/paymentCheckout.js",
+      "frontend-v1/src/core/query/queryClient.js",
+      "frontend-v1/src/core/query/queryKeys.js",
+      "frontend-v1/src/core/models/api.model.js",
+      "frontend-v1/src/pages/auth/Login.jsx",
+      "frontend-v1/src/pages/auth/Signup.jsx",
+      "frontend-v1/src/pages/auth/VerifyEmail.jsx",
+      "frontend-v1/src/pages/admin/Users.jsx",
+      "frontend-v1/src/pages/admin/Settings.jsx",
+      "frontend-v1/src/pages/admin/MyPlan.jsx (partial)",
+      "frontend-v1/src/pages/common/Profile.jsx",
+      "frontend-v1/src/pages/finance/Approvals.jsx",
+      "frontend-v1/src/pages/platform/AuditLogs.jsx",
+      "frontend-v1/src/pages/platform/Tenants.jsx (partial)",
+      "frontend-v1/src/pages/dashboard/SalesManagerDashboard.jsx",
+      "frontend-v1/src/pages/dashboard/ServiceAgentDashboard.jsx",
+      "frontend-v1/src/pages/dashboard/SuperAdminDashboard.jsx",
+      "frontend-v1/src/pages/dashboard/ServiceDashboard.jsx (partial)",
+      "frontend-v1/src/pages/service/ServiceTickets.jsx (partial)",
+      "frontend-v1/src/pages/quotations/Quotations.jsx (partial)",
+      "frontend-v1/src/pages/quotations/QuotationDetail.jsx (partial)",
+      "frontend-v1/src/pages/leads/LeadDetail.jsx (partial)",
+      "frontend-v1/src/components/sidebar/SidebarConfig.js",
+      "frontend-v1/src/components/sidebar/UserNavbar.jsx",
+      "frontend-v1/src/components/dashboard/DashboardShell.jsx",
+      "frontend-v1/src/components/common/UpgradePopup.jsx (partial)",
+      "frontend-v1/src/components/plans/Pricing.jsx (partial)",
+      "frontend-v1/src/layouts/DashboardLayout.jsx",
+      "backend-v1/.env.example",
+      "backend-v1/src/main/resources/application.properties (keys only)",
+      "backend-v1/src/main/java/com/company/crm/common/security/Security.java",
+      "backend-v1/src/main/java/com/company/crm/common/security/JwtAuthFilter.java",
+      "backend-v1/src/main/java/com/company/crm/common/security/JwtService.java",
+      "backend-v1/src/main/java/com/company/crm/common/security/RoleExpressions.java",
+      "backend-v1/src/main/java/com/company/crm/common/config/Config.java",
+      "backend-v1/src/main/java/com/company/crm/common/exception/GlobalExceptionHandler.java",
+      "backend-v1/src/main/java/com/company/crm/common/response/Response.java",
+      "backend-v1/src/main/java/com/company/crm/common/scope/DataScopeResolver.java (partial)",
+      "backend-v1/src/main/java/com/company/crm/auth/controller/AuthController.java",
+      "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+      "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java",
+      "backend-v1/src/main/java/com/company/crm/auth/mapper/AuthMapper.java",
+      "backend-v1/src/main/java/com/company/crm/auth/dto/**",
+      "backend-v1/src/main/java/com/company/crm/user/controller/UserController.java",
+      "backend-v1/src/main/java/com/company/crm/user/service/UserService.java",
+      "backend-v1/src/main/java/com/company/crm/user/entity/User.java (partial)",
+      "backend-v1/src/main/java/com/company/crm/payment/controller/PaymentController.java",
+      "backend-v1/src/main/java/com/company/crm/payment/service/PaymentService.java (partial)",
+      "backend-v1/src/main/java/com/company/crm/subscription/controller/SubscriptionController.java",
+      "backend-v1/src/main/java/com/company/crm/subscription/web/WebConfig.java",
+      "backend-v1/src/main/java/com/company/crm/subscription/web/SubscriptionAccessInterceptor.java",
+      "backend-v1/src/main/java/com/company/crm/sales_team/controller/SalesTeamController.java",
+      "backend-v1/src/main/java/com/company/crm/sales_team/service/SalesTeamService.java",
+      "backend-v1/src/main/java/com/company/crm/analytics/controller/AnalyticsController.java",
+      "backend-v1/src/main/java/com/company/crm/communication/controller/CommunicationController.java",
+      "All backend controllers (mapping + @PreAuthorize scan)",
+      "All backend */dto/request/*.java (field + validation scan)",
+      "backend-v1/src/main/java/com/company/crm/tenant/dto/response/TenantResDto.java",
+      "backend-v1/src/main/java/com/company/crm/dashboard/dto/response/SuperAdminDashboardResDto.java",
+      "backend-v1/src/main/java/com/company/crm/subscription/dto/response/*.java",
+      "backend-v1/src/main/java/com/company/crm/common/enums/BillingCycle.java"
+    ],
+    "observed": [
+      "frontend-v1/src/core/services/auth.service.js:24 has an existing eslint no-unused-vars error ('error' in decodeJWT's catch). It predates ISS-001 and was not touched.",
+      "ISS-003 description mentions the frontend claiming 'Protected by SSO, MFA'; that UI copy was not changed in the ISS-003 run.",
+      "backend-v1/src/main/resources/application.properties is tracked by git even though backend-v1/.gitignore lists it, so any value in it is committed.",
+      "payment.gateway.key-secret (PAYMENT_KEY_SECRET) and payment.gateway.webhook-secret (PAYMENT_WEBHOOK_SECRET) in application.properties use the same env-with-committed-default pattern as ISS-004 but are not listed in it; not touched.",
+      "QuotationDetail.jsx: handleApproveDiscount and handleCustomerStatus have no try/catch, so a failed request gives the user no feedback; not touched in the ISS-015 run.",
+      "core/utils/apiError.js: for an error with no HTTP response that isn't a network error, apiErrorMessage returns error.message, so a client-side exception (e.g. a malformed login response) would show its raw JS message instead of the fallback. Not touched.",
+      "frontend-v1/src/pages/auth/Signup.jsx:3 imports Button but never uses it (existing eslint no-unused-vars error, present in HEAD); not touched.",
+      "AppRoutes.jsx: SuperAdminDashboard is lazy-loaded from pages/dashboard/ServiceDashboard rather than SuperAdminDashboard.jsx; not touched in the ISS-012 run.",
+      "ISS-017: AnalyticsController and CommunicationController are still empty classes (mentioned in the ISS-017 description, out of its fix scope).",
+      "FLOW-001 kept as 'working' after the ISS-019 run: it was 'working' in the original audit (only low-severity issues), and the per-run rule 'some fixed -> partially-broken' would otherwise have downgraded it.",
+      "Login.jsx:142 and Signup.jsx:134 marketing panels claim 'Seven granular roles with SOC 2 aligned audit trails'; not verified or changed in the ISS-025 run."
+    ]
+  },
+  "fixRuns": [
+    {
+      "ranAt": "2026-10-06T08:45:07Z",
+      "command": "Fix only ISS-001",
+      "attempted": [
+        "ISS-001"
+      ],
+      "fixed": [
+        "ISS-001"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/auth/ForgotPassword.jsx",
+        "frontend-v1/src/pages/auth/ResetPassword.jsx",
+        "frontend-v1/src/routes/AppRoutes.jsx",
+        "frontend-v1/src/core/constants/routes.constant.js",
+        "frontend-v1/src/core/services/auth.service.js",
+        "frontend-v1/src/pages/auth/Login.jsx",
+        "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+        "backend-v1/src/main/java/com/company/crm/common/mail/MailService.java",
+        "backend-v1/src/main/java/com/company/crm/auth/repository/PasswordResetTokenRepository.java"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T08:47:21Z",
+      "command": "Fix only ISS-002",
+      "attempted": [
+        "ISS-002"
+      ],
+      "fixed": [
+        "ISS-002"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+        "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T08:51:47Z",
+      "command": "Fix only ISS-003",
+      "attempted": [
+        "ISS-003"
+      ],
+      "fixed": [],
+      "partiallyFixed": [
+        "ISS-003"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java",
+        "backend-v1/src/main/java/com/company/crm/auth/service/EmailVerificationTokenService.java",
+        "backend-v1/src/main/java/com/company/crm/auth/repository/LoginAttemptRepository.java",
+        "backend-v1/src/main/java/com/company/crm/auth/repository/PasswordResetTokenRepository.java",
+        "backend-v1/src/main/java/com/company/crm/auth/repository/EmailVerificationTokenRepository.java",
+        "backend-v1/src/main/java/com/company/crm/common/exception/ApiException.java",
+        "frontend-v1/src/pages/auth/Login.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T08:59:35Z",
+      "command": "Fix only ISS-004",
+      "attempted": [
+        "ISS-004"
+      ],
+      "fixed": [],
+      "failed": [],
+      "needsManual": [
+        "ISS-004"
+      ],
+      "skipped": [],
+      "filesChanged": []
+    },
+    {
+      "ranAt": "2026-10-06T09:03:24Z",
+      "command": "Fix only ISS-015",
+      "attempted": [
+        "ISS-015"
+      ],
+      "fixed": [
+        "ISS-015"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/quotations/QuotationDetail.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:04:41Z",
+      "command": "Fix only ISS-005",
+      "attempted": [
+        "ISS-005"
+      ],
+      "fixed": [
+        "ISS-005"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/auth/Login.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:06:32Z",
+      "command": "Fix only ISS-006",
+      "attempted": [
+        "ISS-006"
+      ],
+      "fixed": [
+        "ISS-006"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/auth/Login.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:09:19Z",
+      "command": "Fix only ISS-007",
+      "attempted": [
+        "ISS-007"
+      ],
+      "fixed": [
+        "ISS-007"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/core/constants/serverUrl.constant.js",
+        "frontend-v1/src/core/services/api.service.js",
+        "frontend-v1/src/core/services/auth.service.js",
+        "frontend-v1/src/core/services/interceptor.service.js",
+        "frontend-v1/src/pages/auth/Signup.jsx",
+        "frontend-v1/src/pages/auth/Login.jsx",
+        "frontend-v1/src/pages/auth/VerifyEmail.jsx",
+        "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:11:04Z",
+      "command": "Fix only ISS-008",
+      "attempted": [
+        "ISS-008"
+      ],
+      "fixed": [
+        "ISS-008"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/auth/VerifyEmail.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:42:31Z",
+      "command": "Fix only ISS-009",
+      "attempted": [
+        "ISS-009"
+      ],
+      "fixed": [
+        "ISS-009"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/core/hooks/useAuth.js",
+        "frontend-v1/src/routes/PublicOnlyRoute.jsx",
+        "frontend-v1/src/core/services/auth.service.js"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:43:51Z",
+      "command": "Fix only ISS-011",
+      "attempted": [
+        "ISS-011"
+      ],
+      "fixed": [
+        "ISS-011"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/components/sidebar/UserNavbar.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:45:17Z",
+      "command": "Fix only ISS-012",
+      "attempted": [
+        "ISS-012"
+      ],
+      "fixed": [],
+      "partiallyFixed": [
+        "ISS-012"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/dashboard/ServiceAgentDashboard.jsx",
+        "frontend-v1/src/components/sidebar/UserNavbar.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:47:11Z",
+      "command": "Fix only ISS-014",
+      "attempted": [
+        "ISS-014"
+      ],
+      "fixed": [
+        "ISS-014"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/finance/Approvals.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:48:26Z",
+      "command": "Fix only ISS-016",
+      "attempted": [
+        "ISS-016"
+      ],
+      "fixed": [
+        "ISS-016"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/quotations/QuotationDetail.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:54:03Z",
+      "command": "Fix only ISS-017",
+      "attempted": [
+        "ISS-017"
+      ],
+      "fixed": [
+        "ISS-017"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "backend-v1/src/main/java/com/company/crm/common/audit/AuditAction.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/controller/SalesTeamController.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/dto/request/SalesTeamMembersReqDto.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/dto/request/SalesTeamReqDto.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/dto/responce/SalesTeamResDto.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/mapper/SalesTeamMapper.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/repository/SalesTeamRepository.java",
+        "backend-v1/src/main/java/com/company/crm/sales_team/service/SalesTeamService.java",
+        "backend-v1/src/main/java/com/company/crm/user/repository/UserRepository.java",
+        "backend-v1/src/test/java/com/company/crm/dashboard/DashboardSummaryIntegrationTest.java",
+        "backend-v1/src/test/java/com/company/crm/scope/TeamScopeIntegrationTest.java",
+        "backend-v1/src/test/java/com/company/crm/support/TestTenants.java",
+        "frontend-v1/src/components/sidebar/SidebarConfig.js",
+        "frontend-v1/src/core/constants/permission.constant.js",
+        "frontend-v1/src/core/constants/routes.constant.js",
+        "frontend-v1/src/core/constants/serverUrl.constant.js",
+        "frontend-v1/src/core/query/queryKeys.js",
+        "frontend-v1/src/core/services/api.service.js",
+        "frontend-v1/src/core/services/salesTeam.service.js",
+        "frontend-v1/src/pages/admin/Teams.jsx",
+        "frontend-v1/src/routes/AppRoutes.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:58:01Z",
+      "command": "Fix only ISS-018",
+      "attempted": [
+        "ISS-018"
+      ],
+      "fixed": [],
+      "partiallyFixed": [
+        "ISS-018"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/admin/Users.jsx",
+        "frontend-v1/src/pages/quotations/Quotations.jsx",
+        "frontend-v1/src/pages/service/ServiceTickets.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T09:59:25Z",
+      "command": "Fix only ISS-010",
+      "attempted": [
+        "ISS-010"
+      ],
+      "fixed": [
+        "ISS-010"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/store/authStore.js",
+        "frontend-v1/src/core/services/interceptor.service.js"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:02:43Z",
+      "command": "Fix only ISS-013",
+      "attempted": [
+        "ISS-013"
+      ],
+      "fixed": [
+        "ISS-013"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/dashboard/PlatformDashboard.jsx",
+        "frontend-v1/src/pages/dashboard/ServiceDashboard.jsx",
+        "frontend-v1/src/pages/dashboard/SuperAdminDashboard.jsx",
+        "frontend-v1/src/routes/AppRoutes.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:06:52Z",
+      "command": "Fix only ISS-019",
+      "attempted": [
+        "ISS-019"
+      ],
+      "fixed": [
+        "ISS-019"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "backend-v1/src/main/java/com/company/crm/auth/service/AuthService.java"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:14:17Z",
+      "command": "Fix only ISS-020",
+      "attempted": [
+        "ISS-020"
+      ],
+      "fixed": [
+        "ISS-020"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/auth/Login.jsx",
+        "frontend-v1/src/pages/auth/Signup.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:17:10Z",
+      "command": "Fix only ISS-021",
+      "attempted": [
+        "ISS-021"
+      ],
+      "fixed": [
+        "ISS-021"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/core/utils/axios.js",
+        "frontend-v1/src/components/common/UpgradePopup.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:18:12Z",
+      "command": "Fix only ISS-022",
+      "attempted": [
+        "ISS-022"
+      ],
+      "fixed": [
+        "ISS-022"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/core/services/interceptor.service.js"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:20:01Z",
+      "command": "Fix only ISS-023",
+      "attempted": [
+        "ISS-023"
+      ],
+      "fixed": [
+        "ISS-023"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "backend-v1/.env.example"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:23:40Z",
+      "command": "Fix only ISS-024",
+      "attempted": [
+        "ISS-024"
+      ],
+      "fixed": [
+        "ISS-024"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/routes/AppRoutes.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:27:28Z",
+      "command": "Fix only ISS-025",
+      "attempted": [
+        "ISS-025"
+      ],
+      "fixed": [],
+      "partiallyFixed": [
+        "ISS-025"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "frontend-v1/src/pages/auth/Login.jsx"
+      ]
+    },
+    {
+      "ranAt": "2026-10-06T10:32:54Z",
+      "command": "Fix only ISS-026",
+      "attempted": [
+        "ISS-026"
+      ],
+      "fixed": [
+        "ISS-026"
+      ],
+      "failed": [],
+      "needsManual": [],
+      "skipped": [],
+      "filesChanged": [
+        "backend-v1/src/main/resources/application.properties",
+        "backend-v1/.env.example"
+      ]
+    }
+  ]
+}

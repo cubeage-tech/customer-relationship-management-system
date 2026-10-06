@@ -36,7 +36,7 @@ const health = [
 
 const cardClass = 'rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm';
 
-const ServiceDashboard = () => {
+const PlatformDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState('');
 
@@ -141,4 +141,4 @@ const ServiceDashboard = () => {
 
 const PanelHeading = ({ id, title }) => <div className="flex items-center justify-between px-5 pb-3 pt-4"><h2 id={id} className="text-base font-bold text-slate-900">{title}</h2><button type="button" className="text-xs font-bold text-violet-600 hover:text-violet-800">View All</button><MoreHorizontal size={16} className="hidden text-slate-400" aria-hidden="true" /></div>;
 
-export default ServiceDashboard;
+export default PlatformDashboard;

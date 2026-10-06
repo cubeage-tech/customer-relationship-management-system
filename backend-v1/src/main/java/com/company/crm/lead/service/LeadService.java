@@ -1,5 +1,8 @@
 package com.company.crm.lead.service;
 
+import com.company.crm.common.period.ReportingPeriods;
+import com.company.crm.lead.dto.response.LeadSummaryDto;
+import com.company.crm.lead.repository.LeadSummaryQuery;
 import com.company.crm.campaign.entity.Campaign;
 import com.company.crm.campaign.repository.CampaignRepository;
 import com.company.crm.common.enums.CustomerStatus;
@@ -8,6 +11,8 @@ import com.company.crm.common.enums.LeadSource;
 import com.company.crm.common.enums.LeadStage;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.scope.DataScope;
+import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.lead.dto.request.LeadReqDto;
@@ -30,6 +35,9 @@ import java.util.List;
 public class LeadService {
 
     private final LeadRepository leadRepository;
+    private final DataScopeResolver dataScopeResolver;
+    private final LeadSummaryQuery leadSummaryQuery;
+    private final ReportingPeriods reportingPeriods;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
     private final CampaignRepository campaignRepository;
@@ -40,9 +48,7 @@ public class LeadService {
     // associations (owner, convertedCustomer, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
     public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search) {
-        List<Lead> leads = currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                ? leadRepository.findByTenantIdAndOwnerId(requireTenantId(currentUser), currentUser.getId())
-                : leadRepository.findByTenantId(requireTenantId(currentUser));
+        List<Lead> leads = findInScope(currentUser);
 
         return leads.stream()
                 .filter(l -> stage == null || stage.isBlank() || l.getStage().getDbValue().equals(stage))
@@ -165,20 +171,14 @@ public class LeadService {
     }
 
     private Campaign resolveCampaign(User currentUser, Long campaignId) {
-        Campaign campaign = campaignRepository.findById(campaignId)
-                .orElseThrow(() -> ApiException.badRequest("Campaign not found"));
-        if (!campaign.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Campaign must belong to your tenant");
-        }
+        Campaign campaign = campaignRepository.findByIdAndTenantId(campaignId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Campaign must belong to your tenant"));
         return campaign;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> ApiException.badRequest("Owner not found"));
-        if (owner.getTenant() == null || !owner.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.badRequest("Owner must belong to your tenant");
-        }
+        User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
     }
 
@@ -207,20 +207,31 @@ public class LeadService {
     }
 
     private Lead findLead(User currentUser, Long leadId) {
-        Lead lead = leadRepository.findById(leadId)
+        Lead lead = leadRepository.findByIdAndTenantId(leadId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Lead not found"));
-        if (!lead.getTenant().getId().equals(requireTenantId(currentUser))) {
-            throw ApiException.notFound("Lead not found");
-        }
         return lead;
     }
 
     /** sales_executive may only access leads assigned to them ("own" data scope). */
     private void assertAccess(User currentUser, Lead lead) {
-        if (currentUser.getRole().getName() == RoleType.SALES_EXECUTIVE
-                && (lead.getOwner() == null || !lead.getOwner().getId().equals(currentUser.getId()))) {
-            throw ApiException.forbidden("You do not have access to this lead");
-        }
+        dataScopeResolver.assertCanAccess(currentUser,
+                lead.getOwner() != null ? lead.getOwner().getId() : null, "lead");
+    }
+
+    /** Dashboard counts, aggregated in the database within the caller's data scope. */
+    @Transactional(readOnly = true)
+    public LeadSummaryDto getSummary(User currentUser) {
+        return leadSummaryQuery.summarize(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser),
+                reportingPeriods.startOfMonth());
+    }
+
+    /** Records the user may see, as decided by DataScopeResolver (tenant-wide, team or own). */
+    private List<Lead> findInScope(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        return scope.isTenantWide()
+                ? leadRepository.findByTenantId(tenantId)
+                : leadRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
     }
 
     private Long requireTenantId(User currentUser) {

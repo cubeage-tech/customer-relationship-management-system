@@ -45,7 +45,8 @@ public class Security {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/plans/**").permitAll()
+                        // Only the public pricing list — any other /api/plans endpoint needs a login.
+                        .requestMatchers(HttpMethod.GET, "/api/plans/prices").permitAll()
                         // Server-to-server from the payment provider; authenticated by its signature.
                         .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()

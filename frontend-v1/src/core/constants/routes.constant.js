@@ -15,6 +15,7 @@ class RoutePath {
   static LOGIN = "/login";
   static SIGNUP = "/signup";
   static FORGOT_PASSWORD = "/forgot-password";
+  static RESET_PASSWORD = "/reset-password";
   static VERIFY_EMAIL = "/verify-email";
 
   // ======================================================
@@ -99,6 +100,7 @@ class RoutePath {
   static ADMIN_ROLES = `${this.ADMIN_BASE}/roles`;
   static ADMIN_SETTINGS = `${this.ADMIN_BASE}/settings`;
   static ADMIN_MY_PLAN = `${this.ADMIN_BASE}/my-plan`;
+  static ADMIN_TEAMS = `${this.ADMIN_BASE}/teams`;
 
   // ======================================================
   // PLATFORM ADMINISTRATION (super_admin only)
