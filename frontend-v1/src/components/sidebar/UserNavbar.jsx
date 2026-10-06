@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../core/hooks/useAuth";
 import { APP_SHORT_NAME } from "../../core/constants/app.constant";
-import { getRoleLabel } from "../../core/utils/permission";
+import { getRoleLabel, hasPermission, isSuperAdmin } from "../../core/utils/permission";
+import { PERMISSIONS } from "../../core/constants/permission.constant";
 import RoutePath from "../../core/constants/routes.constant";
 
 const UserNavbar = () => {
@@ -22,9 +23,9 @@ const UserNavbar = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // dummy counts — wire these up to real data sources
-  const notificationCount = 5;
-  const messageCount = 2;
+  // No notifications/messages API yet — keep the badges hidden rather than show made-up counts.
+  const notificationCount = 0;
+  const messageCount = 0;
 
   const initials = user?.name
     ? user.name
@@ -34,6 +35,13 @@ const UserNavbar = () => {
         .slice(0, 2)
         .toUpperCase()
     : "U";
+
+  // Super admin uses platform settings; tenant roles need SETTINGS_VIEW, as the routes require.
+  const settingsPath = isSuperAdmin(user)
+    ? RoutePath.PLATFORM_SETTINGS
+    : hasPermission(user, PERMISSIONS.SETTINGS_VIEW)
+      ? RoutePath.ADMIN_SETTINGS
+      : null;
 
   const handleLogout = () => {
     logoutUser();
@@ -169,17 +177,19 @@ const UserNavbar = () => {
                 Profile
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  navigate(RoutePath.SETTINGS);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition"
-              >
-                <Settings size={16} />
-                Settings
-              </button>
+              {settingsPath && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    navigate(settingsPath);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition"
+                >
+                  <Settings size={16} />
+                  Settings
+                </button>
+              )}
 
               <div className="border-t border-slate-100 mt-1 pt-1">
                 <button

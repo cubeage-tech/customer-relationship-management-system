@@ -32,6 +32,10 @@ class ApiService {
     return this.apipost(ServerUrl.AUTH_RESET_PASSWORD, data);
   }
 
+  static resendVerification(data) {
+    return this.apipost(ServerUrl.AUTH_RESEND_VERIFICATION, data);
+  }
+
   // ------------------ User APIs ------------------
   static getUsers(params) {
     return this.apiget(ServerUrl.USERS, params);
@@ -318,6 +322,27 @@ class ApiService {
 
   static upgradeSubscription(data) {
     return this.apipost(ServerUrl.SUBSCRIPTION_UPGRADE, data);
+  }
+
+  // ------------------ Sales Team APIs (tenant admin) ------------------
+  static getSalesTeams() {
+    return this.apiget(ServerUrl.SALES_TEAMS);
+  }
+
+  static createSalesTeam(data) {
+    return this.apipost(ServerUrl.SALES_TEAMS, data);
+  }
+
+  static updateSalesTeam(id, data) {
+    return this.apiput(ServerUrl.salesTeam(id), data);
+  }
+
+  static setSalesTeamMembers(id, data) {
+    return this.apiput(ServerUrl.salesTeamMembers(id), data);
+  }
+
+  static deleteSalesTeam(id) {
+    return this.apidelete(ServerUrl.salesTeam(id));
   }
 
   // ------------------ Generic Methods ------------------

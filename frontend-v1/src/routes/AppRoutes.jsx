@@ -18,9 +18,11 @@ const Contact = lazy(() => import("../pages/public/Contact"));
 const Login = lazy(() => import("../pages/auth/Login"));
 const Signup = lazy(() => import("../pages/auth/Signup"));
 const VerifyEmail = lazy(() => import("../pages/auth/VerifyEmail"));
+const ForgotPassword = lazy(() => import("../pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 
 // Role Dashboards
-const SuperAdminDashboard = lazy(() => import("../pages/dashboard/ServiceDashboard"));
+const SuperAdminDashboard = lazy(() => import("../pages/dashboard/PlatformDashboard"));
 const AdminDashboard = lazy(() => import("../pages/dashboard/AdminDashboard"));
 const SalesManagerDashboard = lazy(() => import("../pages/dashboard/SalesManagerDashboard"));
 const SalesExecutiveDashboard = lazy(() => import("../pages/dashboard/SalesExecutiveDashboard"));
@@ -50,6 +52,7 @@ const Users = lazy(() => import("../pages/admin/Users"));
 const Roles = lazy(() => import("../pages/admin/Roles"));
 const Settings = lazy(() => import("../pages/admin/Settings"));
 const MyPlan = lazy(() => import("../pages/admin/MyPlan"));
+const Teams = lazy(() => import("../pages/admin/Teams"));
 
 // Platform Administration (super_admin)
 const PlatformTenants = lazy(() => import("../pages/platform/Tenants"));
@@ -80,12 +83,13 @@ const AppRoutes = () => {
         {/* ================= PUBLIC ROUTES ================= */}
 
         <Route element={<MainLayout />}>
+          {/* Signed-in users landing on / go to their dashboard; the other public pages stay reachable. */}
           <Route element={<PublicOnlyRoute />}>
             <Route path={RoutePath.HOME} element={<Home />} />
-            <Route path={RoutePath.ABOUT} element={<About />} />
-            <Route path={RoutePath.PLANS} element={<Plans />} />
-            <Route path={RoutePath.CONTACT} element={<Contact />} />
           </Route>
+          <Route path={RoutePath.ABOUT} element={<About />} />
+          <Route path={RoutePath.PLANS} element={<Plans />} />
+          <Route path={RoutePath.CONTACT} element={<Contact />} />
           <Route path={RoutePath.UNAUTHORIZED} element={<Unauthorized />} />
           <Route path={RoutePath.NOT_FOUND} element={<NotFound />} />
         </Route>
@@ -95,6 +99,8 @@ const AppRoutes = () => {
           <Route path={RoutePath.LOGIN} element={<Login />} />
           <Route path={RoutePath.SIGNUP} element={<Signup />} />
           <Route path={RoutePath.VERIFY_EMAIL} element={<VerifyEmail />} />
+          <Route path={RoutePath.FORGOT_PASSWORD} element={<ForgotPassword />} />
+          <Route path={RoutePath.RESET_PASSWORD} element={<ResetPassword />} />
         </Route>
 
         {/* ================= DASHBOARD LAYOUT ================= */}
@@ -346,6 +352,16 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.ADMIN_MY_PLAN} element={<MyPlan />} />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.TEAMS_MANAGE]}
+              />
+            }
+          >
+            <Route path={RoutePath.ADMIN_TEAMS} element={<Teams />} />
           </Route>
 
           {/* ================= PLATFORM ADMINISTRATION ================= */}

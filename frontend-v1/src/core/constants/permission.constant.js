@@ -90,6 +90,8 @@ export const PERMISSIONS = {
   SETTINGS_MANAGE: 'settings.manage',
   // Plan, usage and upgrades — the tenant owner only (backend: @PreAuthorize ADMIN).
   BILLING_VIEW: 'billing.view',
+  // Sales teams define what a sales manager sees — tenant owner only (backend: /api/sales-teams, ADMIN).
+  TEAMS_MANAGE: 'teams.manage',
 
   // Platform administration (super_admin only — not tenant-scoped)
   TENANTS_VIEW: 'tenants.view',

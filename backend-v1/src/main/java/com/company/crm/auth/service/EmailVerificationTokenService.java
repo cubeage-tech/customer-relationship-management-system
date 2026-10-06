@@ -27,6 +27,8 @@ import java.util.UUID;
 public class EmailVerificationTokenService {
 
     private static final int EXPIRY_HOURS = 48;
+    private static final int RESEND_MAX_REQUESTS = 3;
+    private static final int RESEND_WINDOW_MINUTES = 15;
 
     private final EmailVerificationTokenRepository tokenRepository;
     private final UserRepository userRepository;
@@ -48,7 +50,7 @@ public class EmailVerificationTokenService {
         token.setExpiresAt(now.plusHours(EXPIRY_HOURS));
         tokenRepository.save(token);
 
-        log.info("Email verification token for {}: {} (expires in {}h)", user.getEmail(), token.getToken(), EXPIRY_HOURS);
+        log.info("Email verification token issued for userId={} (expires in {}h)", user.getId(), EXPIRY_HOURS);
         sendAfterCommit(user.getEmail(), user.getFullName(), token.getToken());
     }
 
@@ -57,6 +59,9 @@ public class EmailVerificationTokenService {
     public void resend(String email) {
         userRepository.findByEmail(email)
                 .filter(user -> !user.isEmailVerified() && user.getStatus() == AccountStatus.PENDING_VERIFICATION)
+                // Silently cap resends per account so the endpoint can't be used to flood an inbox.
+                .filter(user -> tokenRepository.countByUserIdAndCreatedAtAfter(
+                        user.getId(), LocalDateTime.now().minusMinutes(RESEND_WINDOW_MINUTES)) < RESEND_MAX_REQUESTS)
                 .ifPresent(this::issueToken);
     }
 

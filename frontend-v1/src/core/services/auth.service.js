@@ -56,9 +56,25 @@ export const signup = (data) => ApiService.signup(data);
  */
 export const verifyEmail = (token) => ApiService.verifyEmail({ token });
 
+/**
+ * Called by ForgotPassword.jsx. The backend answers the same way whether or not the email exists.
+ */
+export const forgotPassword = (email) => ApiService.forgotPassword({ email });
+
+/**
+ * Called by ResetPassword.jsx with the token from the emailed link's query string.
+ */
+export const resetPassword = (token, newPassword) => ApiService.resetPassword({ token, newPassword });
+
+/**
+ * Called by Login.jsx and VerifyEmail.jsx. The backend answers the same way whether or not a link was sent.
+ */
+export const resendVerification = (email) => ApiService.resendVerification({ email });
+
 export class UserAuthService {
   static checkIsLoggedIn() {
     const token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
+    if (SHOW_MOCK_AUTH && token === "dev-mock-token") return true;
     if (token) {
       try {
         const decoded = decodeJWT(token);

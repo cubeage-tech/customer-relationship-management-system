@@ -26,6 +26,7 @@ const Signup = () => {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const strength = getPasswordStrength(form.password);
@@ -69,6 +70,8 @@ const Signup = () => {
     }
     setErrors({});
 
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await signupRequest({
         name: `${form.firstName} ${form.lastName}`.trim(),
@@ -78,11 +81,13 @@ const Signup = () => {
         bankAccountNumber: form.bankAccountNumber,
         role: USER_ROLES.ADMIN,
       });
-      navigate(RoutePath.LOGIN);
+      navigate(`${RoutePath.LOGIN}?signup=check-email&email=${encodeURIComponent(form.email)}`);
     } catch (err) {
       // Surface the backend's reason (e.g. "A user with this email already
       // exists" on 409) instead of a generic message that hides why signup failed.
       setError(err.response?.data?.message || NOTIFICATION_MESSAGES.GENERIC_ERROR);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -377,9 +382,10 @@ const Signup = () => {
 
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 mt-2 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98]"
+              disabled={submitting}
+              className="w-full flex justify-center py-3 px-4 mt-2 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create account
+              {submitting ? 'Creating account…' : 'Create account'}
             </button>
           </form>
 

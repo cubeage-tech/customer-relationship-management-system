@@ -15,6 +15,7 @@ import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.exception.InvalidTokenException;
 import com.company.crm.common.exception.TenantInactiveException;
 import com.company.crm.common.exception.TokenExpiredException;
+import com.company.crm.common.mail.MailService;
 import com.company.crm.common.security.JwtService;
 import com.company.crm.subscription.service.SubscriptionService;
 import com.company.crm.tenant.entity.Tenant;
@@ -25,9 +26,12 @@ import com.company.crm.user.repository.RoleRepository;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -40,6 +44,9 @@ import java.util.UUID;
 public class AuthService {
 
     private static final int PASSWORD_RESET_EXPIRY_HOURS = 1;
+    private static final int LOGIN_MAX_FAILURES = 5;
+    private static final int PASSWORD_RESET_MAX_REQUESTS = 3;
+    private static final int THROTTLE_WINDOW_MINUTES = 15;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -51,10 +58,18 @@ public class AuthService {
     private final AuthMapper authMapper;
     private final EmailVerificationTokenService emailVerificationTokenService;
     private final SubscriptionService subscriptionService;
+    private final MailService mailService;
 
     // noRollbackFor: failed attempts must still be recorded even though we then throw.
     @Transactional(noRollbackFor = ApiException.class)
     public AuthResponse login(LoginRequest request) {
+        long recentFailures = loginAttemptRepository.countByEmailAttemptedAndSuccessfulFalseAndAttemptedAtAfter(
+                request.getEmail(), LocalDateTime.now().minusMinutes(THROTTLE_WINDOW_MINUTES));
+        if (recentFailures >= LOGIN_MAX_FAILURES) {
+            throw ApiException.tooManyRequests("Too many failed sign-in attempts. Try again in "
+                    + THROTTLE_WINDOW_MINUTES + " minutes.");
+        }
+
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 
         if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -65,7 +80,9 @@ public class AuthService {
 
         if (user.getStatus() != AccountStatus.ACTIVE) {
             recordAttempt(user, request.getEmail(), false, "account_" + user.getStatus().getDbValue());
-            throw ApiException.forbidden(statusMessage(user.getStatus()));
+            // Error code lets the login screen offer "resend verification email" for this case only.
+            throw new ApiException(HttpStatus.FORBIDDEN, statusMessage(user.getStatus()),
+                    user.getStatus() == AccountStatus.PENDING_VERIFICATION ? "EMAIL_NOT_VERIFIED" : null);
         }
 
         Tenant tenant = user.getTenant();
@@ -105,7 +122,8 @@ public class AuthService {
 
         Tenant tenant = new Tenant();
         tenant.setCompanyName(request.getOrganizationName());
-        tenant.setLegalName(request.getAddress());
+        // No legal-name field at signup yet; the address was being stored here by mistake.
+        tenant.setLegalName(request.getOrganizationName());
         tenant.setBankAccountNumber(request.getBankAccountNumber());
         tenant = tenantRepository.save(tenant);
 
@@ -142,13 +160,40 @@ public class AuthService {
             return;
         }
 
+        LocalDateTime now = LocalDateTime.now();
+
+        // Silently cap reset mails per account so the endpoint can't be used to flood an inbox.
+        if (passwordResetTokenRepository.countByUserIdAndCreatedAtAfter(user.getId(), now.minusMinutes(THROTTLE_WINDOW_MINUTES))
+                >= PASSWORD_RESET_MAX_REQUESTS) {
+            return;
+        }
+
+        // Only the newest link should work — expire any earlier ones still outstanding.
+        passwordResetTokenRepository.findByUserIdAndUsedAtIsNullAndExpiresAtAfter(user.getId(), now)
+                .forEach(old -> old.setExpiresAt(now));
+
         PasswordResetToken token = new PasswordResetToken();
         token.setUser(user);
         token.setToken(UUID.randomUUID().toString());
-        token.setExpiresAt(LocalDateTime.now().plusHours(PASSWORD_RESET_EXPIRY_HOURS));
+        token.setExpiresAt(now.plusHours(PASSWORD_RESET_EXPIRY_HOURS));
         passwordResetTokenRepository.save(token);
 
-        log.info("Password reset token for {}: {} (expires in {}h)", user.getEmail(), token.getToken(), PASSWORD_RESET_EXPIRY_HOURS);
+        log.info("Password reset requested for userId={} (link expires in {}h)", user.getId(), PASSWORD_RESET_EXPIRY_HOURS);
+        sendResetAfterCommit(user.getEmail(), user.getFullName(), token.getToken());
+    }
+
+    private void sendResetAfterCommit(String email, String fullName, String rawToken) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            mailService.sendPasswordResetEmail(email, fullName, rawToken);
+            return;
+        }
+        // Don't email a link for a token that might still be rolled back.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                mailService.sendPasswordResetEmail(email, fullName, rawToken);
+            }
+        });
     }
 
     @Transactional

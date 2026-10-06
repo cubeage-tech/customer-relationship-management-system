@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import StorageService from '../core/services/storage.service';
 import { APPLICATION_CONSTANTS } from '../core/constants/app.constant';
+import { queryClient } from '../core/query/queryClient';
 
 const { TOKEN, USER_DETAILS } = APPLICATION_CONSTANTS.STORAGE;
 
@@ -18,6 +19,8 @@ export const useAuthStore = create((set) => ({
   },
 
   logout: () => {
+    // Drop cached server data so the next user never sees the previous user's results.
+    queryClient.clear();
     StorageService.removeData(TOKEN);
     StorageService.removeData(USER_DETAILS);
     set({ user: null });

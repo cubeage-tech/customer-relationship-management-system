@@ -12,4 +12,6 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
 
     /** Still-usable tokens for a user — invalidated whenever a fresh one is issued. */
     List<EmailVerificationToken> findByUserIdAndVerifiedAtIsNullAndExpiresAtAfter(Long userId, LocalDateTime now);
+
+    long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime since);
 }

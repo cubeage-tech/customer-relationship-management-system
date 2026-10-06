@@ -10,6 +10,7 @@ class ServerUrl {
     static AUTH_VERIFY_EMAIL = ServerUrl.API_MODULE_AUTH + "/verify-email";
     static AUTH_FORGOT_PASSWORD = ServerUrl.API_MODULE_AUTH + "/forgot-password";
     static AUTH_RESET_PASSWORD = ServerUrl.API_MODULE_AUTH + "/reset-password";
+    static AUTH_RESEND_VERIFICATION = ServerUrl.API_MODULE_AUTH + "/resend-verification";
 
   static API_MODULE_USER = "/api";
 
@@ -85,6 +86,11 @@ class ServerUrl {
     static SUBSCRIPTION_CURRENT = ServerUrl.SUBSCRIPTIONS + "/current";
     static SUBSCRIPTION_PLANS = ServerUrl.SUBSCRIPTIONS + "/plans";
     static SUBSCRIPTION_UPGRADE = ServerUrl.SUBSCRIPTIONS + "/upgrade";
+
+    // sales teams (tenant admin)
+    static SALES_TEAMS = ServerUrl.API_MODULE_USER + "/sales-teams";
+    static salesTeam = (id) => `${ServerUrl.SALES_TEAMS}/${id}`;
+    static salesTeamMembers = (id) => `${ServerUrl.SALES_TEAMS}/${id}/members`;
 
   static PLAN_PRICES = ServerUrl.PLANS + "/prices"; // GET list
   static planPrice = (plan) => `${ServerUrl.PLANS}/${plan}/price`; // PUT single
