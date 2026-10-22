@@ -24,11 +24,14 @@ import com.company.crm.sales.repository.OpportunityRepository;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.quotation.event.QuotationSentEvent;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -43,6 +46,7 @@ public class QuotationService {
     private final UserRepository userRepository;
     private final QuotationMapper quotationMapper;
     private final QuotationPdf quotationPdf;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.quotation.discount-approval-threshold-percent}")
     private BigDecimal discountApprovalThreshold;
@@ -110,7 +114,10 @@ public class QuotationService {
         }
 
         quotation.setStatus(QuotationStatus.PENDING);
-        return quotationMapper.toDto(quotationRepository.save(quotation));
+        QuotationResDto saved = quotationMapper.toDto(quotationRepository.save(quotation));
+        // FR-5.3: SMS alert (if enabled for the tenant) goes out after this transaction commits.
+        eventPublisher.publishEvent(new QuotationSentEvent(quotation.getTenant().getId(), quotation.getId()));
+        return saved;
     }
 
     /** FR-4.5: recorded on the customer's behalf by internal staff — there is no self-service portal yet. */
@@ -122,6 +129,12 @@ public class QuotationService {
         QuotationStatus target = parseStatus(dto.getStatus());
         if (target == QuotationStatus.DRAFT) {
             throw ApiException.badRequest("A quotation cannot be reset to draft this way");
+        }
+        // FR-1.3: keep the first approval time; clear it if the approval is withdrawn.
+        if (target == QuotationStatus.APPROVED && quotation.getCustomerApprovedAt() == null) {
+            quotation.setCustomerApprovedAt(LocalDateTime.now());
+        } else if (target != QuotationStatus.APPROVED) {
+            quotation.setCustomerApprovedAt(null);
         }
         quotation.setStatus(target);
         return quotationMapper.toDto(quotationRepository.save(quotation));

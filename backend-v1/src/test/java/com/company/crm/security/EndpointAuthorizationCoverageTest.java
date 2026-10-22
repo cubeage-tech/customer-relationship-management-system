@@ -34,7 +34,9 @@ class EndpointAuthorizationCoverageTest extends PostgresIntegrationTest {
             "POST /auth/forgot-password",
             "POST /auth/reset-password",
             "GET /api/plans/prices",          // marketing pricing page
-            "POST /api/payments/webhook"      // payment provider; authenticated by signature
+            "POST /api/payments/webhook",     // payment provider; authenticated by signature
+            "POST /api/communications/webhooks/twilio/inbound",  // Twilio; authenticated by X-Twilio-Signature
+            "POST /api/communications/webhooks/twilio/status"    // Twilio; authenticated by X-Twilio-Signature
     );
 
     @Autowired

@@ -54,6 +54,68 @@ class ApiService {
     return this.apiget(ServerUrl.customer(id));
   }
 
+  static getCustomerPurchases(id) {
+    return this.apiget(ServerUrl.customerPurchases(id));
+  }
+
+  static getCustomerDocuments(id) {
+    return this.apiget(ServerUrl.customerDocuments(id));
+  }
+
+  static uploadCustomerDocument(id, file) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.axiosInstance.post(ServerUrl.customerDocuments(id), form).then((res) => res.data?.data);
+  }
+
+  static downloadCustomerDocument(id, documentId, inline = false) {
+    return this.axiosInstance.get(`${ServerUrl.customerDocument(id, documentId)}/download`, {
+      params: { inline },
+      responseType: 'blob',
+    });
+  }
+
+  static deleteCustomerDocument(id, documentId) {
+    return this.apidelete(ServerUrl.customerDocument(id, documentId));
+  }
+
+  // ------------------ Communication APIs (Module 5) ------------------
+  static getCommunications(params) {
+    return this.apiget(ServerUrl.COMMUNICATIONS, params);
+  }
+
+  static logCall(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_CALLS, data);
+  }
+
+  static sendCommunicationEmail(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_EMAIL, data);
+  }
+
+  static sendWhatsApp(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_WHATSAPP, data);
+  }
+
+  static getSmsAlerts() {
+    return this.apiget(ServerUrl.COMMUNICATION_SMS_ALERTS);
+  }
+
+  static updateSmsAlerts(rules) {
+    return this.apiput(ServerUrl.COMMUNICATION_SMS_ALERTS, rules);
+  }
+
+  static getIndustries(includeInactive = false) {
+    return this.apiget(ServerUrl.INDUSTRIES, { includeInactive });
+  }
+
+  static createIndustry(data) {
+    return this.apipost(ServerUrl.INDUSTRIES, data);
+  }
+
+  static updateIndustry(code, data) {
+    return this.apiput(ServerUrl.industry(code), data);
+  }
+
   static createCustomer(data) {
     return this.apipost(ServerUrl.CUSTOMERS, data);
   }
@@ -109,6 +171,14 @@ class ApiService {
 
   static assignLead(id, data) {
     return this.apipatch(ServerUrl.leadAssign(id), data);
+  }
+
+  static assignLeadTeam(id, data) {
+    return this.apipatch(ServerUrl.leadTeam(id), data);
+  }
+
+  static getLeadAssignableTeams() {
+    return this.apiget(ServerUrl.LEAD_ASSIGNABLE_TEAMS);
   }
 
   // ------------------ Opportunity APIs ------------------
@@ -325,6 +395,22 @@ class ApiService {
   }
 
   // ------------------ Sales Team APIs (tenant admin) ------------------
+  static getLeadAssignmentRules() {
+    return this.apiget(ServerUrl.LEAD_ASSIGNMENT_RULES);
+  }
+
+  static createLeadAssignmentRule(data) {
+    return this.apipost(ServerUrl.LEAD_ASSIGNMENT_RULES, data);
+  }
+
+  static updateLeadAssignmentRule(id, data) {
+    return this.apiput(ServerUrl.leadAssignmentRule(id), data);
+  }
+
+  static deleteLeadAssignmentRule(id) {
+    return this.apidelete(ServerUrl.leadAssignmentRule(id));
+  }
+
   static getSalesTeams() {
     return this.apiget(ServerUrl.SALES_TEAMS);
   }

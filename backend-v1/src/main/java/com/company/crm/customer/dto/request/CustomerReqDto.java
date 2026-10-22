@@ -12,7 +12,7 @@ public class CustomerReqDto {
     @NotBlank
     private String companyName;
 
-    /** One of the IndustryType db values, e.g. "manufacturing", "real_estate". */
+    /** FR-1.6: an active code from the tenant's industry list (GET /api/industries), e.g. "manufacturing". */
     @NotBlank
     private String industry;
 

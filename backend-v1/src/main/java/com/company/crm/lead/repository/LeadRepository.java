@@ -2,6 +2,8 @@ package com.company.crm.lead.repository;
 
 import com.company.crm.lead.entity.Lead;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -17,6 +19,13 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     List<Lead> findByTenantIdAndOwnerId(Long tenantId, Long ownerId);
 
     List<Lead> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
+
+    /** FR-2.3: leads owned by someone in scope, or assigned to one of the given teams (owner may be empty). */
+    @Query("select l from Lead l left join l.owner o left join l.team t"
+            + " where l.tenant.id = :tenantId and (o.id in :ownerIds or t.id in :teamIds)")
+    List<Lead> findInScopeOrTeams(@Param("tenantId") Long tenantId,
+                                  @Param("ownerIds") Collection<Long> ownerIds,
+                                  @Param("teamIds") Collection<Long> teamIds);
 
     List<Lead> findByTenantIdAndCampaignId(Long tenantId, Long campaignId);
 

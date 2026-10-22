@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import DashboardShell from '../../components/dashboard/DashboardShell';
-import { INDUSTRY_LABELS, OPPORTUNITY_STAGE_LABELS, ROLE_LABELS, TICKET_STATUS_LABELS } from '../../core/constants/app.constant';
+import { OPPORTUNITY_STAGE_LABELS, ROLE_LABELS, TICKET_STATUS_LABELS } from '../../core/constants/app.constant';
 import { listCustomers } from '../../core/services/customer.service';
 import { listOpportunities } from '../../core/services/opportunity.service';
 import { listTickets } from '../../core/services/serviceTicket.service';
 import { listUsers } from '../../core/services/user.service';
+import { useIndustries } from '../../core/hooks/useIndustries';
 
 const OPEN_TICKET_STATUSES = new Set(['open', 'assigned', 'in_progress']);
 const CLOSED_OPPORTUNITY_STAGES = new Set(['won', 'lost']);
@@ -26,6 +27,7 @@ const groupRecords = (records, getKey, labels = {}) => {
 };
 
 const AdminDashboard = () => {
+  const { labels: industryLabels } = useIndustries();
   const [records, setRecords] = useState(null);
   const [selectedGraph, setSelectedGraph] = useState('users');
   const [error, setError] = useState('');
@@ -70,7 +72,7 @@ const AdminDashboard = () => {
       description: 'Customer accounts across all teams',
       centerLabel: 'customers',
       total: customers.length,
-      rows: groupRecords(customers, (customer) => customer.industry, INDUSTRY_LABELS),
+      rows: groupRecords(customers, (customer) => customer.industry, industryLabels),
     },
     opportunities: {
       title: 'Open opportunities by stage',

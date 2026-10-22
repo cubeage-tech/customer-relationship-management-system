@@ -49,6 +49,9 @@ public class Security {
                         .requestMatchers(HttpMethod.GET, "/api/plans/prices").permitAll()
                         // Server-to-server from the payment provider; authenticated by its signature.
                         .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
+                        // Twilio messaging webhooks (FR-5.2/5.3); authenticated by X-Twilio-Signature.
+                        .requestMatchers(HttpMethod.POST, "/api/communications/webhooks/twilio/inbound",
+                                "/api/communications/webhooks/twilio/status").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )

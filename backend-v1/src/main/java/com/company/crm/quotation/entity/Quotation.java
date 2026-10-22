@@ -57,6 +57,10 @@ public class Quotation {
     @Column(name = "valid_until")
     private LocalDate validUntil;
 
+    /** FR-1.3: when the customer's approval was recorded — dates the purchase in the customer's history. */
+    @Column(name = "customer_approved_at")
+    private LocalDateTime customerApprovedAt;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

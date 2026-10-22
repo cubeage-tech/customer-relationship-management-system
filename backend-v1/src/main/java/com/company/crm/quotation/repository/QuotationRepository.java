@@ -1,5 +1,6 @@
 package com.company.crm.quotation.repository;
 
+import com.company.crm.common.enums.QuotationStatus;
 import com.company.crm.quotation.entity.Quotation;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -17,6 +18,9 @@ public interface QuotationRepository extends JpaRepository<Quotation, Long> {
     List<Quotation> findByTenantIdAndOwnerId(Long tenantId, Long ownerId);
 
     List<Quotation> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
+
+    /** FR-1.3: a customer's quotations in one status (APPROVED = purchases). */
+    List<Quotation> findByTenantIdAndCustomerIdAndStatus(Long tenantId, Long customerId, QuotationStatus status);
 
     long countByTenantId(Long tenantId);
 }

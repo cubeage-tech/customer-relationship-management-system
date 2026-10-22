@@ -20,6 +20,9 @@ public interface OpportunityRepository extends JpaRepository<Opportunity, Long> 
 
     List<Opportunity> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
 
+    /** FR-1.3: a customer's deals in one stage (WON = purchases). */
+    List<Opportunity> findByTenantIdAndCustomerIdAndStage(Long tenantId, Long customerId, OpportunityStage stage);
+
     long countByTenantIdAndStageNotIn(Long tenantId, Collection<OpportunityStage> stages);
 
     long countByTenantIdAndStageNotIn(Long tenantId, List<OpportunityStage> stages);

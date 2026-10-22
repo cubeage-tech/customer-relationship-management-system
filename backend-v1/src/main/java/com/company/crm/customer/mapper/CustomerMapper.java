@@ -13,7 +13,7 @@ public class CustomerMapper {
         return new CustomerResDto(
                 customer.getId(),
                 customer.getCompanyName(),
-                customer.getIndustry().getDbValue(),
+                customer.getIndustry(),
                 customer.getStatus().getDbValue(),
                 customer.getEmail(),
                 customer.getPhone(),

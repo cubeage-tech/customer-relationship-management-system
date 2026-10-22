@@ -27,7 +27,9 @@ import com.company.crm.support.repository.ServiceTicketRepository;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.support.event.TicketStatusChangedEvent;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +49,7 @@ public class ServiceTicketService {
     private final AuditService auditService;
     private final ServiceTicketSummaryQuery ticketSummaryQuery;
     private final ReportingPeriods reportingPeriods;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** Window for the average-resolution-time figure. */
     private static final int RESOLUTION_AVERAGE_DAYS = 30;
@@ -237,11 +240,17 @@ public class ServiceTicketService {
 
         TicketStatus target = parseStatus(dto.getStatus());
         boolean closingOut = target == TicketStatus.RESOLVED || target == TicketStatus.CLOSED;
+        boolean changed = ticket.getStatus() != target;
 
         ticket.setStatus(target);
         ticket.setResolvedAt(closingOut ? (ticket.getResolvedAt() != null ? ticket.getResolvedAt() : LocalDateTime.now()) : null);
 
-        return ticketMapper.toDto(ticketRepository.save(ticket));
+        ServiceTicketResDto saved = ticketMapper.toDto(ticketRepository.save(ticket));
+        if (changed) {
+            // FR-5.3: SMS alert (if enabled for the tenant) goes out after this transaction commits.
+            eventPublisher.publishEvent(new TicketStatusChangedEvent(ticket.getTenant().getId(), ticket.getId(), target));
+        }
+        return saved;
     }
 
     /** FR-6.5: recorded on the customer's behalf by internal staff — no self-service portal yet. */

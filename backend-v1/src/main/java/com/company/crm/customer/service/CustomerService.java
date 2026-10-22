@@ -4,15 +4,23 @@ import com.company.crm.common.period.ReportingPeriods;
 import com.company.crm.customer.dto.response.CustomerSummaryDto;
 import com.company.crm.customer.repository.CustomerSummaryQuery;
 import com.company.crm.common.enums.CustomerStatus;
-import com.company.crm.common.enums.IndustryType;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.industry.service.IndustryService;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.scope.DataScope;
 import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.dto.request.CustomerContactReqDto;
 import com.company.crm.customer.dto.request.CustomerReqDto;
+import com.company.crm.common.enums.OpportunityStage;
+import com.company.crm.common.enums.QuotationStatus;
 import com.company.crm.customer.dto.response.CustomerContactResDto;
+import com.company.crm.customer.dto.response.CustomerPurchaseResDto;
 import com.company.crm.customer.dto.response.CustomerResDto;
+import com.company.crm.quotation.entity.QuotationLineItem;
+import com.company.crm.quotation.repository.QuotationRepository;
+import com.company.crm.sales.repository.OpportunityRepository;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.entity.CustomerContact;
 import com.company.crm.customer.mapper.CustomerMapper;
@@ -25,11 +33,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CustomerService {
+
+    private static final String AUDIT_ENTITY = "customer";
 
     private final CustomerRepository customerRepository;
     private final DataScopeResolver dataScopeResolver;
@@ -38,6 +51,10 @@ public class CustomerService {
     private final UserRepository userRepository;
     private final CustomerMapper customerMapper;
     private final PlanLimitService planLimitService;
+    private final OpportunityRepository opportunityRepository;
+    private final IndustryService industryService;
+    private final AuditService auditService;
+    private final QuotationRepository quotationRepository;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (contacts, owner, tenant), so the session must stay open through mapping.
@@ -46,7 +63,7 @@ public class CustomerService {
         List<Customer> customers = findInScope(currentUser);
 
         return customers.stream()
-                .filter(c -> industry == null || industry.isBlank() || c.getIndustry().getDbValue().equals(industry))
+                .filter(c -> industry == null || industry.isBlank() || c.getIndustry().equals(industry))
                 .filter(c -> status == null || status.isBlank() || c.getStatus().getDbValue().equals(status))
                 .filter(c -> search == null || search.isBlank()
                         || c.getCompanyName().toLowerCase().contains(search.trim().toLowerCase()))
@@ -61,6 +78,30 @@ public class CustomerService {
         return customerMapper.toDto(customer);
     }
 
+    /**
+     * FR-1.3: purchase history, newest first. A purchase is a won deal (dated when it was marked
+     * won) or a customer-approved quotation (dated when the approval was recorded). A quotation
+     * whose deal is already won is the same purchase, so only the deal is listed.
+     */
+    @Transactional(readOnly = true)
+    public List<CustomerPurchaseResDto> listPurchases(User currentUser, Long customerId) {
+        Customer customer = findCustomer(currentUser, customerId);
+        assertViewAccess(currentUser, customer);
+        Long tenantId = requireTenantId(currentUser);
+
+        List<CustomerPurchaseResDto> purchases = new ArrayList<>();
+        opportunityRepository.findByTenantIdAndCustomerIdAndStage(tenantId, customerId, OpportunityStage.WON)
+                .forEach(o -> purchases.add(new CustomerPurchaseResDto("opportunity", o.getId(), null, o.getProductService(),
+                        o.getDealValue(), o.getStageChangedAt() != null ? o.getStageChangedAt() : o.getUpdatedAt())));
+        quotationRepository.findByTenantIdAndCustomerIdAndStatus(tenantId, customerId, QuotationStatus.APPROVED).stream()
+                .filter(q -> q.getOpportunity() == null || q.getOpportunity().getStage() != OpportunityStage.WON)
+                .forEach(q -> purchases.add(new CustomerPurchaseResDto("quotation", q.getId(), q.getQuotationNumber(),
+                        q.getLineItems().stream().map(QuotationLineItem::getProductName).distinct().collect(Collectors.joining(", ")),
+                        q.getGrandTotal(), q.getCustomerApprovedAt() != null ? q.getCustomerApprovedAt() : q.getUpdatedAt())));
+        purchases.sort(Comparator.comparing(CustomerPurchaseResDto::purchasedAt).reversed());
+        return purchases;
+    }
+
     @Transactional
     public CustomerResDto createCustomer(User currentUser, CustomerReqDto dto) {
         requireTenantId(currentUser);
@@ -70,15 +111,24 @@ public class CustomerService {
         customer.setTenant(currentUser.getTenant());
         customer.setCreatedBy(currentUser);
         applyFields(currentUser, customer, dto);
-        return customerMapper.toDto(customerRepository.save(customer));
+        Customer saved = customerRepository.save(customer);
+        auditService.record(currentUser, AuditAction.CUSTOMER_CREATED, AUDIT_ENTITY, saved.getId(), "name=" + saved.getCompanyName());
+        return customerMapper.toDto(saved);
     }
 
     @Transactional
     public CustomerResDto updateCustomer(User currentUser, Long customerId, CustomerReqDto dto) {
         Customer customer = findCustomer(currentUser, customerId);
         assertEditAccess(currentUser, customer);
+        List<String> before = snapshot(customer);
         applyFields(currentUser, customer, dto);
-        return customerMapper.toDto(customerRepository.save(customer));
+        Customer saved = customerRepository.save(customer);
+        // AC-1.2: every saved edit leaves an audit entry naming the fields that changed (not their values).
+        List<String> changed = changedFields(before, snapshot(saved));
+        if (!changed.isEmpty()) {
+            auditService.record(currentUser, AuditAction.CUSTOMER_UPDATED, AUDIT_ENTITY, saved.getId(), "changed=" + String.join(",", changed));
+        }
+        return customerMapper.toDto(saved);
     }
 
     @Transactional
@@ -86,6 +136,7 @@ public class CustomerService {
         Customer customer = findCustomer(currentUser, customerId);
         assertEditAccess(currentUser, customer);
         customer.setStatus(CustomerStatus.ARCHIVED);
+        auditService.record(currentUser, AuditAction.CUSTOMER_ARCHIVED, AUDIT_ENTITY, customer.getId(), null);
         return customerMapper.toDto(customerRepository.save(customer));
     }
 
@@ -94,6 +145,7 @@ public class CustomerService {
         Customer customer = findCustomer(currentUser, customerId);
         assertEditAccess(currentUser, customer);
         customer.setStatus(CustomerStatus.ACTIVE);
+        auditService.record(currentUser, AuditAction.CUSTOMER_RESTORED, AUDIT_ENTITY, customer.getId(), null);
         return customerMapper.toDto(customerRepository.save(customer));
     }
 
@@ -106,6 +158,7 @@ public class CustomerService {
         contact.setCustomer(customer);
         applyContactFields(contact, dto);
         customer.getContacts().add(contact);
+        auditService.record(currentUser, AuditAction.CUSTOMER_CONTACT_ADDED, AUDIT_ENTITY, customer.getId(), "contact=" + contact.getName());
 
         return customerMapper.toDto(customerRepository.save(customer));
     }
@@ -117,6 +170,7 @@ public class CustomerService {
 
         CustomerContact contact = findContact(customer, contactId);
         applyContactFields(contact, dto);
+        auditService.record(currentUser, AuditAction.CUSTOMER_CONTACT_UPDATED, AUDIT_ENTITY, customer.getId(), "contact=" + contact.getName());
 
         return customerMapper.toDto(customerRepository.save(customer));
     }
@@ -128,6 +182,7 @@ public class CustomerService {
 
         CustomerContact contact = findContact(customer, contactId);
         customer.getContacts().remove(contact);
+        auditService.record(currentUser, AuditAction.CUSTOMER_CONTACT_REMOVED, AUDIT_ENTITY, customer.getId(), "contact=" + contact.getName());
 
         return customerMapper.toDto(customerRepository.save(customer));
     }
@@ -136,7 +191,12 @@ public class CustomerService {
 
     private void applyFields(User currentUser, Customer customer, CustomerReqDto dto) {
         customer.setCompanyName(dto.getCompanyName());
-        customer.setIndustry(parseIndustry(dto.getIndustry()));
+        // FR-1.6: a new or changed industry must be active in the tenant's list; an unchanged one is
+        // kept even if it has since been deactivated.
+        if (!java.util.Objects.equals(customer.getIndustry(), dto.getIndustry())) {
+            industryService.requireActive(requireTenantId(currentUser), dto.getIndustry());
+        }
+        customer.setIndustry(dto.getIndustry());
         customer.setEmail(dto.getEmail());
         customer.setPhone(dto.getPhone());
         customer.setWebsite(dto.getWebsite());
@@ -161,12 +221,23 @@ public class CustomerService {
         return owner;
     }
 
-    private IndustryType parseIndustry(String rawIndustry) {
-        try {
-            return IndustryType.fromDbValue(rawIndustry);
-        } catch (IllegalArgumentException ex) {
-            throw ApiException.badRequest("Unknown industry: " + rawIndustry);
+    /** AC-1.2: comparable view of the audited fields (owner by id). */
+    private static List<String> snapshot(Customer c) {
+        return java.util.Arrays.asList(c.getCompanyName(), c.getIndustry(), c.getEmail(), c.getPhone(), c.getWebsite(),
+                c.getAddress(), c.getNotes(), c.getOwner() != null ? String.valueOf(c.getOwner().getId()) : null);
+    }
+
+    private static final List<String> AUDITED_FIELDS =
+            List.of("companyName", "industry", "email", "phone", "website", "address", "notes", "owner");
+
+    private static List<String> changedFields(List<String> before, List<String> after) {
+        List<String> changed = new ArrayList<>();
+        for (int i = 0; i < AUDITED_FIELDS.size(); i++) {
+            if (!java.util.Objects.equals(before.get(i), after.get(i))) {
+                changed.add(AUDITED_FIELDS.get(i));
+            }
         }
+        return changed;
     }
 
     private Customer findCustomer(User currentUser, Long customerId) {

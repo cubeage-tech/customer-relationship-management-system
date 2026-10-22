@@ -5,10 +5,11 @@ import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
-import { INDUSTRY_LABELS, INDUSTRY_OPTIONS } from '../../core/constants/app.constant';
+import { useIndustries } from '../../core/hooks/useIndustries';
 import RoutePath from '../../core/constants/routes.constant';
 import {
   getCustomer,
+  getCustomerPurchases,
   updateCustomer,
   archiveCustomer,
   restoreCustomer,
@@ -17,6 +18,8 @@ import {
   deleteCustomerContact,
 } from '../../core/services/customer.service';
 import { listUsers } from '../../core/services/user.service';
+import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
+import CustomerDocuments from '../../components/customer/CustomerDocuments';
 
 const PROFILE_FIELDS = [
   { name: 'companyName', label: 'Company name', required: true },
@@ -27,6 +30,8 @@ const PROFILE_FIELDS = [
 ];
 
 const EMPTY_CONTACT_FORM = { name: '', designation: '', phone: '', email: '' };
+
+const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
 
 const toProfileForm = (customer) => ({
   companyName: customer.companyName || '',
@@ -44,6 +49,7 @@ const CustomerDetail = () => {
   const { can } = usePermissions();
   const canEdit = can(PERMISSIONS.CUSTOMERS_EDIT);
   const canArchive = can(PERMISSIONS.CUSTOMERS_DELETE);
+  const { labelOf: industryLabel, optionsFor: industryOptionsFor } = useIndustries();
 
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +65,9 @@ const CustomerDetail = () => {
   const [contactForm, setContactForm] = useState(EMPTY_CONTACT_FORM);
   const [contactError, setContactError] = useState('');
 
+  const [purchases, setPurchases] = useState([]);
+  const [purchasesError, setPurchasesError] = useState('');
+
   const refresh = () => {
     getCustomer(id)
       .then((data) => {
@@ -71,6 +80,12 @@ const CustomerDetail = () => {
 
   useEffect(() => {
     refresh();
+    getCustomerPurchases(id)
+      .then((data) => {
+        setPurchases(data ?? []);
+        setPurchasesError('');
+      })
+      .catch(() => setPurchasesError('Could not load purchase history.'));
     if (canEdit) {
       listUsers().then((data) => setUsers(data ?? [])).catch(() => setUsers([]));
     }
@@ -158,7 +173,7 @@ const CustomerDetail = () => {
     <section>
       <PageHeader
         title={customer.companyName}
-        subtitle={`${INDUSTRY_LABELS[customer.industry] || customer.industry} · ${customer.status === 'archived' ? 'Archived' : 'Active'}`}
+        subtitle={`${industryLabel(customer.industry)} · ${customer.status === 'archived' ? 'Archived' : 'Active'}`}
         actions={
           <div className="flex items-center gap-3">
             <Link to={RoutePath.CUSTOMERS} className="text-sm text-slate-500 hover:underline">
@@ -208,7 +223,7 @@ const CustomerDetail = () => {
               onChange={handleProfileChange}
               className="border border-slate-300 rounded px-2 py-1"
             >
-              {INDUSTRY_OPTIONS.map((option) => (
+              {industryOptionsFor(customer.industry).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -356,19 +371,55 @@ const CustomerDetail = () => {
         )}
       </div>
 
-      {/* ---------------- Purchase history & communication timeline ----------------
-          FR-1.3/FR-1.4: these read from the Quotation and Communication modules, which
-          are not built yet — shown as honest empty states rather than fake data. */}
-      <div className="grid gap-6 sm:grid-cols-2">
-        <EmptyState
-          title="Purchase history"
-          message="Order history will appear here once the Quotation module is available."
-        />
-        <EmptyState
-          title="Communication timeline"
-          message="Email, WhatsApp, SMS and call history will appear here once the Communication module is available."
-        />
+      {/* ---------------- Purchase history (FR-1.3) ----------------
+          Won deals and customer-approved quotations, newest first. */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
+        <h2 className="font-semibold text-slate-900 mb-4">Purchase history</h2>
+        {purchasesError ? (
+          <p className="text-sm text-red-600">{purchasesError}</p>
+        ) : purchases.length === 0 ? (
+          <p className="text-sm text-slate-500">No purchases yet. Won deals and customer-approved quotations will appear here.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-slate-300">
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Product / service</th>
+                  <th className="py-2 pr-4">Order value</th>
+                  <th className="py-2 pr-4">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.map((p) => (
+                  <tr key={`${p.source}-${p.sourceId}`} className="border-b border-slate-100">
+                    <td className="py-2 pr-4 whitespace-nowrap">{p.purchasedAt ? new Date(p.purchasedAt).toLocaleDateString() : '—'}</td>
+                    <td className="py-2 pr-4">{p.productService || '—'}</td>
+                    <td className="py-2 pr-4 font-medium">{formatCurrency(p.orderValue)}</td>
+                    <td className="py-2 pr-4">
+                      {p.source === 'quotation' ? (
+                        <Link to={RoutePath.EDIT_QUOTATION.replace(':id', p.sourceId)} className="text-indigo-600 hover:underline">
+                          Quotation {p.reference}
+                        </Link>
+                      ) : (
+                        <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', p.sourceId)} className="text-indigo-600 hover:underline">
+                          Won deal
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* ---------------- Documents (FR-1.5) ---------------- */}
+      <CustomerDocuments customerId={customer.id} canEdit={canEdit} />
+
+      {/* ---------------- Communication timeline (FR-5.6) ---------------- */}
+      <CommunicationTimeline customerId={customer.id} defaultEmail={customer.email || ''} defaultPhone={customer.phone || ''} />
     </section>
   );
 };

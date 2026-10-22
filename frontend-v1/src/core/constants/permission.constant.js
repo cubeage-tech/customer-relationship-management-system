@@ -92,6 +92,8 @@ export const PERMISSIONS = {
   BILLING_VIEW: 'billing.view',
   // Sales teams define what a sales manager sees — tenant owner only (backend: /api/sales-teams, ADMIN).
   TEAMS_MANAGE: 'teams.manage',
+  // Module 5 — log calls, send email/WhatsApp (backend: /api/communications SEND_ROLES).
+  COMMUNICATIONS_SEND: 'communications.send',
 
   // Platform administration (super_admin only — not tenant-scoped)
   TENANTS_VIEW: 'tenants.view',
@@ -139,6 +141,7 @@ export const ROLE_PERMISSIONS = {
 
   [USER_ROLES.SALES_MANAGER]: [
     PERMISSIONS.CUSTOMERS_VIEW,
+    PERMISSIONS.COMMUNICATIONS_SEND,
     PERMISSIONS.CUSTOMERS_CREATE,
     PERMISSIONS.CUSTOMERS_EDIT,
     PERMISSIONS.CUSTOMERS_DELETE,
@@ -164,6 +167,7 @@ export const ROLE_PERMISSIONS = {
 
   [USER_ROLES.SALES_EXECUTIVE]: [
     PERMISSIONS.CUSTOMERS_VIEW,
+    PERMISSIONS.COMMUNICATIONS_SEND,
     PERMISSIONS.CUSTOMERS_EDIT,
     PERMISSIONS.LEADS_VIEW,
     PERMISSIONS.LEADS_CREATE,
@@ -191,6 +195,7 @@ export const ROLE_PERMISSIONS = {
 
   [USER_ROLES.SERVICE_AGENT]: [
     PERMISSIONS.CUSTOMERS_VIEW,
+    PERMISSIONS.COMMUNICATIONS_SEND,
     PERMISSIONS.TICKETS_VIEW,
     PERMISSIONS.TICKETS_CREATE,
     PERMISSIONS.TICKETS_EDIT,

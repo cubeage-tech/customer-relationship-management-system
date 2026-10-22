@@ -1,6 +1,7 @@
 package com.company.crm.common.mail;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,8 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import java.util.Properties;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +22,39 @@ public class MailService {
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
+
+    /** FR-5.1: From address for customer emails (blank = the SMTP account default). */
+    @Value("${app.communication.email.from:}")
+    private String customerEmailFrom;
+
+    /** FR-5.1: the shared mailbox polled over IMAP, so customer replies come back into the CRM. */
+    @Value("${app.communication.email.reply-to:}")
+    private String customerEmailReplyTo;
+
+    /**
+     * FR-5.1: sends a plain-text email to a customer with our own Message-ID, so a reply's
+     * In-Reply-To header can be matched back to the logged email. Throws on failure — the caller
+     * records the send as failed.
+     */
+    public void sendCustomerEmail(String toEmail, String subject, String body, String messageId) throws MessagingException {
+        MimeMessage message = new MimeMessage(Session.getInstance(new Properties())) {
+            @Override
+            protected void updateMessageID() throws MessagingException {
+                setHeader("Message-ID", messageId);
+            }
+        };
+        MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+        helper.setTo(toEmail);
+        helper.setSubject(subject);
+        helper.setText(body, false);
+        if (!customerEmailFrom.isBlank()) {
+            helper.setFrom(customerEmailFrom);
+        }
+        if (!customerEmailReplyTo.isBlank()) {
+            helper.setReplyTo(customerEmailReplyTo);
+        }
+        mailSender.send(message);
+    }
 
     /** Sends the "confirm your email" message with a button linking back to the frontend. */
     public void sendVerificationEmail(String toEmail, String fullName, String token) {

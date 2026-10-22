@@ -1,6 +1,7 @@
 package com.company.crm.lead.entity;
 
 import com.company.crm.campaign.entity.Campaign;
+import com.company.crm.sales_team.entity.SalesTeam;
 import com.company.crm.common.enums.IndustryType;
 import com.company.crm.common.enums.LeadSource;
 import com.company.crm.common.enums.LeadStage;
@@ -59,6 +60,11 @@ public class Lead {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;
+
+    /** FR-2.3: the sales team this lead is assigned to (optional, alongside or before an owner). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private SalesTeam team;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "converted_customer_id")

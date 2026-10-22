@@ -46,6 +46,17 @@ public class DataScopeResolver {
         };
     }
 
+    /**
+     * FR-2.3: teams whose assigned records a user also sees regardless of owner — the teams a
+     * sales manager manages, when TEAM scope is active. Empty for everyone else.
+     */
+    public List<Long> managedTeamIds(User user) {
+        if (user.getRole().getName() != RoleType.SALES_MANAGER || !salesTeamScopeEnabled || user.getTenant() == null) {
+            return List.of();
+        }
+        return salesTeamRepository.findIdsManagedBy(user.getTenant().getId(), user.getId());
+    }
+
     /** Throws 403 unless a record owned by {@code ownerId} is inside the user's scope. */
     public void assertCanAccess(User user, Long ownerId, String recordLabel) {
         if (!resolve(user).allows(ownerId)) {

@@ -1,5 +1,102 @@
 package com.company.crm.communication.entity;
 
+import com.company.crm.common.enums.CallOutcome;
+import com.company.crm.common.enums.CommunicationChannel;
+import com.company.crm.common.enums.CommunicationDirection;
+import com.company.crm.common.enums.CommunicationStatus;
+import com.company.crm.customer.entity.Customer;
+import com.company.crm.lead.entity.Lead;
+import com.company.crm.tenant.entity.Tenant;
+import com.company.crm.user.entity.User;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+/**
+ * DB-E09 Communication Log: one email, WhatsApp message, SMS or call, logged against a customer
+ * and/or a lead (FR-5.1–5.4). The customer's rows, newest first, are its timeline (FR-5.6).
+ */
+@Entity
+@Table(name = "communication_logs")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Communication {
-    
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lead_id")
+    private Lead lead;
+
+    @Column(nullable = false)
+    private CommunicationChannel channel;
+
+    @Column(nullable = false)
+    private CommunicationDirection direction;
+
+    @Column(nullable = false)
+    private CommunicationStatus status;
+
+    private String subject;
+
+    @Column(columnDefinition = "TEXT")
+    private String body;
+
+    /** Email address or phone number on the customer's side. */
+    private String counterpart;
+
+    /** Email Message-ID or provider SID — matches replies and delivery callbacks to this row. */
+    @Column(name = "provider_message_id")
+    private String providerMessageId;
+
+    @Column(name = "error_message")
+    private String errorMessage;
+
+    @Column(name = "call_outcome")
+    private CallOutcome callOutcome;
+
+    @Column(name = "call_duration_seconds")
+    private Integer callDurationSeconds;
+
+    @Column(name = "occurred_at", nullable = false)
+    private LocalDateTime occurredAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        if (occurredAt == null) {
+            occurredAt = now;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

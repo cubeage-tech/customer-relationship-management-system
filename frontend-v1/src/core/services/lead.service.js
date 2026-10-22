@@ -14,3 +14,17 @@ export const changeLeadStage = (id, stage, force = false) =>
   ApiService.changeLeadStage(id, { stage, force });
 
 export const assignLead = (id, ownerId) => ApiService.assignLead(id, { ownerId });
+
+/** FR-2.3: assign a lead to a sales team; teamId null clears it. */
+export const assignLeadTeam = (id, teamId) => ApiService.assignLeadTeam(id, { teamId });
+
+export const listAssignableTeams = () => ApiService.getLeadAssignableTeams();
+
+/** FR-2.3: auto-assignment rules for new leads (admin). */
+export const listAssignmentRules = () => ApiService.getLeadAssignmentRules();
+
+export const createAssignmentRule = (data) => ApiService.createLeadAssignmentRule(data);
+
+export const updateAssignmentRule = (id, data) => ApiService.updateLeadAssignmentRule(id, data);
+
+export const deleteAssignmentRule = (id) => ApiService.deleteLeadAssignmentRule(id);

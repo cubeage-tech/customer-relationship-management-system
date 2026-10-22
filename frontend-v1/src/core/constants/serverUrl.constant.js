@@ -23,6 +23,20 @@ class ServerUrl {
     static customerArchive = (id) => `${ServerUrl.CUSTOMERS}/${id}/archive`;
     static customerRestore = (id) => `${ServerUrl.CUSTOMERS}/${id}/restore`;
     static customerContacts = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/contacts`;
+    static customerPurchases = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/purchases`;
+    static customerDocuments = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/documents`;
+    static customerDocument = (customerId, documentId) => `${ServerUrl.CUSTOMERS}/${customerId}/documents/${documentId}`;
+
+    // industries (FR-1.6)
+    static INDUSTRIES = ServerUrl.API_MODULE_USER + "/industries";
+    static industry = (code) => `${ServerUrl.INDUSTRIES}/${code}`;
+
+    // communications (Module 5)
+    static COMMUNICATIONS = ServerUrl.API_MODULE_USER + "/communications";
+    static COMMUNICATION_CALLS = ServerUrl.COMMUNICATIONS + "/calls";
+    static COMMUNICATION_EMAIL = ServerUrl.COMMUNICATIONS + "/email";
+    static COMMUNICATION_WHATSAPP = ServerUrl.COMMUNICATIONS + "/whatsapp";
+    static COMMUNICATION_SMS_ALERTS = ServerUrl.COMMUNICATIONS + "/sms-alerts";
     static customerContact = (customerId, contactId) =>
       `${ServerUrl.CUSTOMERS}/${customerId}/contacts/${contactId}`;
 
@@ -31,6 +45,10 @@ class ServerUrl {
     static lead = (id) => `${ServerUrl.LEADS}/${id}`;
     static leadStage = (id) => `${ServerUrl.LEADS}/${id}/stage`;
     static leadAssign = (id) => `${ServerUrl.LEADS}/${id}/assign`;
+    static leadTeam = (id) => `${ServerUrl.LEADS}/${id}/team`;
+    static LEAD_ASSIGNABLE_TEAMS = ServerUrl.LEADS + "/assignable-teams";
+    static LEAD_ASSIGNMENT_RULES = ServerUrl.API_MODULE_USER + "/lead-assignment-rules";
+    static leadAssignmentRule = (id) => `${ServerUrl.LEAD_ASSIGNMENT_RULES}/${id}`;
 
     // opportunities
     static OPPORTUNITIES = ServerUrl.API_MODULE_USER + "/opportunities";

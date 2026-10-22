@@ -5,7 +5,7 @@ import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { MODULES, PERMISSIONS, SCOPE_LABELS } from '../../core/constants/permission.constant';
-import { INDUSTRY_LABELS, INDUSTRY_OPTIONS } from '../../core/constants/app.constant';
+import { useIndustries } from '../../core/hooks/useIndustries';
 import RoutePath from '../../core/constants/routes.constant';
 import {
   listCustomers,
@@ -14,12 +14,14 @@ import {
   restoreCustomer,
 } from '../../core/services/customer.service';
 
-const INITIAL_FORM = { companyName: '', industry: INDUSTRY_OPTIONS[0].value, email: '', phone: '' };
+// industry '' = the first active industry of the tenant's list (FR-1.6).
+const INITIAL_FORM = { companyName: '', industry: '', email: '', phone: '' };
 
 const Customers = () => {
   const { can, scopeFor } = usePermissions();
   const canCreate = can(PERMISSIONS.CUSTOMERS_CREATE);
   const canArchive = can(PERMISSIONS.CUSTOMERS_DELETE);
+  const { options: industryOptions, labelOf: industryLabel } = useIndustries();
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +30,7 @@ const Customers = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
+  const formIndustry = form.industry || industryOptions[0]?.value || '';
   const [toast, setToast] = useState(null);
 
   const refresh = () => {
@@ -53,7 +56,7 @@ const Customers = () => {
   const handleAddCustomer = async (e) => {
     e.preventDefault();
     try {
-      await createCustomer(form);
+      await createCustomer({ ...form, industry: formIndustry });
       setForm(INITIAL_FORM);
       setShowForm(false);
       refresh();
@@ -177,11 +180,11 @@ const Customers = () => {
                   Industry
                   <select
                     name="industry"
-                    value={form.industry}
+                    value={formIndustry}
                     onChange={handleChange}
                     className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                   >
-                    {INDUSTRY_OPTIONS.map((option) => (
+                    {industryOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
@@ -250,7 +253,7 @@ const Customers = () => {
             className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
           >
             <option value="">All industries</option>
-            {INDUSTRY_OPTIONS.map((option) => (
+            {industryOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -318,7 +321,7 @@ const Customers = () => {
                         </Link>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-slate-600">{INDUSTRY_LABELS[c.industry] || c.industry}</td>
+                    <td className="px-4 py-3.5 text-slate-600">{industryLabel(c.industry)}</td>
                     <td className="px-4 py-3.5 text-slate-600">{c.ownerName || '—'}</td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${c.status === 'archived' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-50 text-emerald-700'}`}>
