@@ -33,6 +33,10 @@ public class Product {
     @Column(name = "unit_price", nullable = false, precision = 14, scale = 2)
     private BigDecimal unitPrice;
 
+    /** FR-4.8: what one unit costs us; null when unknown. Internal only. */
+    @Column(name = "cost_price", precision = 14, scale = 2)
+    private BigDecimal costPrice;
+
     @Column(nullable = false)
     private boolean active = true;
 

@@ -31,3 +31,6 @@ target/
 
 .env
 application.properties
+
+### Local document storage (FR-1.5) ###
+/data/

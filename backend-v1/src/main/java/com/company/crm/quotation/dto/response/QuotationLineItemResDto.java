@@ -14,4 +14,6 @@ public class QuotationLineItemResDto {
     private BigDecimal unitPrice;
     private BigDecimal discountPercent;
     private BigDecimal lineTotal;
+    /** FR-4.8: internal — never sent on the customer's view link. */
+    private BigDecimal unitCost;
 }

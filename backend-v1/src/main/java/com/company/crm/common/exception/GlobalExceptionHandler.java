@@ -76,6 +76,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Response.error("Invalid request: " + ex.getMessage()));
     }
 
+    /** FR-1.5: upload over spring.servlet.multipart.max-file-size, or no "file" part sent. */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Response<Object>> handleUploadTooLarge(Exception ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(Response.error("File is too large — the limit is 25 MB"));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<Response<Object>> handleMissingUpload(Exception ex) {
+        return ResponseEntity.badRequest().body(Response.error("Choose a file to upload"));
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<Response<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(Response.error(ex.getMessage()));

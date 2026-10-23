@@ -4,7 +4,7 @@ import { Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, Search, Target
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
-import { MODULES, PERMISSIONS, SCOPE_LABELS } from '../../core/constants/permission.constant';
+import { DATA_SCOPE, MODULES, PERMISSIONS, SCOPE_LABELS } from '../../core/constants/permission.constant';
 import {
   INDUSTRY_OPTIONS,
   LEAD_SOURCE_LABELS,
@@ -15,6 +15,7 @@ import {
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
 import { listLeads, createLead, deleteLead, changeLeadStage } from '../../core/services/lead.service';
+import { listUsers } from '../../core/services/user.service';
 
 const INITIAL_FORM = {
   leadName: '',
@@ -33,18 +34,23 @@ const Leads = () => {
   const canCreate = can(PERMISSIONS.LEADS_CREATE);
   const canEdit = can(PERMISSIONS.LEADS_EDIT);
   const canDelete = can(PERMISSIONS.LEADS_DELETE);
+  // FR-2.7: filtering by owner only makes sense for users who see more than their own leads.
+  const canFilterByOwner = scopeFor(MODULES.LEADS) !== DATA_SCOPE.OWN;
 
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
+  const [industryFilter, setIndustryFilter] = useState('');
+  const [owners, setOwners] = useState([]);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
 
   const refresh = () => {
-    listLeads({ stage: stageFilter, source: sourceFilter, search })
+    listLeads({ stage: stageFilter, source: sourceFilter, industry: industryFilter, search, ownerId: ownerFilter || undefined })
       .then((data) => setLeads(data ?? []))
       .catch(() => setLeads([]))
       .finally(() => setLoading(false));
@@ -53,7 +59,14 @@ const Leads = () => {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stageFilter, sourceFilter, search]);
+  }, [stageFilter, sourceFilter, industryFilter, search, ownerFilter]);
+
+  useEffect(() => {
+    if (!canFilterByOwner) return;
+    listUsers()
+      .then((data) => setOwners([...(data ?? [])].sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))))
+      .catch(() => setOwners([]));
+  }, [canFilterByOwner]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -311,6 +324,38 @@ const Leads = () => {
               </option>
             ))}
           </select>
+            <label className="sr-only" htmlFor="lead-industry-filter">Filter by industry</label>
+          <select
+            id="lead-industry-filter"
+            value={industryFilter}
+            onChange={(e) => setIndustryFilter(e.target.value)}
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          >
+            <option value="">All industries</option>
+            {INDUSTRY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {canFilterByOwner && (
+            <>
+              <label className="sr-only" htmlFor="lead-owner-filter">Filter by owner</label>
+              <select
+                id="lead-owner-filter"
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              >
+                <option value="">All owners</option>
+                {owners.map((owner) => (
+                  <option key={owner.id} value={owner.id}>
+                    {owner.fullName}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           </div>
         </div>
 
@@ -321,15 +366,15 @@ const Leads = () => {
         ) : leads.length === 0 ? (
           <div className="px-5 py-14 text-center">
             <span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Target size={22} /></span>
-            <h3 className="mt-4 text-base font-bold text-slate-900">{search || stageFilter || sourceFilter ? 'No matching leads' : 'No leads yet'}</h3>
+            <h3 className="mt-4 text-base font-bold text-slate-900">{search || stageFilter || sourceFilter || industryFilter || ownerFilter ? 'No matching leads' : 'No leads yet'}</h3>
             <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
-              {search || stageFilter || sourceFilter
+              {search || stageFilter || sourceFilter || industryFilter || ownerFilter
                 ? 'Try changing your search or filters to see more prospects.'
                 : canCreate
                   ? 'Add your first lead to start tracking it through the pipeline.'
                   : 'Leads you have access to will be listed here.'}
             </p>
-            {canCreate && !search && !stageFilter && !sourceFilter && (
+            {canCreate && !search && !stageFilter && !sourceFilter && !industryFilter && !ownerFilter && (
               <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Add first lead</Button>
             )}
           </div>

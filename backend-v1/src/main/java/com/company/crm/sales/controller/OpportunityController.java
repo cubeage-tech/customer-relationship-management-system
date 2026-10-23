@@ -7,6 +7,7 @@ import com.company.crm.sales.dto.request.OpportunityReqDto;
 import com.company.crm.sales.dto.request.OpportunityStageReqDto;
 import com.company.crm.sales.dto.response.OpportunityResDto;
 import com.company.crm.sales.dto.response.OpportunityStageSummaryDto;
+import com.company.crm.sales.dto.response.SalesPerformanceDto;
 import com.company.crm.sales.service.OpportunityService;
 import com.company.crm.user.entity.User;
 import jakarta.validation.Valid;
@@ -51,6 +52,13 @@ public class OpportunityController {
     @Operation(summary = "Pipeline KPIs for dashboards: open value, closing this week, won this month/quarter")
     public Response<OpportunityKpiDto> getKpis(@AuthenticationPrincipal User currentUser) {
         return Response.ok(opportunityService.getKpis(currentUser));
+    }
+
+    @GetMapping("/performance")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "FR-3.5: open/won/lost opportunity value per salesperson and per sales team (within your scope)")
+    public Response<SalesPerformanceDto> getPerformance(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(opportunityService.getPerformance(currentUser));
     }
 
     @GetMapping("/summary")

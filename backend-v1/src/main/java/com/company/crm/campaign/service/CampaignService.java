@@ -3,8 +3,11 @@ package com.company.crm.campaign.service;
 import com.company.crm.campaign.dto.request.CampaignReqDto;
 import com.company.crm.campaign.dto.request.CampaignStatusReqDto;
 import com.company.crm.campaign.dto.response.CampaignResDto;
+import com.company.crm.campaign.dto.response.CampaignMetricsDto;
 import com.company.crm.campaign.dto.response.CampaignSummaryDto;
 import com.company.crm.campaign.entity.Campaign;
+import com.company.crm.campaign.entity.CustomerSegment;
+import com.company.crm.campaign.repository.CampaignRecipientRepository;
 import com.company.crm.campaign.mapper.CampaignMapper;
 import com.company.crm.campaign.repository.CampaignRepository;
 import com.company.crm.common.enums.CampaignChannel;
@@ -24,7 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +41,12 @@ public class CampaignService {
     private final CampaignMapper campaignMapper;
     private final LeadMapper leadMapper;
     private final PlanLimitService planLimitService;
+    private final SegmentService segmentService;
+    private final CampaignDeliveryService deliveryService;
+    private final CampaignRecipientRepository recipientRepository;
+
+    /** FR-7.4: a recipient counts as converted if they win/approve within this many days of the send. */
+    private static final int CONVERSION_WINDOW_DAYS = 30;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (owner, tenant), so the session must stay open through mapping.
@@ -106,11 +117,84 @@ public class CampaignService {
         campaignRepository.delete(findCampaign(currentUser, campaignId));
     }
 
+    /**
+     * Status changes. Activating a draft/scheduled campaign is a launch (FR-7.1c: email/SMS send);
+     * scheduling goes through {@link #schedule}; cancelling or completing stops unsent messages.
+     */
     @Transactional
     public CampaignResDto changeStatus(User currentUser, Long campaignId, CampaignStatusReqDto dto) {
         Campaign campaign = findCampaign(currentUser, campaignId);
-        campaign.setStatus(parseStatus(dto.getStatus()));
+        CampaignStatus target = parseStatus(dto.getStatus());
+        if (target == CampaignStatus.SCHEDULED) {
+            throw ApiException.badRequest("Choose a date and time to schedule the campaign");
+        }
+        if (target == CampaignStatus.ACTIVE
+                && (campaign.getStatus() == CampaignStatus.DRAFT || campaign.getStatus() == CampaignStatus.SCHEDULED)) {
+            deliveryService.launch(campaign);
+            return toDtoWithLeadStats(campaign);
+        }
+        campaign.setStatus(target);
+        campaign.setScheduledAt(null);
+        Campaign saved = campaignRepository.save(campaign);
+        if (target == CampaignStatus.CANCELLED || target == CampaignStatus.COMPLETED) {
+            deliveryService.cancelQueued(saved);
+        }
+        return toDtoWithLeadStats(saved);
+    }
+
+    /** FR-7.1c: launch now — email/SMS campaigns with a segment send to it. */
+    @Transactional
+    public CampaignResDto launch(User currentUser, Long campaignId) {
+        Campaign campaign = findCampaign(currentUser, campaignId);
+        if (campaign.getStatus() != CampaignStatus.DRAFT && campaign.getStatus() != CampaignStatus.SCHEDULED) {
+            throw ApiException.badRequest("Only a draft or scheduled campaign can be launched");
+        }
+        deliveryService.launch(campaign);
+        return toDtoWithLeadStats(campaign);
+    }
+
+    /** FR-7.1b: launch automatically at {@code scheduledAt} (a draft, or re-scheduling a scheduled one). */
+    @Transactional
+    public CampaignResDto schedule(User currentUser, Long campaignId, LocalDateTime scheduledAt) {
+        Campaign campaign = findCampaign(currentUser, campaignId);
+        if (campaign.getStatus() != CampaignStatus.DRAFT && campaign.getStatus() != CampaignStatus.SCHEDULED) {
+            throw ApiException.badRequest("Only a draft campaign can be scheduled");
+        }
+        if (scheduledAt == null || !scheduledAt.isAfter(LocalDateTime.now())) {
+            throw ApiException.badRequest("Pick a time in the future");
+        }
+        CampaignDeliveryService.assertReadyToSend(campaign);
+        campaign.setStatus(CampaignStatus.SCHEDULED);
+        campaign.setScheduledAt(scheduledAt);
         return toDtoWithLeadStats(campaignRepository.save(campaign));
+    }
+
+    /** FR-7.4: sent / opened / clicked / converted, plus the campaign's lead figures. */
+    @Transactional(readOnly = true)
+    public CampaignMetricsDto metrics(User currentUser, Long campaignId) {
+        Campaign campaign = findCampaign(currentUser, campaignId);
+        Object[] t = recipientRepository.totals(campaign.getId()).get(0);
+        long queued = num(t[0]);
+        long sent = num(t[1]);
+        long failed = num(t[2]);
+        long skipped = num(t[3]);
+        long opened = num(t[4]);
+        long clicked = num(t[5]);
+        long converted = recipientRepository.countConverted(campaign.getId(), CONVERSION_WINDOW_DAYS);
+        List<Lead> leads = leadRepository.findByTenantIdAndCampaignId(campaign.getTenant().getId(), campaign.getId());
+        long convertedLeads = leads.stream().filter(l -> l.getStage() == LeadStage.CONVERTED).count();
+        return new CampaignMetricsDto(queued + sent + failed + skipped, queued, sent, failed, skipped, opened, clicked, converted,
+                rate(opened, sent), rate(clicked, sent), rate(converted, sent), leads.size(), convertedLeads);
+    }
+
+    /** FR-7.4: who the campaign went to, with each delivery's status and tracking. */
+    @Transactional(readOnly = true)
+    public List<CampaignMetricsDto.Recipient> recipients(User currentUser, Long campaignId) {
+        Campaign campaign = findCampaign(currentUser, campaignId);
+        return recipientRepository.findByCampaignIdOrderByIdAsc(campaign.getId()).stream()
+                .map(r -> new CampaignMetricsDto.Recipient(r.getCustomer().getId(), r.getCustomer().getCompanyName(), r.getAddress(),
+                        r.getStatus(), r.getErrorMessage(), r.getSentAt(), r.getOpenedAt(), r.getClickedAt()))
+                .toList();
     }
 
     // ==================== Helpers ====================
@@ -130,6 +214,31 @@ public class CampaignService {
         campaign.setBudget(dto.getBudget() != null ? dto.getBudget() : BigDecimal.ZERO);
         campaign.setActualCost(dto.getActualCost() != null ? dto.getActualCost() : BigDecimal.ZERO);
         campaign.setOwner(dto.getOwnerId() != null ? resolveOwner(currentUser, dto.getOwnerId()) : currentUser);
+
+        // FR-7.1c: what an email/SMS campaign sends, and to whom — fixed once it has been sent.
+        CustomerSegment segment = dto.getSegmentId() != null ? segmentService.requireSegment(currentUser, dto.getSegmentId()) : null;
+        String subject = blankToNull(dto.getMessageSubject());
+        String body = blankToNull(dto.getMessageBody());
+        boolean sent = campaign.getLaunchedAt() != null && campaign.getSegment() != null;
+        if (sent && (segment == null || !segment.getId().equals(campaign.getSegment().getId())
+                || !Objects.equals(subject, campaign.getMessageSubject()) || !Objects.equals(body, campaign.getMessageBody()))) {
+            throw ApiException.badRequest("This campaign has already been sent, so its audience and message are fixed");
+        }
+        campaign.setSegment(segment);
+        campaign.setMessageSubject(subject);
+        campaign.setMessageBody(body);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static long num(Object value) {
+        return value == null ? 0 : ((Number) value).longValue();
+    }
+
+    private static double rate(long part, long whole) {
+        return whole == 0 ? 0.0 : Math.round(part * 1000.0 / whole) / 10.0;
     }
 
     private User resolveOwner(User currentUser, Long ownerId) {

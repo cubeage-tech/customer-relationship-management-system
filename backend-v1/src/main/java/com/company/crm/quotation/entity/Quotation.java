@@ -57,6 +57,18 @@ public class Quotation {
     @Column(name = "valid_until")
     private LocalDate validUntil;
 
+    /** FR-1.3: when the customer's approval was recorded — dates the purchase in the customer's history. */
+    @Column(name = "customer_approved_at")
+    private LocalDateTime customerApprovedAt;
+
+    /** FR-4.5: secret for the customer's view link, set when the quotation is first sent. */
+    @Column(name = "view_token", length = 64)
+    private String viewToken;
+
+    /** FR-4.5: when the customer first opened the view link. */
+    @Column(name = "viewed_at")
+    private LocalDateTime viewedAt;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -101,6 +113,21 @@ public class Quotation {
         return lineItems.stream()
                 .map(QuotationLineItem::getLineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** FR-4.8: number of line items with no unit cost — while above 0 the margin is unknown. */
+    @Transient
+    public long getLinesWithoutCost() {
+        return lineItems.stream().filter(item -> item.getUnitCost() == null).count();
+    }
+
+    /** FR-4.8: total cost of all line items, or null when any line's cost is unknown. */
+    @Transient
+    public BigDecimal getEstimatedCost() {
+        if (lineItems.isEmpty() || getLinesWithoutCost() > 0) {
+            return null;
+        }
+        return lineItems.stream().map(QuotationLineItem::getLineCost).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /** Highest per-line discount — what BR-3's approval threshold is checked against. */

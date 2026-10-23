@@ -20,4 +20,7 @@ public class ServiceTicketReqDto {
     /** One of: low | medium | high | critical */
     @NotBlank
     private String priority;
+
+    /** FR-6.1: optional — one of the customer's assets. */
+    private Long assetId;
 }

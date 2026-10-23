@@ -24,4 +24,7 @@ public class LeadResDto {
     private Long campaignId;
     private String campaignName;
     private LocalDateTime createdAt;
+    /** FR-2.3: assigned sales team, if any. */
+    private Long teamId;
+    private String teamName;
 }

@@ -6,7 +6,9 @@ import com.company.crm.common.response.Response;
 import com.company.crm.lead.dto.request.LeadAssignReqDto;
 import com.company.crm.lead.dto.request.LeadReqDto;
 import com.company.crm.lead.dto.request.LeadStageReqDto;
+import com.company.crm.lead.dto.request.LeadTeamReqDto;
 import com.company.crm.lead.dto.response.LeadResDto;
+import com.company.crm.lead.dto.response.LeadTeamOptionDto;
 import com.company.crm.lead.service.LeadService;
 import com.company.crm.user.entity.User;
 import jakarta.validation.Valid;
@@ -45,8 +47,9 @@ public class LeadController {
             @RequestParam(required = false) String stage,
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String industry,
-            @RequestParam(required = false) String search) {
-        return Response.ok(leadService.listLeads(currentUser, stage, source, industry, search));
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long ownerId) {
+        return Response.ok(leadService.listLeads(currentUser, stage, source, industry, search, ownerId));
     }
 
     @GetMapping("/{leadId}")
@@ -99,5 +102,22 @@ public class LeadController {
             @PathVariable Long leadId,
             @Valid @RequestBody LeadAssignReqDto dto) {
         return Response.ok("Lead reassigned", leadService.assignLead(currentUser, leadId, dto.getOwnerId()));
+    }
+
+    @PatchMapping("/{leadId}/team")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER')")
+    @Operation(summary = "FR-2.3: assign the lead to a sales team (teamId null clears it); the owner is kept")
+    public Response<LeadResDto> assignTeam(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long leadId,
+            @RequestBody LeadTeamReqDto dto) {
+        return Response.ok("Lead team updated", leadService.assignTeam(currentUser, leadId, dto.getTeamId()));
+    }
+
+    @GetMapping("/assignable-teams")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER')")
+    @Operation(summary = "FR-2.3: sales teams a lead can be assigned to")
+    public Response<List<LeadTeamOptionDto>> listAssignableTeams(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(leadService.listAssignableTeams(currentUser));
     }
 }

@@ -1,8 +1,11 @@
 package com.company.crm.quotation.pdf;
 
+import com.company.crm.branding.service.BrandingService;
 import com.company.crm.quotation.entity.Quotation;
 import com.company.crm.quotation.entity.QuotationLineItem;
+import com.company.crm.tenant.entity.Tenant;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
@@ -11,12 +14,18 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.springframework.stereotype.Component;
 
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * FR-4.4: generates a downloadable, professionally formatted PDF proposal from a
@@ -34,8 +43,17 @@ public class QuotationPdf {
     private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
+    private static final float LOGO_MAX_WIDTH = 140;
+    private static final float LOGO_MAX_HEIGHT = 60;
+
     private final PDFont regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
     private final PDFont bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+
+    private final BrandingService brandingService;
+
+    public QuotationPdf(BrandingService brandingService) {
+        this.brandingService = brandingService;
+    }
 
     /** Per-call render position — a page/content-stream pair plus the current y offset. */
     private static final class Cursor {
@@ -54,7 +72,7 @@ public class QuotationPdf {
             document.addPage(page);
             Cursor cursor = new Cursor(new PDPageContentStream(document, page), PAGE_HEIGHT - MARGIN);
 
-            writeHeader(cursor, quotation);
+            writeHeader(document, cursor, quotation);
             writeCustomer(cursor, quotation);
             writeLineItemsTable(document, cursor, quotation);
             writeTotals(cursor, quotation);
@@ -69,9 +87,53 @@ public class QuotationPdf {
         }
     }
 
-    private void writeHeader(Cursor cursor, Quotation quotation) throws IOException {
-        text(cursor, bold, 20, MARGIN, quotation.getTenant().getCompanyName());
-        cursor.y -= 28;
+    /**
+     * AC-4.2: company branding — logo (top right), company name in the brand colour, then the
+     * address, phone/email and tax number when set.
+     */
+    private void writeHeader(PDDocument document, Cursor cursor, Quotation quotation) throws IOException {
+        Tenant tenant = quotation.getTenant();
+        float top = cursor.y;
+        float logoBottom = top;
+        byte[] logo = brandingService.logoBytes(tenant);
+        if (logo != null) {
+            try {
+                PDImageXObject image = PDImageXObject.createFromByteArray(document, logo, "logo");
+                float scale = Math.min(LOGO_MAX_WIDTH / image.getWidth(), LOGO_MAX_HEIGHT / image.getHeight());
+                float width = image.getWidth() * scale;
+                float height = image.getHeight() * scale;
+                cursor.content.drawImage(image, PAGE_WIDTH - MARGIN - width, top - height + 14, width, height);
+                logoBottom = top - height + 14;
+            } catch (IOException | IllegalArgumentException e) {
+                // A broken logo must not stop the quotation from being generated.
+            }
+        }
+
+        cursor.content.setNonStrokingColor(brandColor(tenant.getBrandColor()));
+        text(cursor, bold, 20, MARGIN, safe(bold, tenant.getCompanyName()));
+        cursor.content.setNonStrokingColor(Color.BLACK);
+        cursor.y -= 16;
+        List<String> details = new ArrayList<>();
+        if (tenant.getBrandAddress() != null) {
+            details.addAll(Arrays.asList(tenant.getBrandAddress().split("\\R")));
+        }
+        String contact = String.join("  |  ", Stream.of(tenant.getBrandPhone(), tenant.getBrandEmail()).filter(Objects::nonNull).toList());
+        if (!contact.isEmpty()) {
+            details.add(contact);
+        }
+        if (tenant.getBrandTaxId() != null) {
+            details.add("GSTIN: " + tenant.getBrandTaxId());
+        }
+        cursor.content.setNonStrokingColor(Color.DARK_GRAY);
+        for (String detail : details) {
+            if (!detail.isBlank()) {
+                text(cursor, regular, 9, MARGIN, safe(regular, detail.trim()));
+                cursor.y -= 12;
+            }
+        }
+        cursor.content.setNonStrokingColor(Color.BLACK);
+        cursor.y = Math.min(cursor.y, logoBottom) - 16;
+
         text(cursor, bold, 14, MARGIN, "QUOTATION");
         cursor.y -= 20;
         text(cursor, regular, 10, MARGIN, "Quotation #: " + quotation.getQuotationNumber());
@@ -171,6 +233,35 @@ public class QuotationPdf {
         cursor.content.newLineAtOffset(x, cursor.y);
         cursor.content.showText(value == null ? "" : value);
         cursor.content.endText();
+    }
+
+    /** Replaces characters the standard PDF font can't draw (e.g. ₹, emoji) so user-entered text can't break the PDF. */
+    private static String safe(PDFont font, String value) {
+        if (value == null) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        value.codePoints().forEach(cp -> {
+            String ch = new String(Character.toChars(cp));
+            try {
+                font.encode(ch);
+                out.append(ch);
+            } catch (IOException | IllegalArgumentException e) {
+                out.append('?');
+            }
+        });
+        return out.toString();
+    }
+
+    private static Color brandColor(String hex) {
+        if (hex == null) {
+            return Color.BLACK;
+        }
+        try {
+            return Color.decode(hex);
+        } catch (NumberFormatException e) {
+            return Color.BLACK;
+        }
     }
 
     private String formatCurrency(BigDecimal value) {

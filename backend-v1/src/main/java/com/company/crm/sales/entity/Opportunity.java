@@ -47,8 +47,9 @@ public class Opportunity {
     @Column(name = "expected_closing_date")
     private LocalDate expectedClosingDate;
 
-    @Column(nullable = false)
-    private OpportunityStage stage = OpportunityStage.QUALIFICATION;
+    /** FR-3.2: a code from the tenant's stage list ('won'/'lost' are the fixed terminal stages). */
+    @Column(nullable = false, length = 30)
+    private String stage = OpportunityStage.QUALIFICATION.getDbValue();
 
     /** FR-3.4: required once stage = LOST. */
     @Column(name = "loss_reason")

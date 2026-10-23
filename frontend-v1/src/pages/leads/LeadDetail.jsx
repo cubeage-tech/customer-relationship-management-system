@@ -14,8 +14,11 @@ import {
   LEAD_STAGE_OPTIONS,
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
-import { getLead, updateLead, changeLeadStage, assignLead } from '../../core/services/lead.service';
+import { getLead, updateLead, changeLeadStage, assignLead, assignLeadTeam, listAssignableTeams } from '../../core/services/lead.service';
+import { apiErrorMessage } from '../../core/utils/apiError';
 import { listUsers } from '../../core/services/user.service';
+import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
+import MeetingsPanel from '../../components/meeting/MeetingsPanel';
 
 const toProfileForm = (lead) => ({
   leadName: lead.leadName || '',
@@ -38,6 +41,8 @@ const LeadDetail = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [users, setUsers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [assignError, setAssignError] = useState('');
 
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState(null);
@@ -58,6 +63,7 @@ const LeadDetail = () => {
     refresh();
     if (canAssign) {
       listUsers().then((data) => setUsers(data ?? [])).catch(() => setUsers([]));
+      listAssignableTeams().then((data) => setTeams(data ?? [])).catch(() => setTeams([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -106,6 +112,16 @@ const LeadDetail = () => {
     if (!ownerId) return;
     const saved = await assignLead(id, ownerId);
     setLead(saved);
+  };
+
+  // FR-2.3: assign to a sales team (or clear it); the owner is kept.
+  const handleTeamAssign = async (e) => {
+    setAssignError('');
+    try {
+      setLead(await assignLeadTeam(id, e.target.value ? Number(e.target.value) : null));
+    } catch (err) {
+      setAssignError(apiErrorMessage(err, 'Could not change the team.'));
+    }
   };
 
   if (loading) return null;
@@ -171,18 +187,39 @@ const LeadDetail = () => {
       {canAssign && (
         <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
           <h2 className="font-semibold text-slate-900 mb-3">Assigned to</h2>
-          <select
-            value={lead.ownerId || ''}
-            onChange={handleAssign}
-            className="border border-slate-300 rounded px-2 py-1 text-sm"
-          >
-            <option value="">Unassigned</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.fullName}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <label className="flex items-center gap-2 text-slate-600">
+              Owner
+              <select
+                value={lead.ownerId || ''}
+                onChange={handleAssign}
+                className="border border-slate-300 rounded px-2 py-1 text-sm"
+              >
+                <option value="">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-slate-600">
+              Team
+              <select
+                value={lead.teamId || ''}
+                onChange={handleTeamAssign}
+                className="border border-slate-300 rounded px-2 py-1 text-sm"
+              >
+                <option value="">No team</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {assignError && <p className="form-error mt-2">{assignError}</p>}
         </div>
       )}
 
@@ -304,10 +341,16 @@ const LeadDetail = () => {
               <dd>{lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString() : '—'}</dd>
             </div>
             <div><dt className="text-slate-500">Stage</dt><dd>{LEAD_STAGE_LABELS[lead.stage] || lead.stage}</dd></div>
+            <div><dt className="text-slate-500">Team</dt><dd>{lead.teamName || '—'}</dd></div>
             <div className="sm:col-span-2"><dt className="text-slate-500">Notes</dt><dd>{lead.notes || '—'}</dd></div>
           </dl>
         )}
       </div>
+
+      {/* FR-5.1/5.2/5.4: communications logged against the lead; after conversion they also show on the customer. */}
+      <MeetingsPanel leadId={lead.id} />
+
+      <CommunicationTimeline leadId={lead.id} defaultEmail={lead.contactEmail || ''} defaultPhone={lead.contactPhone || ''} />
     </section>
   );
 };

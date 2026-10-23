@@ -16,3 +16,14 @@ export const deleteCampaign = (id) => ApiService.deleteCampaign(id);
 
 export const changeCampaignStatus = (id, status) =>
   ApiService.changeCampaignStatus(id, { status });
+
+/** FR-7.1c: launch now (email/SMS with a segment start sending). */
+export const launchCampaign = (id) => ApiService.launchCampaign(id);
+
+/** FR-7.1b: launch automatically at scheduledAt ("YYYY-MM-DDTHH:mm"). */
+export const scheduleCampaign = (id, scheduledAt) => ApiService.scheduleCampaign(id, scheduledAt);
+
+/** FR-7.4: sent / opened / clicked / converted. */
+export const getCampaignMetrics = (id) => ApiService.getCampaignMetrics(id);
+
+export const getCampaignRecipients = (id) => ApiService.getCampaignRecipients(id);

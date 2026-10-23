@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import DashboardShell from '../../components/dashboard/DashboardShell';
-import { INDUSTRY_LABELS, OPPORTUNITY_STAGE_LABELS, ROLE_LABELS, TICKET_STATUS_LABELS } from '../../core/constants/app.constant';
+import { ROLE_LABELS, TICKET_STATUS_LABELS } from '../../core/constants/app.constant';
+import { usePipelineStages } from '../../core/hooks/usePipelineStages';
 import { listCustomers } from '../../core/services/customer.service';
 import { listOpportunities } from '../../core/services/opportunity.service';
 import { listTickets } from '../../core/services/serviceTicket.service';
 import { listUsers } from '../../core/services/user.service';
+import { useIndustries } from '../../core/hooks/useIndustries';
+import SalesPerformance from '../../components/opportunity/SalesPerformance';
 
 const OPEN_TICKET_STATUSES = new Set(['open', 'assigned', 'in_progress']);
 const CLOSED_OPPORTUNITY_STAGES = new Set(['won', 'lost']);
@@ -26,6 +29,8 @@ const groupRecords = (records, getKey, labels = {}) => {
 };
 
 const AdminDashboard = () => {
+  const { labels: industryLabels } = useIndustries();
+  const { labels: stageLabels } = usePipelineStages();
   const [records, setRecords] = useState(null);
   const [selectedGraph, setSelectedGraph] = useState('users');
   const [error, setError] = useState('');
@@ -70,14 +75,14 @@ const AdminDashboard = () => {
       description: 'Customer accounts across all teams',
       centerLabel: 'customers',
       total: customers.length,
-      rows: groupRecords(customers, (customer) => customer.industry, INDUSTRY_LABELS),
+      rows: groupRecords(customers, (customer) => customer.industry, industryLabels),
     },
     opportunities: {
       title: 'Open opportunities by stage',
       description: 'Won and lost opportunities are excluded',
       centerLabel: 'opportunities',
       total: openOpportunities.length,
-      rows: groupRecords(openOpportunities, (opportunity) => opportunity.stage, OPPORTUNITY_STAGE_LABELS),
+      rows: groupRecords(openOpportunities, (opportunity) => opportunity.stage, stageLabels),
     },
     tickets: {
       title: 'Open service tickets by status',
@@ -164,6 +169,9 @@ const AdminDashboard = () => {
           </div>
         )}
       </section>
+      <div className="mt-6">
+        <SalesPerformance />
+      </div>
     </DashboardShell>
   );
 };

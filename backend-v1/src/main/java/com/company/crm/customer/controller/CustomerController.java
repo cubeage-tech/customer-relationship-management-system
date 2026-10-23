@@ -5,8 +5,19 @@ import com.company.crm.customer.dto.response.CustomerSummaryDto;
 import com.company.crm.common.response.Response;
 import com.company.crm.customer.dto.request.CustomerContactReqDto;
 import com.company.crm.customer.dto.request.CustomerReqDto;
+import com.company.crm.customer.dto.response.CustomerPurchaseResDto;
 import com.company.crm.customer.dto.response.CustomerResDto;
+import com.company.crm.customer.dto.response.CustomerDocumentResDto;
+import com.company.crm.customer.service.CustomerDocumentService;
 import com.company.crm.customer.service.CustomerService;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
 import com.company.crm.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +40,7 @@ import java.util.List;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final CustomerDocumentService customerDocumentService;
 
     @GetMapping("/summary")
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
@@ -53,6 +65,65 @@ public class CustomerController {
             @AuthenticationPrincipal User currentUser,
             @PathVariable Long customerId) {
         return Response.ok(customerService.getCustomer(currentUser, customerId));
+    }
+
+    @GetMapping("/{customerId}/purchases")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "Purchase history (won deals and customer-approved quotations), newest first")
+    public Response<List<CustomerPurchaseResDto>> listPurchases(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long customerId) {
+        return Response.ok(customerService.listPurchases(currentUser, customerId));
+    }
+
+    @GetMapping("/{customerId}/documents")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "FR-1.5: documents attached to the customer, newest first")
+    public Response<List<CustomerDocumentResDto>> listDocuments(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long customerId) {
+        return Response.ok(customerDocumentService.list(currentUser, customerId));
+    }
+
+    @PostMapping(value = "/{customerId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "FR-1.5: upload a PDF, DOCX, XLSX, JPG or PNG (max 25 MB) to the customer")
+    public Response<CustomerDocumentResDto> uploadDocument(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long customerId,
+            @RequestParam("file") MultipartFile file) {
+        return Response.ok("Document uploaded", customerDocumentService.upload(currentUser, customerId, file));
+    }
+
+    @GetMapping("/{customerId}/documents/{documentId}/download")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "FR-1.5: download (or, with inline=true, view a PDF/image) a customer document")
+    public ResponseEntity<InputStreamResource> downloadDocument(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long customerId,
+            @PathVariable Long documentId,
+            @RequestParam(defaultValue = "false") boolean inline) {
+        CustomerDocumentService.DocumentDownload doc = customerDocumentService.open(currentUser, customerId, documentId);
+        boolean viewable = inline && (doc.contentType().equals("application/pdf") || doc.contentType().startsWith("image/"));
+        ContentDisposition disposition = ContentDisposition.builder(viewable ? "inline" : "attachment")
+                .filename(doc.fileName(), StandardCharsets.UTF_8).build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(doc.contentType()))
+                .contentLength(doc.sizeBytes())
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new InputStreamResource(doc.content()));
+    }
+
+    @DeleteMapping("/{customerId}/documents/{documentId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "FR-1.5: delete a customer document")
+    public Response<Void> deleteDocument(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long customerId,
+            @PathVariable Long documentId) {
+        customerDocumentService.delete(currentUser, customerId, documentId);
+        return Response.ok("Document deleted", null);
     }
 
     @PostMapping

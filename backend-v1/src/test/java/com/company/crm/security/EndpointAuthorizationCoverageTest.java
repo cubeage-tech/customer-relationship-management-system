@@ -34,7 +34,21 @@ class EndpointAuthorizationCoverageTest extends PostgresIntegrationTest {
             "POST /auth/forgot-password",
             "POST /auth/reset-password",
             "GET /api/plans/prices",          // marketing pricing page
-            "POST /api/payments/webhook"      // payment provider; authenticated by signature
+            "POST /api/payments/webhook",     // payment provider; authenticated by signature
+            "POST /api/communications/webhooks/twilio/inbound",  // Twilio; authenticated by X-Twilio-Signature
+            "POST /api/communications/webhooks/twilio/status",   // Twilio; authenticated by X-Twilio-Signature
+            "POST /api/communications/webhooks/twilio/voice",    // FR-5.4b Twilio call callback; X-Twilio-Signature
+            "GET /api/public/calendar/{token}",                  // FR-5.5c per-user calendar feed; token is the credential
+            "GET /api/public/support/{token}",                   // FR-6.1 customer support form; token is the credential
+            "POST /api/public/support/{token}",
+            "GET /api/public/feedback/{token}",                  // FR-6.5 customer feedback link; token is the credential
+            "POST /api/public/feedback/{token}",
+            "GET /api/public/campaigns/o/{token}",               // FR-7.4 open pixel; recipient token is the credential
+            "GET /api/public/campaigns/c/{token}/{link}",        // FR-7.4 tracked link
+            "GET /api/public/campaigns/u/{token}",               // FR-7.1c unsubscribe
+            "POST /api/public/campaigns/u/{token}",
+            "GET /api/public/quotations/{token}",                // FR-4.5 customer view link; token is the credential
+            "GET /api/public/quotations/{token}/pdf"
     );
 
     @Autowired

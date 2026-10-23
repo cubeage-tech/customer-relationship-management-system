@@ -62,6 +62,11 @@ class RoutePath {
   static QUOTATIONS = "/quotations";
   static ADD_QUOTATION = "/quotations/add";
   static EDIT_QUOTATION = "/quotations/:id";
+  // FR-4.5: public page the customer opens from the emailed link (no login).
+  static CUSTOMER_QUOTATION = "/q/:token";
+  // FR-6.1 / FR-6.5: public customer pages (no login).
+  static SUPPORT_REQUEST = "/support/:token";
+  static TICKET_FEEDBACK = "/feedback/:token";
 
   // ======================================================
   // SERVICE & SUPPORT

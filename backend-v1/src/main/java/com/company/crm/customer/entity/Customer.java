@@ -1,7 +1,6 @@
 package com.company.crm.customer.entity;
 
 import com.company.crm.common.enums.CustomerStatus;
-import com.company.crm.common.enums.IndustryType;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.user.entity.User;
 import jakarta.persistence.*;
@@ -31,8 +30,9 @@ public class Customer {
     @Column(name = "company_name", nullable = false)
     private String companyName;
 
-    @Column(nullable = false)
-    private IndustryType industry;
+    /** FR-1.6: code from the tenant's configurable industry list (see industries table). */
+    @Column(nullable = false, length = 30)
+    private String industry;
 
     @Column(nullable = false)
     private CustomerStatus status = CustomerStatus.ACTIVE;
@@ -47,6 +47,13 @@ public class Customer {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    /** FR-7.1c: unsubscribed from marketing campaigns (set from the unsubscribe link). */
+    @Column(name = "marketing_opt_out", nullable = false)
+    private boolean marketingOptOut;
+
+    @Column(name = "marketing_opt_out_at")
+    private LocalDateTime marketingOptOutAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")

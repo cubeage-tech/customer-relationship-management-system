@@ -5,7 +5,8 @@ import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
-import { OPPORTUNITY_STAGE_LABELS, OPPORTUNITY_STAGE_OPTIONS, OPPORTUNITY_STAGES } from '../../core/constants/app.constant';
+import { OPPORTUNITY_STAGES } from '../../core/constants/app.constant';
+import { usePipelineStages } from '../../core/hooks/usePipelineStages';
 import RoutePath from '../../core/constants/routes.constant';
 import { getOpportunity, updateOpportunity, changeOpportunityStage } from '../../core/services/opportunity.service';
 import { listUsers } from '../../core/services/user.service';
@@ -23,6 +24,7 @@ const toProfileForm = (opportunity) => ({
 const OpportunityDetail = () => {
   const { id } = useParams();
   const { can } = usePermissions();
+  const { labelOf: stageLabel, optionsFor: stageOptionsFor } = usePipelineStages();
   const canEdit = can(PERMISSIONS.OPPORTUNITIES_EDIT);
 
   const [opportunity, setOpportunity] = useState(null);
@@ -115,7 +117,7 @@ const OpportunityDetail = () => {
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
         <h2 className="font-semibold text-slate-900 mb-3">Pipeline stage</h2>
         <div className="flex flex-wrap items-center gap-2">
-          {OPPORTUNITY_STAGE_OPTIONS.map((option) => (
+          {stageOptionsFor(opportunity.stage).map((option) => (
             <button
               key={option.value}
               type="button"
@@ -230,7 +232,7 @@ const OpportunityDetail = () => {
               <dd>{opportunity.expectedClosingDate ? new Date(opportunity.expectedClosingDate).toLocaleDateString() : '—'}</dd>
             </div>
             <div><dt className="text-slate-500">Owner</dt><dd>{opportunity.ownerName || '—'}</dd></div>
-            <div><dt className="text-slate-500">Stage</dt><dd>{OPPORTUNITY_STAGE_LABELS[opportunity.stage] || opportunity.stage}</dd></div>
+            <div><dt className="text-slate-500">Stage</dt><dd>{stageLabel(opportunity.stage)}</dd></div>
           </dl>
         )}
       </div>

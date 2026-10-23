@@ -13,6 +13,7 @@ import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.quotation.dto.request.QuotationCustomerStatusReqDto;
 import com.company.crm.quotation.dto.request.QuotationLineItemReqDto;
 import com.company.crm.quotation.dto.request.QuotationReqDto;
+import com.company.crm.quotation.dto.response.PublicQuotationDto;
 import com.company.crm.quotation.dto.response.QuotationResDto;
 import com.company.crm.quotation.entity.Quotation;
 import com.company.crm.quotation.entity.QuotationLineItem;
@@ -24,16 +25,28 @@ import com.company.crm.sales.repository.OpportunityRepository;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.quotation.event.QuotationSentEvent;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class QuotationService {
+
+    /** FR-4.5: sent and awaiting the customer's answer — these can be viewed or expire. */
+    private static final Set<QuotationStatus> OPEN_FOR_RESPONSE = Set.of(QuotationStatus.PENDING, QuotationStatus.VIEWED);
+    private static final SecureRandom TOKEN_RANDOM = new SecureRandom();
 
     private final QuotationRepository quotationRepository;
     private final DataScopeResolver dataScopeResolver;
@@ -43,6 +56,7 @@ public class QuotationService {
     private final UserRepository userRepository;
     private final QuotationMapper quotationMapper;
     private final QuotationPdf quotationPdf;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.quotation.discount-approval-threshold-percent}")
     private BigDecimal discountApprovalThreshold;
@@ -109,11 +123,75 @@ public class QuotationService {
             throw ApiException.badRequest("This quotation's discount needs approval before it can be sent");
         }
 
+        // FR-4.5: an already-expired offer would expire again at the next job run.
+        if (quotation.getValidUntil() != null && quotation.getValidUntil().isBefore(LocalDate.now())) {
+            throw ApiException.badRequest("This quotation's valid-until date has passed. Update it before sending");
+        }
+
         quotation.setStatus(QuotationStatus.PENDING);
-        return quotationMapper.toDto(quotationRepository.save(quotation));
+        if (quotation.getViewToken() == null) {
+            quotation.setViewToken(newViewToken());
+        }
+        QuotationResDto saved = quotationMapper.toDto(quotationRepository.save(quotation));
+        // After this transaction commits: FR-4.5 emails the customer their view link, and the
+        // FR-5.3 SMS alert goes out if enabled for the tenant.
+        eventPublisher.publishEvent(new QuotationSentEvent(quotation.getTenant().getId(), quotation.getId()));
+        return saved;
     }
 
-    /** FR-4.5: recorded on the customer's behalf by internal staff — there is no self-service portal yet. */
+    /**
+     * FR-4.5: the customer opens their view link. The first open of a pending quotation marks it
+     * VIEWED; an offer past its valid-until date is expired first. 404 for an unknown token.
+     * {@code byCustomer=false} (a CRM user previewing the link) leaves the view unrecorded.
+     */
+    @Transactional
+    public PublicQuotationDto viewAsCustomer(String token, boolean byCustomer) {
+        Quotation quotation = openViewLink(token, byCustomer);
+        return new PublicQuotationDto(quotation.getTenant().getCompanyName(), quotation.getQuotationNumber(),
+                quotation.getCustomer().getCompanyName(), quotation.getStatus().getDbValue(), quotation.getValidUntil(),
+                quotation.getLineItems().stream().map(quotationMapper::toPublicLineItem).toList(),
+                quotation.getSubtotal(), quotation.getGrandTotal());
+    }
+
+    /** A quotation PDF and the name to download it under. */
+    public record CustomerPdf(String fileName, byte[] content) {}
+
+    /** FR-4.5: PDF through the customer's view link (also counts as viewing it). */
+    @Transactional
+    public CustomerPdf customerPdf(String token, boolean byCustomer) {
+        Quotation quotation = openViewLink(token, byCustomer);
+        return new CustomerPdf("quotation-" + quotation.getQuotationNumber() + ".pdf", quotationPdf.generate(quotation));
+    }
+
+    /** FR-4.5: scheduled — pending/viewed quotations past their valid-until date become EXPIRED. */
+    @Transactional
+    public int expireOverdue() {
+        return quotationRepository.expireOverdue(QuotationStatus.EXPIRED, OPEN_FOR_RESPONSE, LocalDate.now(), LocalDateTime.now());
+    }
+
+    private Quotation openViewLink(String token, boolean byCustomer) {
+        Quotation quotation = (token == null || token.isBlank() ? Optional.<Quotation>empty() : quotationRepository.findByViewToken(token))
+                .orElseThrow(() -> ApiException.notFound("This quotation link is not valid"));
+        if (OPEN_FOR_RESPONSE.contains(quotation.getStatus())
+                && quotation.getValidUntil() != null && quotation.getValidUntil().isBefore(LocalDate.now())) {
+            quotation.setStatus(QuotationStatus.EXPIRED);
+        }
+        if (byCustomer && quotation.getStatus() == QuotationStatus.PENDING) {
+            quotation.setStatus(QuotationStatus.VIEWED);
+        }
+        if (byCustomer && quotation.getViewedAt() == null) {
+            quotation.setViewedAt(LocalDateTime.now());
+        }
+        return quotationRepository.save(quotation);
+    }
+
+    private static String newViewToken() {
+        byte[] bytes = new byte[32];
+        TOKEN_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /** FR-4.5: recorded on the customer's behalf by internal staff (approve/reject from the customer's reply). */
     @Transactional
     public QuotationResDto recordCustomerStatus(User currentUser, Long quotationId, QuotationCustomerStatusReqDto dto) {
         Quotation quotation = findQuotation(currentUser, quotationId);
@@ -122,6 +200,12 @@ public class QuotationService {
         QuotationStatus target = parseStatus(dto.getStatus());
         if (target == QuotationStatus.DRAFT) {
             throw ApiException.badRequest("A quotation cannot be reset to draft this way");
+        }
+        // FR-1.3: keep the first approval time; clear it if the approval is withdrawn.
+        if (target == QuotationStatus.APPROVED && quotation.getCustomerApprovedAt() == null) {
+            quotation.setCustomerApprovedAt(LocalDateTime.now());
+        } else if (target != QuotationStatus.APPROVED) {
+            quotation.setCustomerApprovedAt(null);
         }
         quotation.setStatus(target);
         return quotationMapper.toDto(quotationRepository.save(quotation));
@@ -170,6 +254,7 @@ public class QuotationService {
             item.setQuantity(itemDto.getQuantity());
             item.setUnitPrice(itemDto.getUnitPrice());
             item.setDiscountPercent(itemDto.getDiscountPercent());
+            item.setUnitCost(itemDto.getUnitCost());
             quotation.getLineItems().add(item);
         }
 

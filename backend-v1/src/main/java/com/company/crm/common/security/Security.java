@@ -49,6 +49,18 @@ public class Security {
                         .requestMatchers(HttpMethod.GET, "/api/plans/prices").permitAll()
                         // Server-to-server from the payment provider; authenticated by its signature.
                         .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
+                        // Twilio messaging webhooks (FR-5.2/5.3); authenticated by X-Twilio-Signature.
+                        .requestMatchers(HttpMethod.POST, "/api/communications/webhooks/twilio/inbound",
+                                "/api/communications/webhooks/twilio/status",
+                                "/api/communications/webhooks/twilio/voice").permitAll()
+                        // FR-4.5 customer view link; the secret token in the path is the credential.
+                        .requestMatchers(HttpMethod.GET, "/api/public/quotations/*", "/api/public/quotations/*/pdf").permitAll()
+                        // FR-5.5c per-user calendar feed for calendar apps; the secret token is the credential.
+                        .requestMatchers(HttpMethod.GET, "/api/public/calendar/*").permitAll()
+                        // FR-6.1 support form / FR-6.5 feedback pages; the secret token in the path is the credential.
+                        .requestMatchers("/api/public/support/*", "/api/public/feedback/*").permitAll()
+                        // FR-7.4/7.1c campaign email links (open pixel, tracked links, unsubscribe); the recipient token is the credential.
+                        .requestMatchers("/api/public/campaigns/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -18,15 +18,27 @@ export const approveQuotationDiscount = (id) => ApiService.approveQuotationDisco
 export const rejectQuotationDiscount = (id, reason) =>
   ApiService.rejectQuotationDiscount(id, { reason });
 
-/** Triggers a browser download of the quotation PDF (FR-4.4). */
-export const downloadQuotationPdf = async (id, quotationNumber) => {
-  const response = await ApiService.downloadQuotationPdf(id);
-  const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+const saveBlob = (data, fileName) => {
+  const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${quotationNumber || `quotation-${id}`}.pdf`;
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+};
+
+/** Triggers a browser download of the quotation PDF (FR-4.4). */
+export const downloadQuotationPdf = async (id, quotationNumber) => {
+  const response = await ApiService.downloadQuotationPdf(id);
+  saveBlob(response.data, `${quotationNumber || `quotation-${id}`}.pdf`);
+};
+
+/** FR-4.5: the customer's view of a sent quotation (public link; opening it marks it viewed). */
+export const getCustomerQuotation = (token) => ApiService.getPublicQuotation(token);
+
+export const downloadCustomerQuotationPdf = async (token, quotationNumber) => {
+  const response = await ApiService.downloadPublicQuotationPdf(token);
+  saveBlob(response.data, `${quotationNumber || 'quotation'}.pdf`);
 };

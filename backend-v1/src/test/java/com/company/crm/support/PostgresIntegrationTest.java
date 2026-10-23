@@ -1,6 +1,7 @@
 package com.company.crm.support;
 
 import com.company.crm.common.mail.MailService;
+import com.company.crm.communication.integration.TwilioClient;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -30,6 +31,9 @@ public abstract class PostgresIntegrationTest {
 
     @MockitoBean protected MailService mailService;
 
+    /** WhatsApp/SMS provider — never called for real in tests (disabled unless a test stubs it). */
+    @MockitoBean protected TwilioClient twilioClient;
+
     private static EmbeddedPostgres startPostgres() {
         try {
             EmbeddedPostgres postgres = EmbeddedPostgres.start();
@@ -51,5 +55,8 @@ public abstract class PostgresIntegrationTest {
         registry.add("spring.datasource.url", () -> POSTGRES.getJdbcUrl("postgres", "postgres"));
         registry.add("spring.datasource.username", () -> "postgres");
         registry.add("spring.datasource.password", () -> "postgres");
+        // FR-1.5: uploaded test documents go to a temp folder, never into the repository.
+        registry.add("app.documents.storage-path",
+                () -> java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), "crm-test-documents").toString());
     }
 }

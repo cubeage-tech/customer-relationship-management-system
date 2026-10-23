@@ -13,4 +13,6 @@ public class ProductResDto {
     private String description;
     private BigDecimal unitPrice;
     private boolean active;
+    /** FR-4.8: null when unknown. */
+    private BigDecimal costPrice;
 }

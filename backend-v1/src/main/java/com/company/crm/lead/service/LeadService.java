@@ -18,6 +18,8 @@ import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.lead.dto.request.LeadReqDto;
 import com.company.crm.lead.dto.request.LeadStageReqDto;
 import com.company.crm.lead.dto.response.LeadResDto;
+import com.company.crm.lead.dto.response.LeadTeamOptionDto;
+import com.company.crm.sales_team.repository.SalesTeamRepository;
 import com.company.crm.lead.entity.Lead;
 import com.company.crm.lead.mapper.LeadMapper;
 import com.company.crm.lead.repository.LeadRepository;
@@ -29,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -43,11 +46,14 @@ public class LeadService {
     private final CampaignRepository campaignRepository;
     private final OpportunityService opportunityService;
     private final LeadMapper leadMapper;
+    private final SalesTeamRepository salesTeamRepository;
+    private final LeadAssignmentRuleService assignmentRuleService;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (owner, convertedCustomer, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
-    public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search) {
+    public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search,
+                                      Long ownerId) {
         List<Lead> leads = findInScope(currentUser);
 
         return leads.stream()
@@ -57,6 +63,8 @@ public class LeadService {
                 .filter(l -> search == null || search.isBlank()
                         || l.getLeadName().toLowerCase().contains(search.trim().toLowerCase())
                         || l.getCompanyName().toLowerCase().contains(search.trim().toLowerCase()))
+                // FR-2.7: owner filter, applied within the caller's data scope.
+                .filter(l -> ownerId == null || (l.getOwner() != null && ownerId.equals(l.getOwner().getId())))
                 .map(leadMapper::toDto)
                 .toList();
     }
@@ -75,6 +83,11 @@ public class LeadService {
         lead.setCreatedBy(currentUser);
         lead.setStage(LeadStage.NEW_LEAD);
         applyFields(currentUser, lead, dto);
+        // FR-2.3: auto-assignment rules decide the owner/team when none was picked. A sales
+        // executive's own new lead stays theirs.
+        if (dto.getOwnerId() == null && currentUser.getRole().getName() != RoleType.SALES_EXECUTIVE) {
+            assignmentRuleService.apply(lead);
+        }
         return leadMapper.toDto(leadRepository.save(lead));
     }
 
@@ -133,13 +146,34 @@ public class LeadService {
         return leadMapper.toDto(leadRepository.save(lead));
     }
 
+    /**
+     * FR-2.3: assign the lead to a sales team of this tenant, or clear it (teamId null). The owner is
+     * kept; the team's manager now sees the lead even before a team member owns it.
+     */
+    @Transactional
+    public LeadResDto assignTeam(User currentUser, Long leadId, Long teamId) {
+        Lead lead = findLead(currentUser, leadId);
+        assertAccess(currentUser, lead);
+        lead.setTeam(teamId == null ? null : salesTeamRepository.findByIdAndTenantId(teamId, requireTenantId(currentUser))
+                .orElseThrow(() -> ApiException.badRequest("Team must belong to your tenant")));
+        return leadMapper.toDto(leadRepository.save(lead));
+    }
+
+    /** FR-2.3: the tenant's sales teams, for the "assign to team" picker. */
+    @Transactional(readOnly = true)
+    public List<LeadTeamOptionDto> listAssignableTeams(User currentUser) {
+        return salesTeamRepository.findByTenantIdOrderByNameAsc(requireTenantId(currentUser)).stream()
+                .map(team -> new LeadTeamOptionDto(team.getId(), team.getName()))
+                .toList();
+    }
+
     // ==================== Helpers ====================
 
     private Customer convertToCustomer(Lead lead) {
         Customer customer = new Customer();
         customer.setTenant(lead.getTenant());
         customer.setCompanyName(lead.getCompanyName());
-        customer.setIndustry(lead.getIndustry());
+        customer.setIndustry(lead.getIndustry().getDbValue());
         customer.setStatus(CustomerStatus.ACTIVE);
         customer.setEmail(lead.getContactEmail());
         customer.setPhone(lead.getContactPhone());
@@ -156,6 +190,10 @@ public class LeadService {
         lead.setContactPhone(dto.getContactPhone());
         lead.setIndustry(parseIndustry(dto.getIndustry()));
         lead.setSource(parseSource(dto.getSource()));
+        // FR-2.5: a new follow-up date gets its own reminder.
+        if (!Objects.equals(lead.getFollowUpDate(), dto.getFollowUpDate())) {
+            lead.setFollowUpNotifiedAt(null);
+        }
         lead.setFollowUpDate(dto.getFollowUpDate());
         lead.setNotes(dto.getNotes());
         lead.setCampaign(dto.getCampaignId() != null ? resolveCampaign(currentUser, dto.getCampaignId()) : null);
@@ -212,8 +250,14 @@ public class LeadService {
         return lead;
     }
 
-    /** sales_executive may only access leads assigned to them ("own" data scope). */
+    /**
+     * sales_executive may only access leads assigned to them ("own" data scope). A sales manager
+     * may also access leads assigned to a team they manage (FR-2.3).
+     */
     private void assertAccess(User currentUser, Lead lead) {
+        if (lead.getTeam() != null && dataScopeResolver.managedTeamIds(currentUser).contains(lead.getTeam().getId())) {
+            return;
+        }
         dataScopeResolver.assertCanAccess(currentUser,
                 lead.getOwner() != null ? lead.getOwner().getId() : null, "lead");
     }
@@ -229,9 +273,14 @@ public class LeadService {
     private List<Lead> findInScope(User currentUser) {
         Long tenantId = requireTenantId(currentUser);
         DataScope scope = dataScopeResolver.resolve(currentUser);
-        return scope.isTenantWide()
-                ? leadRepository.findByTenantId(tenantId)
-                : leadRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds());
+        if (scope.isTenantWide()) {
+            return leadRepository.findByTenantId(tenantId);
+        }
+        // FR-2.3: a sales manager also sees leads assigned to the teams they manage.
+        List<Long> teamIds = dataScopeResolver.managedTeamIds(currentUser);
+        return teamIds.isEmpty()
+                ? leadRepository.findByTenantIdAndOwnerIdIn(tenantId, scope.ownerIds())
+                : leadRepository.findInScopeOrTeams(tenantId, scope.ownerIds(), teamIds);
     }
 
     private Long requireTenantId(User currentUser) {

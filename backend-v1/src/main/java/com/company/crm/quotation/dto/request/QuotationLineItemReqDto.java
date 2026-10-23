@@ -25,4 +25,8 @@ public class QuotationLineItemReqDto {
     @DecimalMin(value = "0", message = "Discount must be between 0 and 100")
     @DecimalMax(value = "100", message = "Discount must be between 0 and 100")
     private BigDecimal discountPercent;
+
+    /** FR-4.8: optional cost per unit (prefilled from the product); used for the margin estimate. */
+    @DecimalMin(value = "0", message = "Unit cost cannot be negative")
+    private BigDecimal unitCost;
 }

@@ -24,7 +24,9 @@ public class LeadMapper {
                 lead.getConvertedCustomer() != null ? lead.getConvertedCustomer().getId() : null,
                 lead.getCampaign() != null ? lead.getCampaign().getId() : null,
                 lead.getCampaign() != null ? lead.getCampaign().getName() : null,
-                lead.getCreatedAt()
+                lead.getCreatedAt(),
+                lead.getTeam() != null ? lead.getTeam().getId() : null,
+                lead.getTeam() != null ? lead.getTeam().getName() : null
         );
     }
 }

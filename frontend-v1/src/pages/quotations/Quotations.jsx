@@ -19,10 +19,13 @@ import { listProducts, createProduct } from '../../core/services/product.service
 
 const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
 
-const EMPTY_LINE_ITEM = { productName: '', quantity: 1, unitPrice: '', discountPercent: 0 };
+// FR-4.8: unitCost is internal (margin estimate only); '' = unknown.
+const EMPTY_LINE_ITEM = { productName: '', quantity: 1, unitPrice: '', discountPercent: 0, unitCost: '' };
 
 const INITIAL_FORM = { customerId: '', opportunityId: '', validUntil: '', notes: '' };
-const INITIAL_PRODUCT_FORM = { name: '', description: '', unitPrice: '' };
+const INITIAL_PRODUCT_FORM = { name: '', description: '', unitPrice: '', costPrice: '' };
+
+const toNumberOrNull = (value) => (value === '' || value === null || value === undefined ? null : Number(value));
 
 const Quotations = () => {
   const { can, is, scopeFor } = usePermissions();
@@ -92,7 +95,9 @@ const Quotations = () => {
     const product = products.find((p) => String(p.id) === productId);
     if (!product) return;
     setLineItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, productName: product.name, unitPrice: product.unitPrice } : item))
+      prev.map((item, i) => (i === index
+        ? { ...item, productName: product.name, unitPrice: product.unitPrice, unitCost: product.costPrice ?? '' }
+        : item))
     );
   };
 
@@ -110,6 +115,7 @@ const Quotations = () => {
           quantity: Number(item.quantity),
           unitPrice: Number(item.unitPrice),
           discountPercent: Number(item.discountPercent) || 0,
+          unitCost: toNumberOrNull(item.unitCost),
         })),
       });
       setForm(INITIAL_FORM);
@@ -128,7 +134,7 @@ const Quotations = () => {
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await createProduct({ ...productForm, unitPrice: Number(productForm.unitPrice) });
+      await createProduct({ ...productForm, unitPrice: Number(productForm.unitPrice), costPrice: toNumberOrNull(productForm.costPrice) });
       setProductForm(INITIAL_PRODUCT_FORM);
       refreshProducts();
       setToast({ type: 'success', message: `${productForm.name} was added to the product catalog.` });
@@ -146,6 +152,10 @@ const Quotations = () => {
   const estimatedSubtotal = lineItems.reduce((total, item) => (
     total + Number(item.quantity || 0) * Number(item.unitPrice || 0) * (1 - (Number(item.discountPercent) || 0) / 100)
   ), 0);
+  // FR-4.8: margin preview — only when every line has a cost.
+  const linesWithoutCost = lineItems.filter((item) => item.unitCost === '' || item.unitCost === null).length;
+  const estimatedCost = lineItems.reduce((total, item) => total + Number(item.quantity || 0) * Number(item.unitCost || 0), 0);
+  const estimatedMargin = estimatedSubtotal - estimatedCost;
 
   return (
     <section className="space-y-5">
@@ -194,7 +204,7 @@ const Quotations = () => {
 
           {showProductForm && (
             <div className="p-5">
-              <form onSubmit={handleAddProduct} className="grid gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1.4fr_0.7fr_auto]">
+              <form onSubmit={handleAddProduct} className="grid gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1.4fr_0.7fr_0.7fr_auto]">
                 <label className="space-y-1 text-xs font-semibold text-slate-600">Product name
                   <input type="text" placeholder="e.g. Professional plan" value={productForm.name} onChange={(e) => setProductForm((prev) => ({ ...prev, name: e.target.value }))} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
                 </label>
@@ -204,6 +214,9 @@ const Quotations = () => {
                 <label className="space-y-1 text-xs font-semibold text-slate-600">Unit price
                   <input type="number" placeholder="0.00" value={productForm.unitPrice} onChange={(e) => setProductForm((prev) => ({ ...prev, unitPrice: e.target.value }))} min="0" step="0.01" className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
                 </label>
+                <label className="space-y-1 text-xs font-semibold text-slate-600">Cost price <span className="font-normal">Optional, internal</span>
+                  <input type="number" placeholder="0.00" value={productForm.costPrice} onChange={(e) => setProductForm((prev) => ({ ...prev, costPrice: e.target.value }))} min="0" step="0.01" className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                </label>
                 <div className="flex items-end"><Button type="submit" size="sm" icon={Plus}>Add product</Button></div>
               </form>
 
@@ -211,7 +224,10 @@ const Quotations = () => {
                 {products.map((p) => (
                   <li key={p.id} className="flex items-center justify-between gap-4 py-3">
                     <span className="flex min-w-0 items-center gap-2 font-medium"><Package size={15} className="shrink-0 text-slate-400" />{p.name}{!p.active && <span className="text-xs font-normal text-slate-400">Inactive</span>}</span>
-                    <span className="shrink-0 font-semibold">{formatCurrency(p.unitPrice)}</span>
+                    <span className="shrink-0 text-right">
+                      <span className="font-semibold">{formatCurrency(p.unitPrice)}</span>
+                      <span className="block text-xs text-slate-500">{p.costPrice != null ? `Cost ${formatCurrency(p.costPrice)}` : 'No cost set'}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -265,7 +281,7 @@ const Quotations = () => {
                   </div>
                   <div className="space-y-3">
                     {lineItems.map((item, index) => (
-                      <div key={index} className="grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-white p-3 sm:grid-cols-6 sm:p-4">
+                      <div key={index} className="grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-white p-3 sm:grid-cols-4 sm:p-4 lg:grid-cols-8">
                         {products.length > 0 && (
                           <label className="col-span-2 space-y-1 text-xs font-semibold text-slate-600 sm:col-span-2">Catalog product
                             <select onChange={(e) => handlePickProduct(index, e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" defaultValue="">
@@ -274,7 +290,7 @@ const Quotations = () => {
                             </select>
                           </label>
                         )}
-                        <label className={`${products.length > 0 ? 'col-span-2 sm:col-span-2' : 'col-span-2 sm:col-span-3'} space-y-1 text-xs font-semibold text-slate-600`}>Product / service <span className="text-rose-500">*</span>
+                        <label className={`${products.length > 0 ? 'col-span-2 sm:col-span-2' : 'col-span-2 sm:col-span-4'} space-y-1 text-xs font-semibold text-slate-600`}>Product / service <span className="text-rose-500">*</span>
                           <input type="text" placeholder="Product or service" value={item.productName} onChange={(e) => handleLineItemChange(index, 'productName', e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
                         </label>
                         <label className="space-y-1 text-xs font-semibold text-slate-600">Qty <span className="text-rose-500">*</span>
@@ -282,6 +298,9 @@ const Quotations = () => {
                         </label>
                         <label className="space-y-1 text-xs font-semibold text-slate-600">Unit price <span className="text-rose-500">*</span>
                           <input type="number" placeholder="0.00" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} min="0" step="0.01" className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
+                        </label>
+                        <label className="space-y-1 text-xs font-semibold text-slate-600">Unit cost <span className="font-normal text-slate-400">Internal</span>
+                          <input type="number" placeholder="Unknown" value={item.unitCost ?? ''} onChange={(e) => handleLineItemChange(index, 'unitCost', e.target.value)} min="0" step="0.01" className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm font-normal text-slate-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
                         </label>
                         <div className="flex items-end gap-2">
                           <label className="min-w-0 flex-1 space-y-1 text-xs font-semibold text-slate-600">Discount %
@@ -299,7 +318,20 @@ const Quotations = () => {
                 </label>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                  <div><p className="text-xs text-slate-500">Estimated line-item subtotal</p><p className="mt-0.5 text-lg font-bold text-slate-900">{formatCurrency(estimatedSubtotal)}</p></div>
+                  <div className="flex flex-wrap gap-6">
+                    <div><p className="text-xs text-slate-500">Estimated line-item subtotal</p><p className="mt-0.5 text-lg font-bold text-slate-900">{formatCurrency(estimatedSubtotal)}</p></div>
+                    <div>
+                      <p className="text-xs text-slate-500">Estimated margin <span className="text-slate-400">(internal)</span></p>
+                      {linesWithoutCost > 0 ? (
+                        <p className="mt-0.5 text-sm text-slate-500">Add a unit cost to {linesWithoutCost === 1 ? '1 line' : `${linesWithoutCost} lines`} to see it</p>
+                      ) : (
+                        <p className={`mt-0.5 text-lg font-bold ${estimatedMargin < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                          {formatCurrency(estimatedMargin)}
+                          {estimatedSubtotal > 0 && <span className="ml-1 text-sm font-semibold">({((estimatedMargin / estimatedSubtotal) * 100).toFixed(1)}%)</span>}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex gap-2"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button type="submit" icon={FileText}>Create quotation</Button></div>
                 </div>
               </div>

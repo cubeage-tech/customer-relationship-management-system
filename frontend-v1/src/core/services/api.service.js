@@ -54,6 +54,240 @@ class ApiService {
     return this.apiget(ServerUrl.customer(id));
   }
 
+  static getCustomerPurchases(id) {
+    return this.apiget(ServerUrl.customerPurchases(id));
+  }
+
+  static getCustomerDocuments(id) {
+    return this.apiget(ServerUrl.customerDocuments(id));
+  }
+
+  // AC-4.2: company branding for quotation PDFs
+  static getBranding() {
+    return this.apiget(ServerUrl.BRANDING);
+  }
+
+  static updateBranding(data) {
+    return this.apiput(ServerUrl.BRANDING, data);
+  }
+
+  static uploadBrandingLogo(file) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.axiosInstance.post(ServerUrl.BRANDING_LOGO, form).then((res) => res.data?.data);
+  }
+
+  static removeBrandingLogo() {
+    return this.apidelete(ServerUrl.BRANDING_LOGO);
+  }
+
+  static getBrandingLogo() {
+    return this.axiosInstance.get(ServerUrl.BRANDING_LOGO, { responseType: 'blob' });
+  }
+
+  static uploadCustomerDocument(id, file) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.axiosInstance.post(ServerUrl.customerDocuments(id), form).then((res) => res.data?.data);
+  }
+
+  static downloadCustomerDocument(id, documentId, inline = false) {
+    return this.axiosInstance.get(`${ServerUrl.customerDocument(id, documentId)}/download`, {
+      params: { inline },
+      responseType: 'blob',
+    });
+  }
+
+  static deleteCustomerDocument(id, documentId) {
+    return this.apidelete(ServerUrl.customerDocument(id, documentId));
+  }
+
+  // ------------------ Communication APIs (Module 5) ------------------
+  // FR-6.1 assets, support form; FR-6.3b ticket rules; FR-6.5 feedback
+  static getCustomerAssets(customerId) {
+    return this.apiget(ServerUrl.customerAssets(customerId));
+  }
+
+  static createCustomerAsset(customerId, data) {
+    return this.apipost(ServerUrl.customerAssets(customerId), data);
+  }
+
+  static updateCustomerAsset(customerId, assetId, data) {
+    return this.apiput(ServerUrl.customerAsset(customerId, assetId), data);
+  }
+
+  static deleteCustomerAsset(customerId, assetId) {
+    return this.apidelete(ServerUrl.customerAsset(customerId, assetId));
+  }
+
+  static getTicketAssignmentRules() {
+    return this.apiget(ServerUrl.TICKET_ASSIGNMENT_RULES);
+  }
+
+  static createTicketAssignmentRule(data) {
+    return this.apipost(ServerUrl.TICKET_ASSIGNMENT_RULES, data);
+  }
+
+  static updateTicketAssignmentRule(id, data) {
+    return this.apiput(ServerUrl.ticketAssignmentRule(id), data);
+  }
+
+  static deleteTicketAssignmentRule(id) {
+    return this.apidelete(ServerUrl.ticketAssignmentRule(id));
+  }
+
+  static getSupportFormLink() {
+    return this.apiget(ServerUrl.SUPPORT_FORM);
+  }
+
+  static resetSupportFormLink() {
+    return this.apipost(ServerUrl.SUPPORT_FORM_RESET);
+  }
+
+  static getPublicSupportForm(token) {
+    return this.apiget(ServerUrl.publicSupport(token));
+  }
+
+  static submitPublicSupportRequest(token, data) {
+    return this.apipost(ServerUrl.publicSupport(token), data);
+  }
+
+  static getPublicFeedback(token) {
+    return this.apiget(ServerUrl.publicFeedback(token));
+  }
+
+  static submitPublicFeedback(token, data) {
+    return this.apipost(ServerUrl.publicFeedback(token), data);
+  }
+
+  // FR-7.1b/7.1c/7.4 campaign execution
+  static launchCampaign(id) {
+    return this.apipatch(ServerUrl.campaignLaunch(id));
+  }
+
+  static scheduleCampaign(id, scheduledAt) {
+    return this.apipatch(ServerUrl.campaignSchedule(id), { scheduledAt });
+  }
+
+  static getCampaignMetrics(id) {
+    return this.apiget(ServerUrl.campaignMetrics(id));
+  }
+
+  static getCampaignRecipients(id) {
+    return this.apiget(ServerUrl.campaignRecipients(id));
+  }
+
+  // FR-7.2 segments
+  static getSegments() {
+    return this.apiget(ServerUrl.SEGMENTS);
+  }
+
+  static getSegmentCustomers(id) {
+    return this.apiget(ServerUrl.segmentCustomers(id));
+  }
+
+  static createSegment(data) {
+    return this.apipost(ServerUrl.SEGMENTS, data);
+  }
+
+  static updateSegment(id, data) {
+    return this.apiput(ServerUrl.segment(id), data);
+  }
+
+  static deleteSegment(id) {
+    return this.apidelete(ServerUrl.segment(id));
+  }
+
+  // FR-7.3 promotions
+  static getPromotions() {
+    return this.apiget(ServerUrl.PROMOTIONS);
+  }
+
+  static createPromotion(data) {
+    return this.apipost(ServerUrl.PROMOTIONS, data);
+  }
+
+  static updatePromotion(id, data) {
+    return this.apiput(ServerUrl.promotion(id), data);
+  }
+
+  static getPromotionRedemptions(id) {
+    return this.apiget(ServerUrl.promotionRedemptions(id));
+  }
+
+  static redeemPromotion(id, data) {
+    return this.apipost(ServerUrl.promotionRedemptions(id), data);
+  }
+
+  static getCustomerPromotions(customerId) {
+    return this.apiget(ServerUrl.customerPromotions(customerId));
+  }
+
+  // FR-5.5 meetings
+  static getMeetings(params) {
+    return this.apiget(ServerUrl.MEETINGS, params);
+  }
+
+  static scheduleMeeting(data) {
+    return this.apipost(ServerUrl.MEETINGS, data);
+  }
+
+  static updateMeeting(id, data) {
+    return this.apiput(ServerUrl.meeting(id), data);
+  }
+
+  static cancelMeeting(id) {
+    return this.apipatch(ServerUrl.meetingCancel(id));
+  }
+
+  static downloadMeetingIcs(id) {
+    return this.axiosInstance.get(ServerUrl.meetingIcs(id), { responseType: 'blob' });
+  }
+
+  static getCalendarFeed() {
+    return this.apiget(ServerUrl.MEETINGS_CALENDAR_FEED);
+  }
+
+  static resetCalendarFeed() {
+    return this.apipost(ServerUrl.MEETINGS_CALENDAR_FEED_RESET);
+  }
+
+  static getCommunications(params) {
+    return this.apiget(ServerUrl.COMMUNICATIONS, params);
+  }
+
+  static logCall(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_CALLS, data);
+  }
+
+  static sendCommunicationEmail(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_EMAIL, data);
+  }
+
+  static sendWhatsApp(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_WHATSAPP, data);
+  }
+
+  static getSmsAlerts() {
+    return this.apiget(ServerUrl.COMMUNICATION_SMS_ALERTS);
+  }
+
+  static updateSmsAlerts(rules) {
+    return this.apiput(ServerUrl.COMMUNICATION_SMS_ALERTS, rules);
+  }
+
+  static getIndustries(includeInactive = false) {
+    return this.apiget(ServerUrl.INDUSTRIES, { includeInactive });
+  }
+
+  static createIndustry(data) {
+    return this.apipost(ServerUrl.INDUSTRIES, data);
+  }
+
+  static updateIndustry(code, data) {
+    return this.apiput(ServerUrl.industry(code), data);
+  }
+
   static createCustomer(data) {
     return this.apipost(ServerUrl.CUSTOMERS, data);
   }
@@ -111,6 +345,14 @@ class ApiService {
     return this.apipatch(ServerUrl.leadAssign(id), data);
   }
 
+  static assignLeadTeam(id, data) {
+    return this.apipatch(ServerUrl.leadTeam(id), data);
+  }
+
+  static getLeadAssignableTeams() {
+    return this.apiget(ServerUrl.LEAD_ASSIGNABLE_TEAMS);
+  }
+
   // ------------------ Opportunity APIs ------------------
   static getOpportunities(params) {
     return this.apiget(ServerUrl.OPPORTUNITIES, params);
@@ -118,6 +360,26 @@ class ApiService {
 
   static getOpportunitySummary() {
     return this.apiget(ServerUrl.OPPORTUNITIES_SUMMARY);
+  }
+
+  static getPipelineStages(includeInactive = false) {
+    return this.apiget(ServerUrl.OPPORTUNITY_STAGES, { includeInactive });
+  }
+
+  static createPipelineStage(data) {
+    return this.apipost(ServerUrl.OPPORTUNITY_STAGES, data);
+  }
+
+  static updatePipelineStage(code, data) {
+    return this.apiput(ServerUrl.pipelineStage(code), data);
+  }
+
+  static reorderPipelineStages(codes) {
+    return this.apiput(ServerUrl.OPPORTUNITY_STAGES_ORDER, codes);
+  }
+
+  static getSalesPerformance() {
+    return this.apiget(ServerUrl.OPPORTUNITIES_PERFORMANCE);
   }
 
   static getOpportunity(id) {
@@ -176,6 +438,14 @@ class ApiService {
   /** Returns the raw axios response (blob) — a PDF download isn't wrapped in the JSON envelope. */
   static downloadQuotationPdf(id) {
     return this.axiosInstance.get(ServerUrl.quotationPdf(id), { responseType: "blob" });
+  }
+
+  static getPublicQuotation(token) {
+    return this.apiget(ServerUrl.publicQuotation(token));
+  }
+
+  static downloadPublicQuotationPdf(token) {
+    return this.axiosInstance.get(ServerUrl.publicQuotationPdf(token), { responseType: "blob" });
   }
 
   // ------------------ Product APIs ------------------
@@ -325,6 +595,22 @@ class ApiService {
   }
 
   // ------------------ Sales Team APIs (tenant admin) ------------------
+  static getLeadAssignmentRules() {
+    return this.apiget(ServerUrl.LEAD_ASSIGNMENT_RULES);
+  }
+
+  static createLeadAssignmentRule(data) {
+    return this.apipost(ServerUrl.LEAD_ASSIGNMENT_RULES, data);
+  }
+
+  static updateLeadAssignmentRule(id, data) {
+    return this.apiput(ServerUrl.leadAssignmentRule(id), data);
+  }
+
+  static deleteLeadAssignmentRule(id) {
+    return this.apidelete(ServerUrl.leadAssignmentRule(id));
+  }
+
   static getSalesTeams() {
     return this.apiget(ServerUrl.SALES_TEAMS);
   }

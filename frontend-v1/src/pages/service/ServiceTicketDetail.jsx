@@ -198,6 +198,14 @@ const ServiceTicketDetail = () => {
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
         <h2 className="font-semibold text-slate-900 mb-3">Details</h2>
         <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.description || 'No description provided.'}</p>
+        {/* FR-6.1: the affected asset and where the request came from. */}
+        <dl className="mt-3 grid gap-2 sm:grid-cols-2 text-sm">
+          <div><dt className="text-slate-500">Asset</dt><dd>{ticket.assetName || '—'}</dd></div>
+          <div>
+            <dt className="text-slate-500">Raised by</dt>
+            <dd>{ticket.source === 'customer' ? `Customer, via the support form${ticket.reporterEmail ? ` (${ticket.reporterEmail})` : ''}` : 'Staff'}</dd>
+          </div>
+        </dl>
       </div>
 
       {/* ---------------- Feedback ---------------- */}
@@ -205,8 +213,9 @@ const ServiceTicketDetail = () => {
         <h2 className="font-semibold text-slate-900 mb-3">Customer feedback</h2>
         {ticket.feedbackScore ? (
           <div className="text-sm">
-            <p className="font-medium">{ticket.feedbackScore} / 5</p>
+            <p className="font-medium">{ticket.feedbackScore} / 5{ticket.technicianName ? ` for ${ticket.technicianName}` : ''}</p>
             {ticket.feedbackComment && <p className="text-slate-600 mt-1">{ticket.feedbackComment}</p>}
+            {ticket.feedbackAt && <p className="text-xs text-slate-400 mt-1">{new Date(ticket.feedbackAt).toLocaleString()}</p>}
           </div>
         ) : canRecordFeedback ? (
           <form onSubmit={handleFeedbackSubmit} className="flex flex-wrap items-end gap-3">
@@ -234,7 +243,7 @@ const ServiceTicketDetail = () => {
         ) : (
           <p className="text-sm text-slate-500">
             {ticket.status === TICKET_STATUSES.RESOLVED || ticket.status === TICKET_STATUSES.CLOSED
-              ? 'No feedback recorded yet.'
+              ? 'No feedback yet — the customer was emailed a rating link when the ticket was resolved.'
               : 'Feedback can be recorded once the ticket is resolved.'}
           </p>
         )}

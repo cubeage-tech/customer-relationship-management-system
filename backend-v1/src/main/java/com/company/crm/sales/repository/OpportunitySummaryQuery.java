@@ -1,6 +1,6 @@
 package com.company.crm.sales.repository;
 
-import com.company.crm.common.enums.OpportunityStage;
+import com.company.crm.sales.service.PipelineStageService;
 import com.company.crm.common.scope.DataScope;
 import com.company.crm.common.scope.ScopedJpql;
 import com.company.crm.sales.dto.response.OpportunityKpiDto;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +25,7 @@ public class OpportunitySummaryQuery {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public Map<OpportunityStage, StageTotals> totalsByStage(Long tenantId, DataScope scope) {
+    public Map<String, StageTotals> totalsByStage(Long tenantId, DataScope scope) {
         String jpql = "select o.stage, count(o), coalesce(sum(o.dealValue), 0)"
                 + " from Opportunity o where o.tenant.id = :tenantId" + ScopedJpql.ownerClause(scope, "o")
                 + " group by o.stage";
@@ -33,9 +33,9 @@ public class OpportunitySummaryQuery {
                 .setParameter("tenantId", tenantId)
                 .getResultList();
 
-        Map<OpportunityStage, StageTotals> totals = new EnumMap<>(OpportunityStage.class);
+        Map<String, StageTotals> totals = new HashMap<>();
         for (Object[] row : rows) {
-            totals.put((OpportunityStage) row[0],
+            totals.put((String) row[0],
                     new StageTotals(((Number) row[1]).longValue(), toBigDecimal(row[2])));
         }
         return totals;
@@ -54,8 +54,8 @@ public class OpportunitySummaryQuery {
                 + " from Opportunity o where o.tenant.id = :tenantId" + ScopedJpql.ownerClause(scope, "o");
         return ScopedJpql.bindOwners(entityManager.createQuery(jpql, OpportunityKpiDto.class), scope)
                 .setParameter("tenantId", tenantId)
-                .setParameter("won", OpportunityStage.WON)
-                .setParameter("lost", OpportunityStage.LOST)
+                .setParameter("won", PipelineStageService.WON)
+                .setParameter("lost", PipelineStageService.LOST)
                 .setParameter("weekStart", weekStart)
                 .setParameter("weekEnd", weekEnd)
                 .setParameter("monthStart", monthStart)

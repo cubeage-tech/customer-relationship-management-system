@@ -30,11 +30,11 @@ public interface ServiceTicketRepository extends JpaRepository<ServiceTicket, Lo
 
     /** Filtered page, with the associations the DTO mapper reads fetched in the same query (no N+1). */
     @Override
-    @EntityGraph(attributePaths = {"customer", "assignedTechnician"})
+    @EntityGraph(attributePaths = {"customer", "assignedTechnician", "asset"})
     Page<ServiceTicket> findAll(Specification<ServiceTicket> spec, Pageable pageable);
 
     @Override
-    @EntityGraph(attributePaths = {"customer", "assignedTechnician"})
+    @EntityGraph(attributePaths = {"customer", "assignedTechnician", "asset"})
     List<ServiceTicket> findAll(Specification<ServiceTicket> spec, Sort sort);
 
     /**
@@ -46,4 +46,31 @@ public interface ServiceTicketRepository extends JpaRepository<ServiceTicket, Lo
             + "where t.id = :ticketId and t.tenant.id = :tenantId and t.assignedTechnician is null")
     int assignIfUnassigned(@Param("ticketId") Long ticketId, @Param("tenantId") Long tenantId,
                            @Param("technicianId") Long technicianId, @Param("now") LocalDateTime now);
+
+    /** FR-6.5: the ticket behind a customer feedback link. */
+    Optional<ServiceTicket> findByFeedbackToken(String feedbackToken);
+
+    /** FR-6.4c: open tickets past their SLA that haven't been escalated for it. */
+    @Query(value = "SELECT id FROM service_tickets WHERE status IN ('open', 'assigned', 'in_progress')"
+            + " AND sla_due_at < :now AND sla_breach_notified_at IS NULL ORDER BY sla_due_at", nativeQuery = true)
+    List<Long> findBreachedUnescalatedIds(@Param("now") LocalDateTime now);
+
+    /** FR-6.4c: open tickets within the last 25% of their SLA window (same rule as the SLA flag), not yet escalated. */
+    @Query(value = "SELECT id FROM service_tickets WHERE status IN ('open', 'assigned', 'in_progress')"
+            + " AND sla_due_at >= :now AND sla_at_risk_notified_at IS NULL"
+            + " AND (sla_due_at = created_at OR (sla_due_at - :now) <= (sla_due_at - created_at) / 4)"
+            + " ORDER BY sla_due_at", nativeQuery = true)
+    List<Long> findAtRiskUnescalatedIds(@Param("now") LocalDateTime now);
+
+    /** FR-6.4c: claims the breach escalation (also suppresses a later at-risk one). 0 = already sent. */
+    @Modifying
+    @Query("update ServiceTicket t set t.slaBreachNotifiedAt = :now,"
+            + " t.slaAtRiskNotifiedAt = coalesce(t.slaAtRiskNotifiedAt, :now)"
+            + " where t.id = :id and t.slaBreachNotifiedAt is null")
+    int claimBreachEscalation(@Param("id") Long id, @Param("now") LocalDateTime now);
+
+    /** FR-6.4c: claims the at-risk escalation. 0 = already sent. */
+    @Modifying
+    @Query("update ServiceTicket t set t.slaAtRiskNotifiedAt = :now where t.id = :id and t.slaAtRiskNotifiedAt is null")
+    int claimAtRiskEscalation(@Param("id") Long id, @Param("now") LocalDateTime now);
 }

@@ -26,4 +26,12 @@ public class CampaignResDto {
     private long convertedLeads;
     private double conversionRate;
     private LocalDateTime createdAt;
+    /** FR-7.1b: when a scheduled campaign launches; when it was launched. */
+    private LocalDateTime scheduledAt;
+    private LocalDateTime launchedAt;
+    /** FR-7.2/7.1c: target segment and message. */
+    private Long segmentId;
+    private String segmentName;
+    private String messageSubject;
+    private String messageBody;
 }
