@@ -20,4 +20,8 @@ public class ProductReqDto {
     @NotNull
     @DecimalMin(value = "0", message = "Unit price cannot be negative")
     private BigDecimal unitPrice;
+
+    /** FR-4.8: optional cost per unit, for quotation margin estimates. */
+    @DecimalMin(value = "0", message = "Cost price cannot be negative")
+    private BigDecimal costPrice;
 }

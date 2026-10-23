@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -189,6 +190,10 @@ public class LeadService {
         lead.setContactPhone(dto.getContactPhone());
         lead.setIndustry(parseIndustry(dto.getIndustry()));
         lead.setSource(parseSource(dto.getSource()));
+        // FR-2.5: a new follow-up date gets its own reminder.
+        if (!Objects.equals(lead.getFollowUpDate(), dto.getFollowUpDate())) {
+            lead.setFollowUpNotifiedAt(null);
+        }
         lead.setFollowUpDate(dto.getFollowUpDate());
         lead.setNotes(dto.getNotes());
         lead.setCampaign(dto.getCampaignId() != null ? resolveCampaign(currentUser, dto.getCampaignId()) : null);

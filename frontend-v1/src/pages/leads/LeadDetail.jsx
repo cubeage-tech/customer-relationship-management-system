@@ -18,6 +18,7 @@ import { getLead, updateLead, changeLeadStage, assignLead, assignLeadTeam, listA
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
+import MeetingsPanel from '../../components/meeting/MeetingsPanel';
 
 const toProfileForm = (lead) => ({
   leadName: lead.leadName || '',
@@ -347,6 +348,8 @@ const LeadDetail = () => {
       </div>
 
       {/* FR-5.1/5.2/5.4: communications logged against the lead; after conversion they also show on the customer. */}
+      <MeetingsPanel leadId={lead.id} />
+
       <CommunicationTimeline leadId={lead.id} defaultEmail={lead.contactEmail || ''} defaultPhone={lead.contactPhone || ''} />
     </section>
   );

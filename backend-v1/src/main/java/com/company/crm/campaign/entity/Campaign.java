@@ -52,6 +52,27 @@ public class Campaign {
     @Column(name = "actual_cost", nullable = false)
     private BigDecimal actualCost = BigDecimal.ZERO;
 
+    /** FR-7.1b: when a SCHEDULED campaign launches itself. */
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
+    /** FR-7.1c: when it was launched (and, for email/SMS, sent). */
+    @Column(name = "launched_at")
+    private LocalDateTime launchedAt;
+
+    /** FR-7.2/7.1c: who an email/SMS campaign is sent to. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "segment_id")
+    private CustomerSegment segment;
+
+    /** FR-7.1c: email subject (email campaigns). */
+    @Column(name = "message_subject", length = 200)
+    private String messageSubject;
+
+    /** FR-7.1c: the message (plain text; links in it are tracked for FR-7.4). */
+    @Column(name = "message_body", columnDefinition = "TEXT")
+    private String messageBody;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;

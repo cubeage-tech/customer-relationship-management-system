@@ -29,6 +29,35 @@ public class Tenant {
     @Column(name = "bank_account_number", length = 18)
     private String bankAccountNumber;
 
+    // AC-4.2: branding printed on quotation PDFs (all optional).
+    @Column(name = "brand_address", length = 300)
+    private String brandAddress;
+
+    @Column(name = "brand_phone", length = 30)
+    private String brandPhone;
+
+    @Column(name = "brand_email", length = 150)
+    private String brandEmail;
+
+    /** GSTIN or other tax registration number. */
+    @Column(name = "brand_tax_id", length = 30)
+    private String brandTaxId;
+
+    /** "#rrggbb", used for the company name and rules on the PDF. */
+    @Column(name = "brand_color", length = 7)
+    private String brandColor;
+
+    /** Document-storage key of the logo (PNG/JPEG). */
+    @Column(name = "logo_key", length = 200)
+    private String logoKey;
+
+    @Column(name = "logo_content_type", length = 30)
+    private String logoContentType;
+
+    /** FR-6.1: secret of the public "Report an issue" form; null until the admin enables it. */
+    @Column(name = "support_form_token", length = 64)
+    private String supportFormToken;
+
     @Column(nullable = false)
     private SubscriptionPlan plan = SubscriptionPlan.STARTER;
 

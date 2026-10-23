@@ -48,6 +48,13 @@ public class Customer {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    /** FR-7.1c: unsubscribed from marketing campaigns (set from the unsubscribe link). */
+    @Column(name = "marketing_opt_out", nullable = false)
+    private boolean marketingOptOut;
+
+    @Column(name = "marketing_opt_out_at")
+    private LocalDateTime marketingOptOutAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;

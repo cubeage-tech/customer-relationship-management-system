@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Mail, MessageCircle, MessageSquare, Phone } from 'lucide-react';
+import { CalendarDays, Mail, MessageCircle, MessageSquare, Phone } from 'lucide-react';
 import Button from '../common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
@@ -11,6 +11,8 @@ const CHANNEL = {
   whatsapp: { label: 'WhatsApp', Icon: MessageCircle },
   sms: { label: 'SMS', Icon: MessageSquare },
   call: { label: 'Call', Icon: Phone },
+  // FR-5.6: meetings (FR-5.5) share the timeline, placed at their start time.
+  meeting: { label: 'Meeting', Icon: CalendarDays },
 };
 
 const OUTCOMES = [
@@ -39,7 +41,7 @@ const nowLocal = () => {
 const inputClass = 'border border-slate-300 rounded px-2 py-1 w-full';
 
 /**
- * FR-5.6: one chronological timeline of emails, WhatsApp messages, SMS and calls for a customer
+ * FR-5.6: one chronological timeline of emails, WhatsApp messages, SMS, calls and meetings for a customer
  * (or a not-yet-converted lead), with actions to log a call (FR-5.4), send an email (FR-5.1) or a
  * WhatsApp message (FR-5.2).
  */
@@ -198,14 +200,16 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
             const { label: channelLabel, Icon } = CHANNEL[c.channel] || CHANNEL.call;
             const inbound = c.direction === 'inbound';
             return (
-              <li key={c.id} className="flex gap-3 border-b border-slate-100 pb-3 last:border-0">
+              <li key={`${c.channel}-${c.id}`} className="flex gap-3 border-b border-slate-100 pb-3 last:border-0">
                 <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600">
                   <Icon size={16} aria-hidden="true" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="font-medium text-slate-900">
-                      {inbound ? `${channelLabel} from` : `${channelLabel} to`} {c.counterpart || (c.channel === 'call' ? 'customer' : '—')}
+                      {c.channel === 'meeting'
+                        ? channelLabel
+                        : `${inbound ? `${channelLabel} from` : `${channelLabel} to`} ${c.counterpart || (c.channel === 'call' ? 'customer' : '—')}`}
                     </span>
                     {c.callOutcome && <span className="text-slate-600">· {label(c.callOutcome)}</span>}
                     {c.callDurationSeconds != null && <span className="text-slate-600">· {Math.round(c.callDurationSeconds / 60)} min</span>}

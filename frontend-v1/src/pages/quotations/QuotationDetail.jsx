@@ -35,6 +35,7 @@ const QuotationDetail = () => {
   const [notFound, setNotFound] = useState(false);
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const refresh = () => {
     getQuotation(id)
@@ -140,6 +141,22 @@ const QuotationDetail = () => {
               <p>{quotation.discountReviewNote}</p>
             </div>
           )}
+          {/* FR-4.5: tracked customer link — emailed on send; opening it marks the quotation Viewed. */}
+          {quotation.viewUrl && (
+            <div>
+              <p className="text-slate-500">Customer link</p>
+              <p className="flex items-center gap-2">
+                <span className="font-medium">{quotation.viewedAt ? `Viewed ${new Date(quotation.viewedAt).toLocaleString()}` : 'Not opened yet'}</span>
+                <button
+                  type="button"
+                  className="text-blue-600 hover:underline"
+                  onClick={() => navigator.clipboard?.writeText(quotation.viewUrl).then(() => setLinkCopied(true)).catch(() => {})}
+                >
+                  {linkCopied ? 'Copied' : 'Copy link'}
+                </button>
+              </p>
+            </div>
+          )}
         </div>
 
         {actionError && <p className="form-error mt-3">{actionError}</p>}
@@ -183,6 +200,7 @@ const QuotationDetail = () => {
               <th className="py-2 pr-4">Unit price</th>
               <th className="py-2 pr-4">Discount</th>
               <th className="py-2 pr-4">Line total</th>
+              <th className="py-2 pr-4 text-slate-500">Unit cost</th>
             </tr>
           </thead>
           <tbody>
@@ -193,6 +211,7 @@ const QuotationDetail = () => {
                 <td className="py-2 pr-4">{formatCurrency(item.unitPrice)}</td>
                 <td className="py-2 pr-4">{item.discountPercent}%</td>
                 <td className="py-2 pr-4">{formatCurrency(item.lineTotal)}</td>
+                <td className="py-2 pr-4 text-slate-500">{item.unitCost != null ? formatCurrency(item.unitCost) : '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -202,6 +221,18 @@ const QuotationDetail = () => {
           <p>Subtotal: {formatCurrency(quotation.subtotal)}</p>
           <p>Discount: {formatCurrency(discountTotal)}</p>
           <p className="font-semibold text-base">Grand total: {formatCurrency(quotation.grandTotal)}</p>
+          {/* FR-4.8: internal estimate — never shown on the customer link or PDF. */}
+          {quotation.estimatedMargin != null ? (
+            <p className={quotation.estimatedMargin < 0 ? 'text-rose-600 font-medium' : 'text-emerald-700 font-medium'}>
+              Estimated margin (internal): {formatCurrency(quotation.estimatedMargin)}
+              {quotation.estimatedMarginPercent != null && ` (${quotation.estimatedMarginPercent}%)`}
+              <span className="font-normal text-slate-500"> · cost {formatCurrency(quotation.estimatedCost)}</span>
+            </p>
+          ) : (
+            <p className="text-slate-500">
+              Estimated margin unknown: {quotation.linesWithoutCost === 1 ? '1 line has' : `${quotation.linesWithoutCost} lines have`} no unit cost
+            </p>
+          )}
         </div>
       </div>
 

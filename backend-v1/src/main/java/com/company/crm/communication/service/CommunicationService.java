@@ -22,6 +22,8 @@ import com.company.crm.lead.repository.LeadRepository;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.tenant.repository.TenantRepository;
 import com.company.crm.user.entity.User;
+import com.company.crm.meeting.entity.Meeting;
+import com.company.crm.meeting.repository.MeetingRepository;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,12 +32,16 @@ import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Module 5 — Communication Management. Every email, WhatsApp message, SMS and call is one
@@ -51,6 +57,7 @@ public class CommunicationService {
     private static final int MAX_ERROR_LENGTH = 500;
 
     private final CommunicationRepo communicationRepo;
+    private final MeetingRepository meetingRepository;
     private final CommunicationMatchQuery matchQuery;
     private final CustomerRepository customerRepository;
     private final LeadRepository leadRepository;
@@ -72,10 +79,18 @@ public class CommunicationService {
     @Transactional(readOnly = true)
     public List<CommunicationResDto> timeline(User currentUser, Long customerId, Long leadId) {
         Target target = resolveTarget(currentUser, customerId, leadId);
-        List<Communication> rows = target.customer() != null && customerId != null
-                ? communicationRepo.findByTenantIdAndCustomerIdOrderByOccurredAtDesc(target.tenant().getId(), target.customer().getId())
-                : communicationRepo.findByTenantIdAndLeadIdOrderByOccurredAtDesc(target.tenant().getId(), target.lead().getId());
-        return rows.stream().map(this::toDto).toList();
+        boolean forCustomer = target.customer() != null && customerId != null;
+        Long tenantId = target.tenant().getId();
+        List<Communication> rows = forCustomer
+                ? communicationRepo.findByTenantIdAndCustomerIdOrderByOccurredAtDesc(tenantId, target.customer().getId())
+                : communicationRepo.findByTenantIdAndLeadIdOrderByOccurredAtDesc(tenantId, target.lead().getId());
+        // FR-5.6: meetings (FR-5.5) join the same timeline, placed at their start time.
+        List<Meeting> meetings = forCustomer
+                ? meetingRepository.findByTenantIdAndCustomerIdOrderByStartsAtDesc(tenantId, target.customer().getId())
+                : meetingRepository.findByTenantIdAndLeadIdOrderByStartsAtDesc(tenantId, target.lead().getId());
+        return Stream.concat(rows.stream().map(this::toDto), meetings.stream().map(CommunicationService::meetingEntry))
+                .sorted(Comparator.comparing(CommunicationResDto::occurredAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
     }
 
     // ==================== Calls (FR-5.4) ====================
@@ -124,6 +139,73 @@ public class CommunicationService {
         return toDto(communicationRepo.save(email));
     }
 
+    /**
+     * Sends one email on the system's behalf (FR-4.5 quotation link) and logs it on the customer's
+     * timeline. Never throws: a missing address or a delivery failure is logged as FAILED.
+     */
+    @Transactional
+    public void sendAutomatedEmail(Tenant tenant, Customer customer, String to, String subject, String body) {
+        sendAutomatedEmail(tenant, customer, null, to, subject, body, null);
+    }
+
+    /** FR-5.5: same, for a customer or lead, optionally carrying an iCalendar invite ({@code ics}). */
+    @Transactional
+    public void sendAutomatedEmail(Tenant tenant, Customer customer, Lead lead, String to, String subject, String body, String ics) {
+        Communication email = newLog(new Target(tenant, customer, lead), CommunicationChannel.EMAIL, CommunicationDirection.OUTBOUND, null);
+        email.setSubject(subject);
+        email.setBody(body);
+        email.setCounterpart(to == null || to.isBlank() ? null : to.trim().toLowerCase());
+        if (email.getCounterpart() == null) {
+            email.setStatus(CommunicationStatus.FAILED);
+            email.setErrorMessage("No email address on record");
+            communicationRepo.save(email);
+            return;
+        }
+        email.setStatus(CommunicationStatus.QUEUED);
+        email = communicationRepo.save(email);
+        String messageId = "<crm." + email.getId() + "." + UUID.randomUUID() + "@smartcrm>";
+        email.setProviderMessageId(messageId);
+        try {
+            if (ics == null) {
+                mailService.sendCustomerEmail(email.getCounterpart(), subject, body, messageId);
+            } else {
+                mailService.sendCustomerEmail(email.getCounterpart(), subject, body, messageId, ics);
+            }
+            email.setStatus(CommunicationStatus.SENT);
+        } catch (MailException | MessagingException e) {
+            log.warn("Automated email {} failed: {}", email.getId(), e.getMessage());
+            email.setStatus(CommunicationStatus.FAILED);
+            email.setErrorMessage(truncate("Email could not be sent: " + e.getMessage()));
+        }
+        communicationRepo.save(email);
+    }
+
+    /**
+     * FR-7.1c: one campaign email (HTML + plain-text, with an unsubscribe link), logged on the
+     * customer's timeline. Never throws: a delivery failure is logged as FAILED and returned.
+     */
+    @Transactional
+    public Communication sendMarketingEmail(Tenant tenant, Customer customer, String to, String subject,
+                                            String text, String html, String unsubscribeUrl) {
+        Communication email = newLog(new Target(tenant, customer, null), CommunicationChannel.EMAIL, CommunicationDirection.OUTBOUND, null);
+        email.setSubject(subject);
+        email.setBody(text);
+        email.setCounterpart(to.trim().toLowerCase());
+        email.setStatus(CommunicationStatus.QUEUED);
+        email = communicationRepo.save(email);
+        String messageId = "<crm." + email.getId() + "." + UUID.randomUUID() + "@smartcrm>";
+        email.setProviderMessageId(messageId);
+        try {
+            mailService.sendMarketingEmail(email.getCounterpart(), subject, text, html, messageId, unsubscribeUrl);
+            email.setStatus(CommunicationStatus.SENT);
+        } catch (MailException | MessagingException e) {
+            log.warn("Campaign email {} failed: {}", email.getId(), e.getMessage());
+            email.setStatus(CommunicationStatus.FAILED);
+            email.setErrorMessage(truncate("Email could not be sent: " + e.getMessage()));
+        }
+        return communicationRepo.save(email);
+    }
+
     // ==================== WhatsApp (FR-5.2) ====================
 
     @Transactional
@@ -144,8 +226,18 @@ public class CommunicationService {
      * an unconfigured provider or a missing number is logged as FAILED so admins can see why.
      */
     @Transactional
-    public void sendAutomatedSms(Tenant tenant, Customer customer, String rawPhone, String body) {
-        Communication sms = newLog(new Target(tenant, customer, null), CommunicationChannel.SMS, CommunicationDirection.OUTBOUND, null);
+    public Communication sendAutomatedSms(Tenant tenant, Customer customer, String rawPhone, String body) {
+        return sendAutomatedSms(new Target(tenant, customer, null), rawPhone, body);
+    }
+
+    /** FR-5.3 for lead events (follow-up due): same as above, logged on the lead's timeline. */
+    @Transactional
+    public Communication sendAutomatedLeadSms(Tenant tenant, Lead lead, String rawPhone, String body) {
+        return sendAutomatedSms(new Target(tenant, null, lead), rawPhone, body);
+    }
+
+    private Communication sendAutomatedSms(Target target, String rawPhone, String body) {
+        Communication sms = newLog(target, CommunicationChannel.SMS, CommunicationDirection.OUTBOUND, null);
         sms.setBody(body);
         sms.setCounterpart(phoneNumbers.normalizeOrNull(rawPhone));
         if (!twilioClient.isSmsEnabled()) {
@@ -157,7 +249,7 @@ public class CommunicationService {
         } else {
             applySendResult(sms, () -> twilioClient.sendSms(sms.getCounterpart(), body));
         }
-        communicationRepo.save(sms);
+        return communicationRepo.save(sms);
     }
 
     // ==================== Inbound + delivery callbacks ====================
@@ -196,6 +288,45 @@ public class CommunicationService {
             inbound.setOccurredAt(message.occurredAt());
         }
         return Optional.of(communicationRepo.save(inbound));
+    }
+
+    /** A finished phone call reported by the telephony provider (FR-5.4b). */
+    public record CallRecord(String providerCallId, String from, String to, boolean inbound,
+                             CallOutcome outcome, Integer durationSeconds, LocalDateTime endedAt) {}
+
+    /**
+     * FR-5.4b: logs a call automatically from the telephony provider, against the customer or lead
+     * whose number it was (the caller for inbound calls, the callee for outbound). Matched like
+     * inbound messages: the latest call to that number, else a unique contact match. Unknown or
+     * ambiguous numbers and duplicate callbacks are skipped (returns empty).
+     */
+    @Transactional
+    public Optional<Communication> recordCall(CallRecord call) {
+        if (call.providerCallId() != null && communicationRepo.findByProviderMessageId(call.providerCallId()).isPresent()) {
+            return Optional.empty();
+        }
+        String counterpart = phoneNumbers.normalizeOrNull(call.inbound() ? call.from() : call.to());
+        if (counterpart == null) {
+            return Optional.empty();
+        }
+        Optional<Target> owner = communicationRepo.findFirstByChannelAndDirectionAndCounterpartOrderByOccurredAtDesc(
+                        CommunicationChannel.CALL, CommunicationDirection.OUTBOUND, counterpart).map(this::targetOf)
+                .or(() -> uniqueMatch(matchQuery.byPhone(counterpart)));
+        if (owner.isEmpty()) {
+            log.info("Automatic call log skipped: unknown or ambiguous number");
+            return Optional.empty();
+        }
+        Communication row = newLog(owner.get(), CommunicationChannel.CALL,
+                call.inbound() ? CommunicationDirection.INBOUND : CommunicationDirection.OUTBOUND, null);
+        row.setStatus(CommunicationStatus.LOGGED);
+        row.setCounterpart(counterpart);
+        row.setCallOutcome(call.outcome());
+        row.setCallDurationSeconds(call.durationSeconds());
+        row.setBody("Logged automatically by the phone system.");
+        row.setProviderMessageId(call.providerCallId());
+        LocalDateTime ended = call.endedAt() != null ? call.endedAt() : LocalDateTime.now();
+        row.setOccurredAt(call.durationSeconds() != null ? ended.minusSeconds(call.durationSeconds()) : ended);
+        return Optional.of(communicationRepo.save(row));
     }
 
     /** Twilio status callback: queued → sent → delivered → read, or failed. Never moves backwards. */
@@ -306,6 +437,27 @@ public class CommunicationService {
                 c.getCallDurationSeconds(),
                 c.getOccurredAt(),
                 c.getCreatedBy() != null ? c.getCreatedBy().getFullName() : null);
+    }
+
+    /** FR-5.6: a meeting as a timeline entry — channel "meeting", status scheduled/cancelled, at its start time. */
+    private static CommunicationResDto meetingEntry(Meeting m) {
+        String body = Stream.of(m.getLocation() != null ? "Where: " + m.getLocation() : null, m.getNotes())
+                .filter(Objects::nonNull).collect(Collectors.joining("\n"));
+        return new CommunicationResDto(
+                m.getId(),
+                m.getCustomer() != null ? m.getCustomer().getId() : null,
+                m.getLead() != null ? m.getLead().getId() : null,
+                "meeting",
+                null,
+                m.getStatus(),
+                m.getTitle(),
+                body.isEmpty() ? null : body,
+                null,
+                null,
+                null,
+                (int) Duration.between(m.getStartsAt(), m.getEndsAt()).toSeconds(),
+                m.getStartsAt(),
+                m.getOrganizer().getFullName());
     }
 
     private static CommunicationStatus mapProviderStatus(String providerStatus) {

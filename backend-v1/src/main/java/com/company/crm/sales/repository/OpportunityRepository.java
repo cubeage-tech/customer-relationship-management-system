@@ -1,6 +1,5 @@
 package com.company.crm.sales.repository;
 
-import com.company.crm.common.enums.OpportunityStage;
 import com.company.crm.sales.entity.Opportunity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -21,15 +20,15 @@ public interface OpportunityRepository extends JpaRepository<Opportunity, Long> 
     List<Opportunity> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
 
     /** FR-1.3: a customer's deals in one stage (WON = purchases). */
-    List<Opportunity> findByTenantIdAndCustomerIdAndStage(Long tenantId, Long customerId, OpportunityStage stage);
+    List<Opportunity> findByTenantIdAndCustomerIdAndStage(Long tenantId, Long customerId, String stage);
 
-    long countByTenantIdAndStageNotIn(Long tenantId, Collection<OpportunityStage> stages);
+    long countByTenantIdAndStageNotIn(Long tenantId, Collection<String> stages);
 
-    long countByTenantIdAndStageNotIn(Long tenantId, List<OpportunityStage> stages);
+    long countByTenantIdAndStageNotIn(Long tenantId, List<String> stages);
 
     List<Opportunity> findByTenantIdAndStageAndStageChangedAtGreaterThanEqualAndStageChangedAtLessThan(
         Long tenantId,
-        OpportunityStage stage,
+        String stage,
         LocalDateTime start,
         LocalDateTime end
     );

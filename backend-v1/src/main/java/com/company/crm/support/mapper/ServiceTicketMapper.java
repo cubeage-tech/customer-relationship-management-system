@@ -27,8 +27,18 @@ public class ServiceTicketMapper {
                 ticket.getFeedbackComment(),
                 ticket.getAssignedTechnician() != null ? ticket.getAssignedTechnician().getId() : null,
                 ticket.getAssignedTechnician() != null ? ticket.getAssignedTechnician().getFullName() : null,
-                ticket.getCreatedAt()
+                ticket.getCreatedAt(),
+                ticket.getAsset() != null ? ticket.getAsset().getId() : null,
+                ticket.getAsset() != null ? assetLabel(ticket) : null,
+                ticket.getSource(),
+                ticket.getReporterEmail(),
+                ticket.getFeedbackAt()
         );
+    }
+
+    private static String assetLabel(ServiceTicket ticket) {
+        String serial = ticket.getAsset().getSerialNumber();
+        return ticket.getAsset().getName() + (serial != null ? " (" + serial + ")" : "");
     }
 
     /** FR-6.4: on_track / at_risk (within 25% of the SLA window remaining) / breached / met. */

@@ -54,6 +54,7 @@ public class ProductService {
         product.setName(dto.getName());
         product.setDescription(dto.getDescription());
         product.setUnitPrice(dto.getUnitPrice());
+        product.setCostPrice(dto.getCostPrice());
     }
 
     private Product findProduct(User currentUser, Long productId) {

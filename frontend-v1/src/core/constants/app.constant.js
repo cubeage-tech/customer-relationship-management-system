@@ -317,6 +317,7 @@ export const CAMPAIGN_CHANNEL_OPTIONS = Object.values(CAMPAIGN_CHANNELS).map((va
 // Campaign status — mirrors backend CampaignStatus db values (SRS §6.7).
 export const CAMPAIGN_STATUSES = {
   DRAFT: 'draft',
+  SCHEDULED: 'scheduled',
   ACTIVE: 'active',
   PAUSED: 'paused',
   COMPLETED: 'completed',
@@ -325,6 +326,7 @@ export const CAMPAIGN_STATUSES = {
 
 export const CAMPAIGN_STATUS_LABELS = {
   [CAMPAIGN_STATUSES.DRAFT]: 'Draft',
+  [CAMPAIGN_STATUSES.SCHEDULED]: 'Scheduled',
   [CAMPAIGN_STATUSES.ACTIVE]: 'Active',
   [CAMPAIGN_STATUSES.PAUSED]: 'Paused',
   [CAMPAIGN_STATUSES.COMPLETED]: 'Completed',

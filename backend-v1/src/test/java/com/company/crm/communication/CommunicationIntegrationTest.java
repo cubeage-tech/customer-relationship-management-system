@@ -146,7 +146,7 @@ class CommunicationIntegrationTest extends PostgresIntegrationTest {
     @Test
     void smsAlertsFollowTheTenantRules() throws Exception {
         send(get("/api/communications/sms-alerts"), adminToken, null)
-                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data.length()").value(3)) // + follow_up_due (FR-2.5)
                 .andExpect(jsonPath("$.data[0].enabled").value(false));
         send(put("/api/communications/sms-alerts"), tenant.token(SALES_MANAGER), "[]").andExpect(status().isForbidden());
 
@@ -164,8 +164,8 @@ class CommunicationIntegrationTest extends PostgresIntegrationTest {
 
         sendQuotation();
         verify(twilioClient).sendSms(eq("+91" + phone10), contains("has been sent to ABC Engineering"));
-        timeline().andExpect(jsonPath("$.data[0].channel").value("sms"))
-                .andExpect(jsonPath("$.data[0].status").value("queued"));
+        // Sending also emails the customer their view link (FR-4.5), so pick the SMS entry by channel.
+        timeline().andExpect(jsonPath("$.data[?(@.channel == 'sms')].status").value(org.hamcrest.Matchers.hasItem("queued")));
     }
 
     @Test

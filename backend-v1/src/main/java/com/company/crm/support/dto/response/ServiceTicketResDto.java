@@ -24,4 +24,12 @@ public class ServiceTicketResDto {
     private Long technicianId;
     private String technicianName;
     private LocalDateTime createdAt;
+    /** FR-6.1: the asset the ticket is about, if any. */
+    private Long assetId;
+    private String assetName;
+    /** FR-6.1: "staff" or "customer" (public support form) and the reporter's address. */
+    private String source;
+    private String reporterEmail;
+    /** FR-6.5: when the feedback was given. */
+    private LocalDateTime feedbackAt;
 }

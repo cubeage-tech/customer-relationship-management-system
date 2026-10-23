@@ -5,7 +5,8 @@ import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { MODULES, PERMISSIONS, SCOPE_LABELS } from '../../core/constants/permission.constant';
-import { OPPORTUNITY_STAGE_LABELS, OPPORTUNITY_STAGE_OPTIONS, OPPORTUNITY_STAGES } from '../../core/constants/app.constant';
+import { OPPORTUNITY_STAGES } from '../../core/constants/app.constant';
+import { usePipelineStages } from '../../core/hooks/usePipelineStages';
 import RoutePath from '../../core/constants/routes.constant';
 import {
   listOpportunities,
@@ -15,6 +16,18 @@ import {
   changeOpportunityStage,
 } from '../../core/services/opportunity.service';
 import { listCustomers } from '../../core/services/customer.service';
+import OpportunityBoard from '../../components/opportunity/OpportunityBoard';
+
+const VIEW_KEY = 'opportunities.view';
+const POLL_INTERVAL_MS = 10000;
+
+const readView = () => {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'board';
+  } catch {
+    return 'board';
+  }
+};
 
 const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
 
@@ -25,6 +38,8 @@ const Opportunities = () => {
   const canCreate = can(PERMISSIONS.OPPORTUNITIES_CREATE);
   const canEdit = can(PERMISSIONS.OPPORTUNITIES_EDIT);
   const canDelete = can(PERMISSIONS.OPPORTUNITIES_DELETE);
+  // FR-3.2: the tenant's configurable stages.
+  const { stages: pipelineStages, labelOf: stageLabel, optionsFor: stageOptionsFor } = usePipelineStages();
 
   const [opportunities, setOpportunities] = useState([]);
   const [summary, setSummary] = useState([]);
@@ -35,13 +50,27 @@ const Opportunities = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
+  // FR-3.3: kanban board by default; the table stays available. Remembered per browser.
+  const [view, setView] = useState(readView);
 
-  const refresh = () => {
+  const changeView = (next) => {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // storage unavailable: the choice just is not remembered
+    }
+  };
+
+  // `background` = an automatic poll: a failed poll keeps what is on screen instead of emptying it.
+  const refresh = (background = false) => {
     listOpportunities({ stage: stageFilter, search })
       .then((data) => setOpportunities(data ?? []))
-      .catch(() => setOpportunities([]))
+      .catch(() => { if (!background) setOpportunities([]); })
       .finally(() => setLoading(false));
-    getOpportunitySummary().then((data) => setSummary(data ?? [])).catch(() => setSummary([]));
+    getOpportunitySummary()
+      .then((data) => setSummary(data ?? []))
+      .catch(() => { if (!background) setSummary([]); });
   };
 
   useEffect(() => {
@@ -52,11 +81,32 @@ const Opportunities = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stageFilter, search]);
 
+  // AC-3.1: pick up other users' stage changes — poll while the tab is visible, and refresh as soon as
+  // the user comes back to the tab.
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === 'visible') refresh(true);
+    };
+    const intervalId = window.setInterval(poll, POLL_INTERVAL_MS);
+    document.addEventListener('visibilitychange', poll);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageFilter, search]);
+
   useEffect(() => {
     if (!toast) return undefined;
     const timeoutId = window.setTimeout(() => setToast(null), 4000);
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
+
+  // Board columns: active stages, plus a deactivated one while deals are still in it.
+  const boardStages = pipelineStages
+    .filter((st) => st.active || opportunities.some((o) => o.stage === st.code))
+    .map((st) => ({ value: st.code, label: st.active ? st.label : `${st.label} (inactive)` }));
+  const stageFilterOptions = pipelineStages.map((st) => ({ value: st.code, label: st.active ? st.label : `${st.label} (inactive)` }));
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -78,12 +128,16 @@ const Opportunities = () => {
 
   const handleStageChange = async (opportunity, nextStage) => {
     if (nextStage === opportunity.stage) return;
-    if (nextStage === OPPORTUNITY_STAGES.LOST) {
-      const reason = window.prompt('Why was this opportunity lost?');
-      if (!reason) return; // FR-3.4: a loss reason is required — backend rejects an empty one anyway.
-      await changeOpportunityStage(opportunity.id, nextStage, reason);
-    } else {
-      await changeOpportunityStage(opportunity.id, nextStage);
+    try {
+      if (nextStage === OPPORTUNITY_STAGES.LOST) {
+        const reason = window.prompt('Why was this opportunity lost?');
+        if (!reason) return; // FR-3.4: a loss reason is required — backend rejects an empty one anyway.
+        await changeOpportunityStage(opportunity.id, nextStage, reason);
+      } else {
+        await changeOpportunityStage(opportunity.id, nextStage);
+      }
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'Could not move this opportunity. Please try again.' });
     }
     refresh();
   };
@@ -130,7 +184,7 @@ const Opportunities = () => {
           {summary.map((s) => (
             <div key={s.stage} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">{OPPORTUNITY_STAGE_LABELS[s.stage] || s.stage}</p>
+                <p className="text-xs font-semibold uppercase text-slate-500">{s.label || stageLabel(s.stage)}</p>
                 <span className="grid size-8 place-items-center rounded-md bg-violet-50 text-violet-700"><CircleDollarSign size={17} /></span>
               </div>
               <p className="mt-2 text-xl font-bold text-slate-900">{formatCurrency(s.totalValue)}</p>
@@ -201,6 +255,19 @@ const Opportunities = () => {
             <p className="mt-1 text-xs text-slate-500">Monitor deal value, close dates, and stage progression.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border border-slate-200 p-0.5" role="group" aria-label="View">
+              {[['board', 'Board'], ['table', 'Table']].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => changeView(value)}
+                  aria-pressed={view === value}
+                  className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="relative min-w-48 flex-1 sm:flex-none">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Search by customer or product</span>
@@ -214,7 +281,7 @@ const Opportunities = () => {
             className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
           >
             <option value="">All stages</option>
-            {OPPORTUNITY_STAGE_OPTIONS.map((option) => (
+            {stageFilterOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -232,6 +299,14 @@ const Opportunities = () => {
             <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || stageFilter ? 'Try changing your search or stage filter.' : canCreate ? 'Add your first deal to start tracking it through the sales pipeline.' : 'Opportunities you have access to will be listed here.'}</p>
             {canCreate && !search && !stageFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Add first opportunity</Button>}
           </div>
+        ) : view === 'board' ? (
+          <OpportunityBoard
+            opportunities={opportunities}
+            stages={stageFilter ? boardStages.filter((o) => o.value === stageFilter) : boardStages}
+            stageOptionsFor={stageOptionsFor}
+            canEdit={canEdit}
+            onStageChange={handleStageChange}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left text-sm">
@@ -245,7 +320,7 @@ const Opportunities = () => {
                     <td className="px-4 py-3.5 text-slate-600">{o.productService || '—'}</td>
                     <td className="px-4 py-3.5 font-semibold text-slate-800">{formatCurrency(o.dealValue)}</td>
                     <td className="px-4 py-3.5 text-slate-600">{o.expectedClosingDate ? new Date(o.expectedClosingDate).toLocaleDateString() : '—'}</td>
-                    <td className="px-4 py-3.5">{canEdit ? <select value={o.stage} onChange={(e) => handleStageChange(o, e.target.value)} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">{OPPORTUNITY_STAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">{OPPORTUNITY_STAGE_LABELS[o.stage] || o.stage}</span>}</td>
+                    <td className="px-4 py-3.5">{canEdit ? <select value={o.stage} onChange={(e) => handleStageChange(o, e.target.value)} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">{stageOptionsFor(o.stage).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">{stageLabel(o.stage)}</span>}</td>
                     <td className="px-4 py-3.5 text-slate-600">{o.ownerName || '—'}</td>
                     {canDelete && <td className="px-4 py-3.5 text-right"><button type="button" onClick={() => handleDelete(o)} className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Trash2 size={14} />Delete</button></td>}
                   </tr>

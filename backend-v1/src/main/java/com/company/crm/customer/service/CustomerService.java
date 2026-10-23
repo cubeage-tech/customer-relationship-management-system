@@ -13,7 +13,7 @@ import com.company.crm.common.scope.DataScope;
 import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.customer.dto.request.CustomerContactReqDto;
 import com.company.crm.customer.dto.request.CustomerReqDto;
-import com.company.crm.common.enums.OpportunityStage;
+import com.company.crm.sales.service.PipelineStageService;
 import com.company.crm.common.enums.QuotationStatus;
 import com.company.crm.customer.dto.response.CustomerContactResDto;
 import com.company.crm.customer.dto.response.CustomerPurchaseResDto;
@@ -90,11 +90,11 @@ public class CustomerService {
         Long tenantId = requireTenantId(currentUser);
 
         List<CustomerPurchaseResDto> purchases = new ArrayList<>();
-        opportunityRepository.findByTenantIdAndCustomerIdAndStage(tenantId, customerId, OpportunityStage.WON)
+        opportunityRepository.findByTenantIdAndCustomerIdAndStage(tenantId, customerId, PipelineStageService.WON)
                 .forEach(o -> purchases.add(new CustomerPurchaseResDto("opportunity", o.getId(), null, o.getProductService(),
                         o.getDealValue(), o.getStageChangedAt() != null ? o.getStageChangedAt() : o.getUpdatedAt())));
         quotationRepository.findByTenantIdAndCustomerIdAndStatus(tenantId, customerId, QuotationStatus.APPROVED).stream()
-                .filter(q -> q.getOpportunity() == null || q.getOpportunity().getStage() != OpportunityStage.WON)
+                .filter(q -> q.getOpportunity() == null || !PipelineStageService.WON.equals(q.getOpportunity().getStage()))
                 .forEach(q -> purchases.add(new CustomerPurchaseResDto("quotation", q.getId(), q.getQuotationNumber(),
                         q.getLineItems().stream().map(QuotationLineItem::getProductName).distinct().collect(Collectors.joining(", ")),
                         q.getGrandTotal(), q.getCustomerApprovedAt() != null ? q.getCustomerApprovedAt() : q.getUpdatedAt())));

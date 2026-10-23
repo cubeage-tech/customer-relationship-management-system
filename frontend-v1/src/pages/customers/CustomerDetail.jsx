@@ -19,6 +19,8 @@ import {
 } from '../../core/services/customer.service';
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
+import MeetingsPanel from '../../components/meeting/MeetingsPanel';
+import CustomerAssets from '../../components/customer/CustomerAssets';
 import CustomerDocuments from '../../components/customer/CustomerDocuments';
 
 const PROFILE_FIELDS = [
@@ -419,6 +421,10 @@ const CustomerDetail = () => {
       <CustomerDocuments customerId={customer.id} canEdit={canEdit} />
 
       {/* ---------------- Communication timeline (FR-5.6) ---------------- */}
+      <CustomerAssets customerId={customer.id} />
+
+      <MeetingsPanel customerId={customer.id} />
+
       <CommunicationTimeline customerId={customer.id} defaultEmail={customer.email || ''} defaultPhone={customer.phone || ''} />
     </section>
   );

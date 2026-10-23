@@ -1,5 +1,6 @@
 package com.company.crm.communication.controller;
 
+import com.company.crm.common.enums.CallOutcome;
 import com.company.crm.common.enums.CommunicationChannel;
 import com.company.crm.communication.integration.TwilioClient;
 import com.company.crm.communication.service.CommunicationService;
@@ -44,6 +45,53 @@ public class TwilioWebhookController {
         communicationService.recordInbound(new InboundMessage(
                 channel, from, null, params.get("Body"), params.get("MessageSid"), List.of(), null));
         return ResponseEntity.ok().contentType(MediaType.TEXT_XML).body(EMPTY_TWIML);
+    }
+
+    /**
+     * FR-5.4b: Twilio Voice status callback — set the number's (or outbound call's) StatusCallback to
+     * {base}/api/communications/webhooks/twilio/voice with the "completed" event. Finished calls are
+     * logged automatically; in-progress events are ignored.
+     */
+    @PostMapping(value = "/voice", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    public ResponseEntity<Void> voice(
+            @RequestParam Map<String, String> params,
+            @RequestHeader(value = "X-Twilio-Signature", required = false) String signature) {
+        if (!twilioClient.isValidSignature("/api/communications/webhooks/twilio/voice", params, signature)) {
+            log.warn("Rejected Twilio voice webhook with an invalid signature");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        CallOutcome outcome = callOutcome(params.get("CallStatus"), params.get("CallDuration"));
+        if (outcome != null && params.get("CallSid") != null) {
+            communicationService.recordCall(new CommunicationService.CallRecord(
+                    params.get("CallSid"), params.get("From"), params.get("To"),
+                    "inbound".equalsIgnoreCase(params.get("Direction")),
+                    outcome, seconds(params.get("CallDuration")), null));
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Terminal Twilio call statuses → our outcome; null for non-final events (ringing, in-progress). */
+    private static CallOutcome callOutcome(String status, String duration) {
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case "completed" -> {
+                Integer secs = seconds(duration);
+                yield secs != null && secs > 0 ? CallOutcome.CONNECTED : CallOutcome.NO_ANSWER;
+            }
+            case "busy" -> CallOutcome.BUSY;
+            case "no-answer", "canceled", "failed" -> CallOutcome.NO_ANSWER;
+            default -> null;
+        };
+    }
+
+    private static Integer seconds(String raw) {
+        try {
+            return raw == null || raw.isBlank() ? null : Math.max(0, Integer.parseInt(raw.trim()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** FR-5.2/5.3: delivery status updates for messages we sent (StatusCallback). */

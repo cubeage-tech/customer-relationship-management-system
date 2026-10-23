@@ -20,8 +20,9 @@ import AgentTicketQueue from '../../components/service/AgentTicketQueue';
 import { listTickets, getTicketSummary, createTicket } from '../../core/services/serviceTicket.service';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { listCustomers } from '../../core/services/customer.service';
+import { listCustomerAssets } from '../../core/services/support.service';
 
-const INITIAL_FORM = { customerId: '', subject: '', description: '', priority: TICKET_PRIORITY_OPTIONS[2].value };
+const INITIAL_FORM = { customerId: '', subject: '', description: '', priority: TICKET_PRIORITY_OPTIONS[2].value, assetId: '' };
 
 const SLA_BADGE_CLASS = {
   breached: 'text-red-600 font-medium',
@@ -91,12 +92,24 @@ const ServiceTickets = () => {
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
 
-  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // FR-6.1: the chosen customer's assets, for the optional "Asset" picker.
+  const [assets, setAssets] = useState([]);
+  useEffect(() => {
+    if (!form.customerId) return;
+    listCustomerAssets(form.customerId).then((data) => setAssets(data ?? [])).catch(() => setAssets([]));
+  }, [form.customerId]);
+  const customerAssets = form.customerId ? assets : [];
+
+  const handleChange = (e) => setForm((prev) => ({
+    ...prev,
+    [e.target.name]: e.target.value,
+    ...(e.target.name === 'customerId' ? { assetId: '' } : {}),
+  }));
 
   const handleAddTicket = async (e) => {
     e.preventDefault();
     try {
-      await createTicket(form);
+      await createTicket({ ...form, assetId: form.assetId ? Number(form.assetId) : null });
       setForm(INITIAL_FORM);
       setShowForm(false);
       refresh();
@@ -176,6 +189,14 @@ const ServiceTickets = () => {
                     {TICKET_PRIORITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
+                {customerAssets.length > 0 && (
+                  <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Asset <span className="font-normal text-slate-400">Optional</span>
+                    <select name="assetId" value={form.assetId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                      <option value="">Not about a specific asset</option>
+                      {customerAssets.map((a) => <option key={a.id} value={a.id}>{a.name}{a.serialNumber ? ` (${a.serialNumber})` : ''}</option>)}
+                    </select>
+                  </label>
+                )}
                 <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Issue <span className="text-rose-500">*</span>
                   <input type="text" name="subject" placeholder="e.g. Machine not working" value={form.subject} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
                 </label>

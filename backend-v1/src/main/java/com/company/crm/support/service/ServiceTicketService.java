@@ -21,6 +21,7 @@ import com.company.crm.support.dto.request.ServiceTicketReqDto;
 import com.company.crm.support.dto.request.ServiceTicketStatusReqDto;
 import com.company.crm.support.dto.response.ServiceTicketResDto;
 import com.company.crm.support.dto.response.ServiceTicketSummaryDto;
+import com.company.crm.support.entity.CustomerAsset;
 import com.company.crm.support.entity.ServiceTicket;
 import com.company.crm.support.mapper.ServiceTicketMapper;
 import com.company.crm.support.repository.ServiceTicketRepository;
@@ -28,14 +29,19 @@ import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.company.crm.support.event.TicketStatusChangedEvent;
+import com.company.crm.support.event.TicketFeedbackRequestedEvent;
+import com.company.crm.support.dto.response.PublicFeedbackDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +56,10 @@ public class ServiceTicketService {
     private final ServiceTicketSummaryQuery ticketSummaryQuery;
     private final ReportingPeriods reportingPeriods;
     private final ApplicationEventPublisher eventPublisher;
+    private final CustomerAssetService assetService;
+    private final TicketAssignmentRuleService assignmentRuleService;
+
+    private static final SecureRandom TOKEN_RANDOM = new SecureRandom();
 
     /** Window for the average-resolution-time figure. */
     private static final int RESOLUTION_AVERAGE_DAYS = 30;
@@ -172,9 +182,38 @@ public class ServiceTicketService {
         ticket.setSubject(dto.getSubject());
         ticket.setDescription(dto.getDescription());
         ticket.setPriority(parsePriority(dto.getPriority()));
+        ticket.setAsset(dto.getAssetId() != null ? assetService.requireAssetOf(ticket.getCustomer(), dto.getAssetId()) : null);
+        return ticketMapper.toDto(openTicket(ticket));
+    }
+
+    /**
+     * FR-6.1: a ticket raised by the customer through the tenant's public support form. Same SLA and
+     * auto-assignment as staff-logged tickets; no creating user.
+     */
+    @Transactional
+    public ServiceTicket createFromSupportForm(Customer customer, String reporterEmail, String subject,
+                                               String description, TicketPriority priority, CustomerAsset asset) {
+        ServiceTicket ticket = new ServiceTicket();
+        ticket.setTenant(customer.getTenant());
+        ticket.setCustomer(customer);
+        ticket.setSubject(subject);
+        ticket.setDescription(description);
+        ticket.setPriority(priority);
+        ticket.setSource(ServiceTicket.SOURCE_CUSTOMER);
+        ticket.setReporterEmail(reporterEmail);
+        ticket.setAsset(asset);
+        return openTicket(ticket);
+    }
+
+    /** Sets the SLA, applies FR-6.3b auto-assignment, and saves a new ticket. */
+    private ServiceTicket openTicket(ServiceTicket ticket) {
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setSlaDueAt(LocalDateTime.now().plusHours(slaHours(ticket.getPriority())));
-        return ticketMapper.toDto(ticketRepository.save(ticket));
+        assignmentRuleService.apply(ticket).ifPresent(agent -> {
+            ticket.setAssignedTechnician(agent);
+            ticket.setStatus(TicketStatus.ASSIGNED);
+        });
+        return ticketRepository.save(ticket);
     }
 
     @Transactional
@@ -185,6 +224,7 @@ public class ServiceTicketService {
         ticket.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
         ticket.setSubject(dto.getSubject());
         ticket.setDescription(dto.getDescription());
+        ticket.setAsset(dto.getAssetId() != null ? assetService.requireAssetOf(ticket.getCustomer(), dto.getAssetId()) : null);
 
         TicketPriority newPriority = parsePriority(dto.getPriority());
         if (newPriority != ticket.getPriority()) {
@@ -244,8 +284,16 @@ public class ServiceTicketService {
 
         ticket.setStatus(target);
         ticket.setResolvedAt(closingOut ? (ticket.getResolvedAt() != null ? ticket.getResolvedAt() : LocalDateTime.now()) : null);
+        // FR-6.5: the first resolution sends the customer a feedback link (once per ticket).
+        boolean requestFeedback = closingOut && ticket.getFeedbackToken() == null && ticket.getFeedbackScore() == null;
+        if (requestFeedback) {
+            ticket.setFeedbackToken(newToken());
+        }
 
         ServiceTicketResDto saved = ticketMapper.toDto(ticketRepository.save(ticket));
+        if (requestFeedback) {
+            eventPublisher.publishEvent(new TicketFeedbackRequestedEvent(ticket.getTenant().getId(), ticket.getId()));
+        }
         if (changed) {
             // FR-5.3: SMS alert (if enabled for the tenant) goes out after this transaction commits.
             eventPublisher.publishEvent(new TicketStatusChangedEvent(ticket.getTenant().getId(), ticket.getId(), target));
@@ -253,7 +301,7 @@ public class ServiceTicketService {
         return saved;
     }
 
-    /** FR-6.5: recorded on the customer's behalf by internal staff — no self-service portal yet. */
+    /** FR-6.5: recorded by staff on the customer's behalf (customers can also use their emailed link). */
     @Transactional
     public ServiceTicketResDto recordFeedback(User currentUser, Long ticketId, ServiceTicketFeedbackReqDto dto) {
         ServiceTicket ticket = findTicket(currentUser, ticketId);
@@ -265,7 +313,42 @@ public class ServiceTicketService {
 
         ticket.setFeedbackScore(dto.getScore());
         ticket.setFeedbackComment(dto.getComment());
+        ticket.setFeedbackAt(LocalDateTime.now());
         return ticketMapper.toDto(ticketRepository.save(ticket));
+    }
+
+    /** FR-6.5: what the customer's feedback page shows. 404 for an unknown link. */
+    @Transactional(readOnly = true)
+    public PublicFeedbackDto feedbackPage(String token) {
+        ServiceTicket ticket = findByFeedbackToken(token);
+        return new PublicFeedbackDto(ticket.getTenant().getCompanyName(), ticket.getSubject(),
+                ticket.getAssignedTechnician() != null ? ticket.getAssignedTechnician().getFullName() : null,
+                ticket.getResolvedAt(), ticket.getFeedbackScore(), ticket.getFeedbackComment());
+    }
+
+    /** FR-6.5: the customer rates the resolved ticket (1-5 + comment) — once. */
+    @Transactional
+    public PublicFeedbackDto submitCustomerFeedback(String token, ServiceTicketFeedbackReqDto dto) {
+        ServiceTicket ticket = findByFeedbackToken(token);
+        if (ticket.getFeedbackScore() != null) {
+            throw ApiException.conflict("Thanks — feedback for this request has already been received");
+        }
+        ticket.setFeedbackScore(dto.getScore());
+        ticket.setFeedbackComment(dto.getComment() != null && !dto.getComment().isBlank() ? dto.getComment().trim() : null);
+        ticket.setFeedbackAt(LocalDateTime.now());
+        ticketRepository.save(ticket);
+        return feedbackPage(token);
+    }
+
+    private ServiceTicket findByFeedbackToken(String token) {
+        return (token == null || token.isBlank() ? Optional.<ServiceTicket>empty() : ticketRepository.findByFeedbackToken(token))
+                .orElseThrow(() -> ApiException.notFound("This feedback link is not valid"));
+    }
+
+    private static String newToken() {
+        byte[] bytes = new byte[32];
+        TOKEN_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     // ==================== Helpers ====================

@@ -45,6 +45,15 @@ class LeadOwnerFilterIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.data[0].leadName").value("Manager lead"));
     }
 
+    /** FR-2.7b: the industry filter the Leads page now offers. */
+    @Test
+    void filtersByIndustry() throws Exception {
+        send(get("/api/leads").param("industry", "trading"), adminToken).andExpect(jsonPath("$.data.length()").value(3));
+        send(get("/api/leads").param("industry", "healthcare"), adminToken).andExpect(jsonPath("$.data.length()").value(0));
+        send(get("/api/leads").param("industry", "trading").param("ownerId", manager.getId().toString()), adminToken)
+                .andExpect(jsonPath("$.data.length()").value(1));
+    }
+
     @Test
     void ownerFilterNeverWidensScope() throws Exception {
         // A sales executive asking for someone else's leads gets nothing, not those leads.

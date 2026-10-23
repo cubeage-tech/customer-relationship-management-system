@@ -1,5 +1,5 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
-import EmptyState from '../../components/common/EmptyState';
+import SalesPerformance from '../../components/opportunity/SalesPerformance';
 
 const STATS = [
   { label: 'Total pipeline', value: '—', hint: 'Organisation wide' },
@@ -15,10 +15,7 @@ const ExecutiveDashboard = () => {
       subtitle="Organisation wide view of sales, marketing and service performance."
       stats={STATS}
     >
-      <EmptyState
-        title="No reporting data yet"
-        message="Once your teams start closing deals and resolving tickets, organisation wide trends will appear here."
-      />
+      <SalesPerformance />
     </DashboardShell>
   );
 };

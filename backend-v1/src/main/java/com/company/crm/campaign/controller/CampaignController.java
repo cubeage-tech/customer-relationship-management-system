@@ -2,6 +2,7 @@ package com.company.crm.campaign.controller;
 
 import com.company.crm.campaign.dto.request.CampaignReqDto;
 import com.company.crm.campaign.dto.request.CampaignStatusReqDto;
+import com.company.crm.campaign.dto.response.CampaignMetricsDto;
 import com.company.crm.campaign.dto.response.CampaignResDto;
 import com.company.crm.campaign.dto.response.CampaignSummaryDto;
 import com.company.crm.campaign.service.CampaignService;
@@ -14,7 +15,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Module 5 — Marketing Campaign Management.
@@ -98,5 +101,34 @@ public class CampaignController {
             @PathVariable Long campaignId,
             @Valid @RequestBody CampaignStatusReqDto dto) {
         return Response.ok("Campaign status updated", campaignService.changeStatus(currentUser, campaignId, dto));
+    }
+
+    /** FR-7.1c: launch now; an email/SMS campaign with a segment starts sending to it. */
+    @PatchMapping("/{campaignId}/launch")
+    @PreAuthorize(MANAGE_ROLES)
+    public Response<CampaignResDto> launch(@AuthenticationPrincipal User currentUser, @PathVariable Long campaignId) {
+        return Response.ok("Campaign launched", campaignService.launch(currentUser, campaignId));
+    }
+
+    /** FR-7.1b: launch automatically at the given time ({"scheduledAt": "2026-11-01T09:00:00"}). */
+    @PatchMapping("/{campaignId}/schedule")
+    @PreAuthorize(MANAGE_ROLES)
+    public Response<CampaignResDto> schedule(@AuthenticationPrincipal User currentUser, @PathVariable Long campaignId,
+                                             @RequestBody Map<String, LocalDateTime> body) {
+        return Response.ok("Campaign scheduled", campaignService.schedule(currentUser, campaignId, body.get("scheduledAt")));
+    }
+
+    /** FR-7.4: sent, opened, clicked and converted, with rates. */
+    @GetMapping("/{campaignId}/metrics")
+    @PreAuthorize(VIEW_ROLES)
+    public Response<CampaignMetricsDto> metrics(@AuthenticationPrincipal User currentUser, @PathVariable Long campaignId) {
+        return Response.ok(campaignService.metrics(currentUser, campaignId));
+    }
+
+    /** FR-7.4: each recipient's delivery status and opens/clicks. */
+    @GetMapping("/{campaignId}/recipients")
+    @PreAuthorize(VIEW_ROLES)
+    public Response<List<CampaignMetricsDto.Recipient>> recipients(@AuthenticationPrincipal User currentUser, @PathVariable Long campaignId) {
+        return Response.ok(campaignService.recipients(currentUser, campaignId));
     }
 }

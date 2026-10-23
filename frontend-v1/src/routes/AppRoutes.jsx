@@ -14,6 +14,9 @@ import PublicOnlyRoute from "./PublicOnlyRoute";
 const Home = lazy(() => import("../pages/public/Home"));
 const About = lazy(() => import("../pages/public/About"));
 const Plans = lazy(() => import("../pages/public/Plans"));
+const CustomerQuotation = lazy(() => import("../pages/public/CustomerQuotation"));
+const SupportRequest = lazy(() => import("../pages/public/SupportRequest"));
+const TicketFeedback = lazy(() => import("../pages/public/TicketFeedback"));
 const Contact = lazy(() => import("../pages/public/Contact"));
 const Login = lazy(() => import("../pages/auth/Login"));
 const Signup = lazy(() => import("../pages/auth/Signup"));
@@ -93,6 +96,11 @@ const AppRoutes = () => {
           <Route path={RoutePath.UNAUTHORIZED} element={<Unauthorized />} />
           <Route path={RoutePath.NOT_FOUND} element={<NotFound />} />
         </Route>
+
+        {/* FR-4.5: customer's quotation link — open to anyone with the link, signed in or not, no app chrome. */}
+        <Route path={RoutePath.CUSTOMER_QUOTATION} element={<CustomerQuotation />} />
+        <Route path={RoutePath.SUPPORT_REQUEST} element={<SupportRequest />} />
+        <Route path={RoutePath.TICKET_FEEDBACK} element={<TicketFeedback />} />
 
         {/* ================= AUTH ROUTES ================= */}
         <Route element={<PublicOnlyRoute />}>

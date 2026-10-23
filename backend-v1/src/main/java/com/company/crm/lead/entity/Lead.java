@@ -54,6 +54,10 @@ public class Lead {
     @Column(name = "follow_up_date")
     private LocalDateTime followUpDate;
 
+    /** FR-2.5: when the owner was reminded about the current follow-up date; cleared when the date changes. */
+    @Column(name = "follow_up_notified_at")
+    private LocalDateTime followUpNotifiedAt;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

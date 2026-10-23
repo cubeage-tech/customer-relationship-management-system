@@ -16,7 +16,7 @@ public class OpportunityMapper {
                 opportunity.getProductService(),
                 opportunity.getDealValue(),
                 opportunity.getExpectedClosingDate(),
-                opportunity.getStage().getDbValue(),
+                opportunity.getStage(),
                 opportunity.getLossReason(),
                 opportunity.getOwner() != null ? opportunity.getOwner().getId() : null,
                 opportunity.getOwner() != null ? opportunity.getOwner().getFullName() : null,

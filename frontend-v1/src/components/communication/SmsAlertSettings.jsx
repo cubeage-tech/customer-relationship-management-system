@@ -6,7 +6,16 @@ import { getSmsAlerts, updateSmsAlerts } from '../../core/services/communication
 const EVENT_LABELS = {
   quotation_sent: 'Quotation sent to customer',
   ticket_status_changed: 'Service ticket status changes',
+  follow_up_due: 'Lead follow-up is due',
 };
+
+// FR-5.3: who "internal" means per event; follow_up_due can only go to the lead owner.
+const INTERNAL_LABELS = {
+  quotation_sent: 'Quotation owner',
+  ticket_status_changed: 'Assigned technician',
+  follow_up_due: 'Lead owner',
+};
+const INTERNAL_ONLY = new Set(['follow_up_due']);
 
 /** FR-5.3: tenant admin chooses which events send an SMS alert, and to whom. */
 const SmsAlertSettings = () => {
@@ -60,8 +69,8 @@ const SmsAlertSettings = () => {
                 onChange={(e) => update(rule.event, { recipient: e.target.value })}
                 className="border border-slate-300 rounded px-2 py-1"
               >
-                <option value="customer">Customer</option>
-                <option value="internal">{rule.event === 'ticket_status_changed' ? 'Assigned technician' : 'Quotation owner'}</option>
+                {!INTERNAL_ONLY.has(rule.event) && <option value="customer">Customer</option>}
+                <option value="internal">{INTERNAL_LABELS[rule.event] || 'Internal owner'}</option>
               </select>
             </label>
           </div>

@@ -24,7 +24,13 @@ public class CampaignMapper {
                 leadsGenerated,
                 convertedLeads,
                 conversionRate,
-                campaign.getCreatedAt()
+                campaign.getCreatedAt(),
+                campaign.getScheduledAt(),
+                campaign.getLaunchedAt(),
+                campaign.getSegment() != null ? campaign.getSegment().getId() : null,
+                campaign.getSegment() != null ? campaign.getSegment().getName() : null,
+                campaign.getMessageSubject(),
+                campaign.getMessageBody()
         );
     }
 }

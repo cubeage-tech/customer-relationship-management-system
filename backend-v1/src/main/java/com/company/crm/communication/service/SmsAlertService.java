@@ -10,6 +10,7 @@ import com.company.crm.communication.entity.SmsAlertRule;
 import com.company.crm.communication.repository.SmsAlertRuleRepository;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.entity.CustomerContact;
+import com.company.crm.lead.entity.Lead;
 import com.company.crm.quotation.entity.Quotation;
 import com.company.crm.quotation.event.QuotationSentEvent;
 import com.company.crm.quotation.repository.QuotationRepository;
@@ -50,7 +51,7 @@ public class SmsAlertService {
         return Arrays.stream(SmsAlertEvent.values())
                 .map(event -> saved.stream().filter(r -> r.getEvent() == event).findFirst()
                         .map(r -> new SmsAlertRuleResDto(event.getDbValue(), r.isEnabled(), r.getRecipient().getDbValue()))
-                        .orElse(new SmsAlertRuleResDto(event.getDbValue(), false, SmsAlertRecipient.CUSTOMER.getDbValue())))
+                        .orElse(new SmsAlertRuleResDto(event.getDbValue(), false, defaultRecipient(event).getDbValue())))
                 .toList();
     }
 
@@ -60,6 +61,9 @@ public class SmsAlertService {
         for (SmsAlertRuleReqDto dto : rules) {
             SmsAlertEvent event = parse(() -> SmsAlertEvent.fromDbValue(dto.getEvent()), "Unknown SMS alert event: " + dto.getEvent());
             SmsAlertRecipient recipient = parse(() -> SmsAlertRecipient.fromDbValue(dto.getRecipient()), "Unknown recipient: " + dto.getRecipient());
+            if (event == SmsAlertEvent.FOLLOW_UP_DUE && recipient != SmsAlertRecipient.INTERNAL) {
+                throw ApiException.badRequest("Follow-up reminders can only be sent to the lead owner");
+            }
             SmsAlertRule rule = ruleRepository.findById(new SmsAlertRule.Key(tenantId, event)).orElseGet(() -> {
                 SmsAlertRule created = new SmsAlertRule();
                 created.setTenantId(tenantId);
@@ -106,6 +110,23 @@ public class SmsAlertService {
                     ticket.getTenant().getCompanyName(), ticket.getSubject(), label(event.status()));
             communicationService.sendAutomatedSms(ticket.getTenant(), ticket.getCustomer(), phone, body);
         });
+    }
+
+    /**
+     * FR-2.5/FR-5.3: called by the follow-up reminder job (already in its own transaction) — texts the
+     * lead's owner if the tenant enabled the follow_up_due alert. Logged on the lead's timeline.
+     */
+    @Transactional
+    public void onFollowUpDue(Lead lead, User recipient) {
+        activeRule(lead.getTenant().getId(), SmsAlertEvent.FOLLOW_UP_DUE).ifPresent(rule -> {
+            String body = String.format("%s: follow-up with %s (%s) is due.",
+                    lead.getTenant().getCompanyName(), lead.getLeadName(), lead.getCompanyName());
+            communicationService.sendAutomatedLeadSms(lead.getTenant(), lead, phoneOf(recipient), body);
+        });
+    }
+
+    private static SmsAlertRecipient defaultRecipient(SmsAlertEvent event) {
+        return event == SmsAlertEvent.FOLLOW_UP_DUE ? SmsAlertRecipient.INTERNAL : SmsAlertRecipient.CUSTOMER;
     }
 
     private Optional<SmsAlertRule> activeRule(Long tenantId, SmsAlertEvent event) {

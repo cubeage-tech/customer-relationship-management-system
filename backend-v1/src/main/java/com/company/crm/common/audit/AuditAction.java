@@ -14,6 +14,8 @@ public enum AuditAction {
     TEAM_DELETED,
     TEAM_MEMBERS_CHANGED,
     TICKET_CLAIMED,
+    /** FR-6.4c: an at-risk/breached SLA was escalated (system action, no actor). */
+    TICKET_SLA_ESCALATED,
     DISCOUNT_APPROVED,
     DISCOUNT_REJECTED
 }

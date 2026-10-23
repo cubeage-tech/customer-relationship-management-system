@@ -52,6 +52,10 @@ public class User implements UserDetails {
 
     private String phone;
 
+    /** FR-5.5c: secret of this user's subscribable meetings calendar feed; null until first requested. */
+    @Column(name = "calendar_feed_token", length = 64)
+    private String calendarFeedToken;
+
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

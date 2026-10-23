@@ -3,7 +3,6 @@ package com.company.crm.sales.service;
 import com.company.crm.common.period.ReportingPeriods;
 import com.company.crm.sales.dto.response.OpportunityKpiDto;
 import com.company.crm.sales.repository.OpportunitySummaryQuery;
-import com.company.crm.common.enums.OpportunityStage;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.scope.DataScope;
@@ -15,6 +14,8 @@ import com.company.crm.sales.dto.request.OpportunityReqDto;
 import com.company.crm.sales.dto.request.OpportunityStageReqDto;
 import com.company.crm.sales.dto.response.OpportunityResDto;
 import com.company.crm.sales.dto.response.OpportunityStageSummaryDto;
+import com.company.crm.sales.dto.response.SalesPerformanceDto;
+import com.company.crm.sales_team.repository.SalesTeamRepository;
 import com.company.crm.sales.entity.Opportunity;
 import com.company.crm.sales.mapper.OpportunityMapper;
 import com.company.crm.sales.repository.OpportunityRepository;
@@ -26,7 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,8 @@ public class OpportunityService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final OpportunityMapper opportunityMapper;
+    private final SalesTeamRepository salesTeamRepository;
+    private final PipelineStageService pipelineStageService;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (customer, owner, lead, tenant), so the session must stay open through mapping.
@@ -51,7 +55,7 @@ public class OpportunityService {
         List<Opportunity> opportunities = findInScope(currentUser);
 
         return opportunities.stream()
-                .filter(o -> stage == null || stage.isBlank() || o.getStage().getDbValue().equals(stage))
+                .filter(o -> stage == null || stage.isBlank() || o.getStage().equals(stage))
                 .filter(o -> customerId == null || customerId.equals(o.getCustomer().getId()))
                 .filter(o -> search == null || search.isBlank()
                         || o.getCustomer().getCompanyName().toLowerCase().contains(search.trim().toLowerCase())
@@ -71,18 +75,21 @@ public class OpportunityService {
     /** FR-3.3: cumulative deal value per stage, for the pipeline/Kanban header. */
     @Transactional(readOnly = true)
     public List<OpportunityStageSummaryDto> getStageSummary(User currentUser) {
-        // Aggregated in the database (GROUP BY stage); same response as before — every stage, in
-        // pipeline order, zero-filled.
-        Map<OpportunityStage, OpportunitySummaryQuery.StageTotals> totals =
-                opportunitySummaryQuery.totalsByStage(requireTenantId(currentUser), dataScopeResolver.resolve(currentUser));
+        // Aggregated in the database (GROUP BY stage). FR-3.2: the tenant's stages in pipeline order,
+        // zero-filled — active ones, plus any deactivated stage that still holds deals.
+        Long tenantId = requireTenantId(currentUser);
+        Map<String, OpportunitySummaryQuery.StageTotals> totals =
+                opportunitySummaryQuery.totalsByStage(tenantId, dataScopeResolver.resolve(currentUser));
 
-        return Arrays.stream(OpportunityStage.values())
+        return pipelineStageService.stages(tenantId).stream()
+                .filter(stage -> stage.isActive() || totals.containsKey(stage.getCode()))
                 .map(stage -> {
-                    OpportunitySummaryQuery.StageTotals stageTotals = totals.get(stage);
+                    OpportunitySummaryQuery.StageTotals stageTotals = totals.get(stage.getCode());
                     return new OpportunityStageSummaryDto(
-                            stage.getDbValue(),
+                            stage.getCode(),
                             stageTotals == null ? 0 : stageTotals.count(),
-                            stageTotals == null ? BigDecimal.ZERO : stageTotals.totalValue());
+                            stageTotals == null ? BigDecimal.ZERO : stageTotals.totalValue(),
+                            stage.getLabel());
                 })
                 .toList();
     }
@@ -95,12 +102,70 @@ public class OpportunityService {
                 reportingPeriods.startOfMonth(), reportingPeriods.startOfQuarter());
     }
 
+    /**
+     * FR-3.5: open/won/lost count and value per salesperson (owner) and per sales team (the owner's
+     * team), over the opportunities the caller may see. Sorted by won value, then open value.
+     */
+    @Transactional(readOnly = true)
+    public SalesPerformanceDto getPerformance(User currentUser) {
+        Long tenantId = requireTenantId(currentUser);
+        Map<Long, String> teamNames = new HashMap<>();
+        salesTeamRepository.findByTenantIdOrderByNameAsc(tenantId).forEach(t -> teamNames.put(t.getId(), t.getName()));
+
+        Map<Long, PerformanceTotals> byOwner = new LinkedHashMap<>();
+        Map<Long, PerformanceTotals> byTeam = new LinkedHashMap<>();
+        for (Opportunity o : findInScope(currentUser)) {
+            User owner = o.getOwner();
+            Long ownerId = owner != null ? owner.getId() : null;
+            Long teamId = owner != null && teamNames.containsKey(owner.getTeamId()) ? owner.getTeamId() : null;
+            byOwner.computeIfAbsent(ownerId, id -> new PerformanceTotals(id, owner != null ? owner.getFullName() : "Unassigned")).add(o);
+            byTeam.computeIfAbsent(teamId, id -> new PerformanceTotals(id, id != null ? teamNames.get(id) : "No team")).add(o);
+        }
+        return new SalesPerformanceDto(toRows(byOwner), toRows(byTeam));
+    }
+
+    private static List<SalesPerformanceDto.Row> toRows(Map<Long, PerformanceTotals> totals) {
+        return totals.values().stream()
+                .sorted(Comparator.comparing((PerformanceTotals t) -> t.wonValue).reversed()
+                        .thenComparing(t -> t.openValue, Comparator.reverseOrder())
+                        .thenComparing(t -> t.name))
+                .map(PerformanceTotals::toRow)
+                .toList();
+    }
+
+    /** Running totals for one performance row. */
+    private static final class PerformanceTotals {
+        private final Long id;
+        private final String name;
+        private long openCount, wonCount, lostCount;
+        private BigDecimal openValue = BigDecimal.ZERO, wonValue = BigDecimal.ZERO, lostValue = BigDecimal.ZERO;
+
+        private PerformanceTotals(Long id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+
+        private void add(Opportunity o) {
+            BigDecimal value = o.getDealValue() != null ? o.getDealValue() : BigDecimal.ZERO;
+            switch (o.getStage()) {
+                case PipelineStageService.WON -> { wonCount++; wonValue = wonValue.add(value); }
+                case PipelineStageService.LOST -> { lostCount++; lostValue = lostValue.add(value); }
+                default -> { openCount++; openValue = openValue.add(value); }
+            }
+        }
+
+        private SalesPerformanceDto.Row toRow() {
+            return new SalesPerformanceDto.Row(id, name, openCount, openValue, wonCount, wonValue, lostCount, lostValue);
+        }
+    }
+
     @Transactional
     public OpportunityResDto createOpportunity(User currentUser, OpportunityReqDto dto) {
         Opportunity opportunity = new Opportunity();
         opportunity.setTenant(currentUser.getTenant());
         opportunity.setCreatedBy(currentUser);
         opportunity.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
+        opportunity.setStage(pipelineStageService.firstOpenStage(requireTenantId(currentUser)));
         applyFields(currentUser, opportunity, dto);
         return opportunityMapper.toDto(opportunityRepository.save(opportunity));
     }
@@ -127,13 +192,17 @@ public class OpportunityService {
         Opportunity opportunity = findOpportunity(currentUser, opportunityId);
         assertAccess(currentUser, opportunity);
 
-        OpportunityStage target = parseStage(dto.getStage());
-        if (target == OpportunityStage.LOST && (dto.getLossReason() == null || dto.getLossReason().isBlank())) {
+        String target = dto.getStage();
+        // FR-3.2: an active stage of the tenant's pipeline (re-saving the current one is always fine).
+        if (!target.equals(opportunity.getStage())) {
+            pipelineStageService.requireActive(requireTenantId(currentUser), target);
+        }
+        if (PipelineStageService.LOST.equals(target) && (dto.getLossReason() == null || dto.getLossReason().isBlank())) {
             throw ApiException.badRequest("A loss reason is required to mark this opportunity as lost");
         }
 
         opportunity.setStage(target);
-        opportunity.setLossReason(target == OpportunityStage.LOST ? dto.getLossReason() : null);
+        opportunity.setLossReason(PipelineStageService.LOST.equals(target) ? dto.getLossReason() : null);
         opportunity.setStageChangedAt(LocalDateTime.now());
         opportunity.setStageChangedBy(currentUser);
 
@@ -152,7 +221,7 @@ public class OpportunityService {
         opportunity.setLead(lead);
         opportunity.setOwner(lead.getOwner());
         opportunity.setCreatedBy(lead.getCreatedBy());
-        opportunity.setStage(OpportunityStage.QUALIFICATION);
+        opportunity.setStage(pipelineStageService.firstOpenStage(lead.getTenant().getId()));
         opportunity.setDealValue(BigDecimal.ZERO);
         return opportunityRepository.save(opportunity);
     }
@@ -181,14 +250,6 @@ public class OpportunityService {
         User owner = userRepository.findByIdAndTenantId(ownerId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.badRequest("Owner must belong to your tenant"));
         return owner;
-    }
-
-    private OpportunityStage parseStage(String rawStage) {
-        try {
-            return OpportunityStage.fromDbValue(rawStage);
-        } catch (IllegalArgumentException ex) {
-            throw ApiException.badRequest("Unknown opportunity stage: " + rawStage);
-        }
     }
 
     private Opportunity findOpportunity(User currentUser, Long opportunityId) {

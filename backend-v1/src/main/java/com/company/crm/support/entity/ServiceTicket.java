@@ -50,12 +50,43 @@ public class ServiceTicket {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
-    /** FR-6.5: recorded on the customer's behalf by internal staff — no self-service portal yet. */
+    /** FR-6.5: given by the customer through their feedback link, or recorded by staff. */
     @Column(name = "feedback_score")
     private Integer feedbackScore;
 
     @Column(name = "feedback_comment")
     private String feedbackComment;
+
+    /** FR-6.5: secret of the customer's feedback link (set when the ticket is first resolved). */
+    @Column(name = "feedback_token", length = 64)
+    private String feedbackToken;
+
+    /** FR-6.5: when feedback was given. */
+    @Column(name = "feedback_at")
+    private LocalDateTime feedbackAt;
+
+    /** FR-6.1: the customer's equipment this ticket is about (optional). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_id")
+    private CustomerAsset asset;
+
+    /** FR-6.1: "staff" (logged internally) or "customer" (public support form). */
+    @Column(nullable = false, length = 20)
+    private String source = SOURCE_STAFF;
+
+    /** FR-6.1: the address the customer used on the support form. */
+    @Column(name = "reporter_email", length = 150)
+    private String reporterEmail;
+
+    /** FR-6.4c: escalation sent when the ticket went at risk / breached its SLA (once each). */
+    @Column(name = "sla_at_risk_notified_at")
+    private LocalDateTime slaAtRiskNotifiedAt;
+
+    @Column(name = "sla_breach_notified_at")
+    private LocalDateTime slaBreachNotifiedAt;
+
+    public static final String SOURCE_STAFF = "staff";
+    public static final String SOURCE_CUSTOMER = "customer";
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_technician_id")

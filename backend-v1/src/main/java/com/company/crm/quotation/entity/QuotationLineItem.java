@@ -34,6 +34,16 @@ public class QuotationLineItem {
     @Column(name = "discount_percent", nullable = false, precision = 5, scale = 2)
     private BigDecimal discountPercent = BigDecimal.ZERO;
 
+    /** FR-4.8: our cost per unit for this line; null when unknown. Internal only. */
+    @Column(name = "unit_cost", precision = 14, scale = 2)
+    private BigDecimal unitCost;
+
+    /** FR-4.8: quantity × unit cost, or null when the cost is unknown. */
+    @Transient
+    public BigDecimal getLineCost() {
+        return unitCost != null ? quantity.multiply(unitCost) : null;
+    }
+
     /** Line total after its own discount — not persisted, always derived. */
     @Transient
     public BigDecimal getLineTotal() {

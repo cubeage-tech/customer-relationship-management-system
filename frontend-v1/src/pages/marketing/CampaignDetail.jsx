@@ -11,6 +11,7 @@ import {
   CAMPAIGN_STATUS_OPTIONS,
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
+import CampaignExecution, { campaignPayload } from '../../components/campaign/CampaignExecution';
 import {
   getCampaign,
   getCampaignLeads,
@@ -62,7 +63,7 @@ const CampaignDetail = () => {
     e.preventDefault();
     setActionError('');
     try {
-      const saved = await updateCampaign(id, form);
+      const saved = await updateCampaign(id, campaignPayload(campaign, form));
       setCampaign(saved);
       setEditing(false);
     } catch (err) {
@@ -119,7 +120,8 @@ const CampaignDetail = () => {
             <button
               key={option.value}
               type="button"
-              disabled={!canManage}
+              disabled={!canManage || option.value === 'scheduled'}
+              title={option.value === 'scheduled' ? 'Use Schedule below to pick the launch time' : undefined}
               onClick={() => handleStatusChange(option.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                 campaign.status === option.value
@@ -133,6 +135,9 @@ const CampaignDetail = () => {
         </div>
         {actionError && <p className="form-error mt-2">{actionError}</p>}
       </div>
+
+      {/* ---------------- FR-7.1b/7.1c/7.4: message, launch, delivery metrics ---------------- */}
+      <CampaignExecution key={campaign.id} campaign={campaign} canManage={canManage} onChange={setCampaign} />
 
       {/* ---------------- Performance ---------------- */}
       <div className="mb-6 grid gap-3 sm:grid-cols-4">

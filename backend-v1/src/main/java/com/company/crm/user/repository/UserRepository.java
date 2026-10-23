@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Tenant-scoped lookup: a record from another tenant is indistinguishable from a missing one. */
     Optional<User> findByIdAndTenantId(Long id, Long tenantId);
     Optional<User> findByEmail(String email);
+    /** FR-5.5c: the owner of a calendar feed link. */
+    Optional<User> findByCalendarFeedToken(String calendarFeedToken);
     boolean existsByEmail(String email);
     List<User> findByTenantId(Long tenantId);
     long countByTenantId(Long tenantId);
