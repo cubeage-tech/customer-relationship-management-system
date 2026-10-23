@@ -11,7 +11,8 @@ import {
   CAMPAIGN_STATUS_OPTIONS,
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
-import CampaignExecution, { campaignPayload } from '../../components/campaign/CampaignExecution';
+import CampaignExecution from '../../components/campaign/CampaignExecution';
+import { campaignPayload } from '../../core/utils/campaignPayload';
 import {
   getCampaign,
   getCampaignLeads,

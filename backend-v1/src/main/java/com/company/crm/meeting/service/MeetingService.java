@@ -7,6 +7,7 @@ import com.company.crm.customer.entity.CustomerContact;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.lead.entity.Lead;
 import com.company.crm.lead.repository.LeadRepository;
+import com.company.crm.meeting.dto.MeetingReportReqDto;
 import com.company.crm.meeting.dto.MeetingReqDto;
 import com.company.crm.meeting.dto.MeetingResDto;
 import com.company.crm.meeting.entity.Meeting;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -39,6 +41,9 @@ public class MeetingService {
     private static final SecureRandom TOKEN_RANDOM = new SecureRandom();
     /** How far back the calendar feed reaches. */
     private static final int FEED_DAYS_BACK = 60;
+    /** FR-M.3: how far back "my meetings" reaches, so recent meetings can still be reported. */
+    private static final int RECENT_DAYS_BACK = 14;
+    private static final Set<String> REPORT_OUTCOMES = Set.of("positive", "neutral", "negative", "no_show");
 
     private final MeetingRepository meetingRepository;
     private final CustomerRepository customerRepository;
@@ -49,6 +54,12 @@ public class MeetingService {
 
     @Transactional(readOnly = true)
     public List<MeetingResDto> list(User currentUser, Long customerId, Long leadId) {
+        return list(currentUser, customerId, leadId, false);
+    }
+
+    /** recent = true: my agenda also includes my meetings of the last two weeks (FR-M.3, to report on them). */
+    @Transactional(readOnly = true)
+    public List<MeetingResDto> list(User currentUser, Long customerId, Long leadId, boolean recent) {
         Long tenantId = requireTenantId(currentUser);
         if (customerId != null) {
             resolveCustomer(currentUser, customerId);
@@ -57,6 +68,10 @@ public class MeetingService {
         if (leadId != null) {
             resolveLead(currentUser, leadId);
             return meetingRepository.findByTenantIdAndLeadIdOrderByStartsAtDesc(tenantId, leadId).stream().map(this::toDto).toList();
+        }
+        if (recent) {
+            return meetingRepository.findByOrganizerIdAndStatusAndEndsAtAfterOrderByStartsAtAsc(
+                    currentUser.getId(), Meeting.SCHEDULED, LocalDateTime.now().minusDays(RECENT_DAYS_BACK)).stream().map(this::toDto).toList();
         }
         // My agenda: the caller's upcoming meetings.
         return meetingRepository.findByOrganizerIdAndStatusAndEndsAtAfterOrderByStartsAtAsc(
@@ -118,6 +133,30 @@ public class MeetingService {
             eventPublisher.publishEvent(new MeetingChangedEvent(meeting.getTenant().getId(), meeting.getId(), MeetingChangedEvent.Kind.CANCELLED));
         }
         return toDto(meeting);
+    }
+
+    /**
+     * FR-M.3: file (or replace) the report on a meeting that has started — outcome, notes and next
+     * steps. Anyone who can see the meeting's customer/lead may report on it.
+     */
+    @Transactional
+    public MeetingResDto report(User currentUser, Long meetingId, MeetingReportReqDto dto) {
+        Meeting meeting = findAccessible(currentUser, meetingId);
+        if (meeting.isCancelled()) {
+            throw ApiException.badRequest("A cancelled meeting can't be reported on");
+        }
+        if (meeting.getStartsAt().isAfter(LocalDateTime.now())) {
+            throw ApiException.badRequest("The meeting hasn't started yet");
+        }
+        if (!REPORT_OUTCOMES.contains(dto.getOutcome())) {
+            throw ApiException.badRequest("Outcome must be positive, neutral, negative or no_show");
+        }
+        meeting.setReportOutcome(dto.getOutcome());
+        meeting.setReportNotes(dto.getNotes().trim());
+        meeting.setNextSteps(dto.getNextSteps() != null && !dto.getNextSteps().isBlank() ? dto.getNextSteps().trim() : null);
+        meeting.setReportedAt(LocalDateTime.now());
+        meeting.setReportedBy(userRepository.findById(currentUser.getId()).orElseThrow());
+        return toDto(meetingRepository.save(meeting));
     }
 
     /** FR-5.5c: one meeting as an .ics file (adds it to any calendar app). */
@@ -232,7 +271,9 @@ public class MeetingService {
                 m.getLead() != null ? m.getLead().getLeadName() : null,
                 m.getTitle(), m.getStartsAt(), m.getEndsAt(), m.getLocation(), m.getNotes(),
                 m.getOrganizer().getId(), m.getOrganizer().getFullName(), m.getStatus(),
-                m.getReminderMinutes(), m.isIncludeCustomer(), m.getReminderSentAt());
+                m.getReminderMinutes(), m.isIncludeCustomer(), m.getReminderSentAt(),
+                m.getReportOutcome(), m.getReportNotes(), m.getNextSteps(), m.getReportedAt(),
+                m.getReportedBy() != null ? m.getReportedBy().getFullName() : null);
     }
 
     private static String newToken() {

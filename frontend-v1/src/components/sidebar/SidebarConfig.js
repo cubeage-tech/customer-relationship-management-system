@@ -6,6 +6,7 @@ import {
   FileText,
   LifeBuoy,
   Megaphone,
+  Tag,
   BadgeCheck,
   BarChart3,
   Settings,
@@ -13,6 +14,7 @@ import {
   Building2,
   CreditCard,
   ScrollText,
+  CalendarCheck,
   UsersRound,
 } from "lucide-react";
 import RoutePath, { getRoleHomeRoute } from "../../core/constants/routes.constant";
@@ -68,6 +70,24 @@ export const SIDEBAR_ITEMS = [
     icon: Megaphone,
     path: RoutePath.CAMPAIGNS,
     permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    label: "Segments",
+    icon: UsersRound,
+    path: RoutePath.SEGMENTS,
+    permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    label: "Promotions",
+    icon: Tag,
+    path: RoutePath.PROMOTIONS,
+    permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    // Module 8: attendance for everyone; targets, activity and commission by role (see the page).
+    label: "Sales Force",
+    icon: CalendarCheck,
+    path: RoutePath.SALES_FORCE,
   },
   {
     label: "Approvals",

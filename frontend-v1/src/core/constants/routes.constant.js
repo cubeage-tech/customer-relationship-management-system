@@ -82,6 +82,11 @@ class RoutePath {
 
   static CAMPAIGNS = "/campaigns";
   static EDIT_CAMPAIGN = "/campaigns/:id";
+  // FR-7.2 / FR-7.3
+  static SEGMENTS = "/segments";
+  static PROMOTIONS = "/promotions";
+  // Module 8
+  static SALES_FORCE = "/sales-force";
 
   // ======================================================
   // FINANCE / APPROVALS

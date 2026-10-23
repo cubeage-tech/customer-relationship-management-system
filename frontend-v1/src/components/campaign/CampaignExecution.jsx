@@ -3,25 +3,10 @@ import Button from '../common/Button';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getCampaignMetrics, getCampaignRecipients, launchCampaign, scheduleCampaign, updateCampaign } from '../../core/services/campaign.service';
 import { listSegments } from '../../core/services/marketing.service';
+import { campaignPayload } from '../../core/utils/campaignPayload';
 
 const SENDABLE = new Set(['email', 'sms']);
 const inputClass = 'border border-slate-300 rounded px-2 py-1 w-full';
-
-/** All editable campaign fields, so saving the message never clears the rest (and vice versa). */
-export const campaignPayload = (c, overrides = {}) => ({
-  name: c.name,
-  description: c.description || '',
-  channel: c.channel,
-  startDate: c.startDate || null,
-  endDate: c.endDate || null,
-  budget: c.budget,
-  actualCost: c.actualCost,
-  ownerId: c.ownerId,
-  segmentId: c.segmentId,
-  messageSubject: c.messageSubject,
-  messageBody: c.messageBody,
-  ...overrides,
-});
 
 const Stat = ({ label, value }) => (
   <div className="bg-white border border-slate-200 rounded-lg p-3">

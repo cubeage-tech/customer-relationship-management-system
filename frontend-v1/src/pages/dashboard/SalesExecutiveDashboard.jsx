@@ -1,4 +1,5 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
+import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
 import EmptyState from '../../components/common/EmptyState';
 
 const STATS = [
@@ -15,6 +16,7 @@ const SalesExecutiveDashboard = () => {
       subtitle="Your leads, opportunities, quotations and follow-ups."
       stats={STATS}
     >
+      <HeadlineMetrics />
       <EmptyState
         title="No follow-ups scheduled"
         message="Create a lead and schedule an activity to see your follow-up list here."

@@ -71,6 +71,23 @@ public class Meeting {
     @Column(name = "reminder_sent_at")
     private LocalDateTime reminderSentAt;
 
+    /** FR-M.3: the meeting report — outcome (positive | neutral | negative | no_show), notes, next steps. */
+    @Column(name = "report_outcome", length = 20)
+    private String reportOutcome;
+
+    @Column(name = "report_notes", columnDefinition = "TEXT")
+    private String reportNotes;
+
+    @Column(name = "next_steps", columnDefinition = "TEXT")
+    private String nextSteps;
+
+    @Column(name = "reported_at")
+    private LocalDateTime reportedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reported_by")
+    private User reportedBy;
+
     /** FR-5.5c: stable iCalendar UID; the sequence increases on every change so calendars update. */
     @Column(name = "ical_uid", nullable = false, length = 100, updatable = false)
     private String icalUid;

@@ -16,12 +16,15 @@ import com.company.crm.sales.dto.response.OpportunityResDto;
 import com.company.crm.sales.dto.response.OpportunityStageSummaryDto;
 import com.company.crm.sales.dto.response.SalesPerformanceDto;
 import com.company.crm.sales_team.repository.SalesTeamRepository;
+import com.company.crm.salesforce.service.CommissionService;
 import com.company.crm.sales.entity.Opportunity;
 import com.company.crm.sales.mapper.OpportunityMapper;
 import com.company.crm.sales.repository.OpportunityRepository;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.notification.event.RecordAssignedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,15 +49,25 @@ public class OpportunityService {
     private final OpportunityMapper opportunityMapper;
     private final SalesTeamRepository salesTeamRepository;
     private final PipelineStageService pipelineStageService;
+    private final CommissionService commissionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (customer, owner, lead, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
     public List<OpportunityResDto> listOpportunities(
             User currentUser, String stage, Long customerId, String search) {
+        return listOpportunities(currentUser, stage, customerId, search, null);
+    }
+
+    /** ownerId narrows the caller's scope to one owner (FR-M.2: "assigned to me" in the mobile app). */
+    @Transactional(readOnly = true)
+    public List<OpportunityResDto> listOpportunities(
+            User currentUser, String stage, Long customerId, String search, Long ownerId) {
         List<Opportunity> opportunities = findInScope(currentUser);
 
         return opportunities.stream()
+                .filter(o -> ownerId == null || (o.getOwner() != null && ownerId.equals(o.getOwner().getId())))
                 .filter(o -> stage == null || stage.isBlank() || o.getStage().equals(stage))
                 .filter(o -> customerId == null || customerId.equals(o.getCustomer().getId()))
                 .filter(o -> search == null || search.isBlank()
@@ -167,7 +180,9 @@ public class OpportunityService {
         opportunity.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
         opportunity.setStage(pipelineStageService.firstOpenStage(requireTenantId(currentUser)));
         applyFields(currentUser, opportunity, dto);
-        return opportunityMapper.toDto(opportunityRepository.save(opportunity));
+        Opportunity saved = opportunityRepository.save(opportunity);
+        announceAssignment(currentUser, null, saved);
+        return opportunityMapper.toDto(saved);
     }
 
     @Transactional
@@ -175,8 +190,12 @@ public class OpportunityService {
         Opportunity opportunity = findOpportunity(currentUser, opportunityId);
         assertAccess(currentUser, opportunity);
         opportunity.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
+        Long previousOwnerId = opportunity.getOwner() != null ? opportunity.getOwner().getId() : null;
         applyFields(currentUser, opportunity, dto);
-        return opportunityMapper.toDto(opportunityRepository.save(opportunity));
+        Opportunity saved = opportunityRepository.save(opportunity);
+        commissionService.onWonDealEdited(saved);
+        announceAssignment(currentUser, previousOwnerId, saved);
+        return opportunityMapper.toDto(saved);
     }
 
     @Transactional
@@ -201,12 +220,16 @@ public class OpportunityService {
             throw ApiException.badRequest("A loss reason is required to mark this opportunity as lost");
         }
 
+        String previousStage = opportunity.getStage();
         opportunity.setStage(target);
         opportunity.setLossReason(PipelineStageService.LOST.equals(target) ? dto.getLossReason() : null);
         opportunity.setStageChangedAt(LocalDateTime.now());
         opportunity.setStageChangedBy(currentUser);
 
-        return opportunityMapper.toDto(opportunityRepository.save(opportunity));
+        Opportunity saved = opportunityRepository.save(opportunity);
+        // AC-8.2: winning a deal records the owner's commission (re-opening it voids it).
+        commissionService.onStageChanged(saved, previousStage);
+        return opportunityMapper.toDto(saved);
     }
 
     /**
@@ -238,6 +261,18 @@ public class OpportunityService {
         } else if (dto.getOwnerId() != null) {
             opportunity.setOwner(resolveOwner(currentUser, dto.getOwnerId()));
         }
+    }
+
+    /** FR-M.4: tell the new owner (unless they assigned it to themselves); sent once the change commits. */
+    private void announceAssignment(User currentUser, Long previousOwnerId, Opportunity opportunity) {
+        User owner = opportunity.getOwner();
+        if (owner == null || owner.getId().equals(previousOwnerId) || owner.getId().equals(currentUser.getId())) {
+            return;
+        }
+        String what = opportunity.getProductService() != null ? opportunity.getProductService() : "Opportunity";
+        eventPublisher.publishEvent(new RecordAssignedEvent(opportunity.getTenant().getId(), owner.getId(), currentUser.getId(),
+                currentUser.getFullName(), "opportunity", opportunity.getId(),
+                "Opportunity assigned: " + opportunity.getCustomer().getCompanyName(), what));
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {

@@ -116,6 +116,18 @@ public class MailService {
         mailSender.send(message);
     }
 
+    /** REP-SCH: a scheduled report, attached as PDF or XLSX. Throws on failure so the caller can record it. */
+    public void sendReportEmail(String[] toEmails, String subject, String body, String filename, byte[] content,
+                                String contentType) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setTo(toEmails);
+        helper.setSubject(subject);
+        helper.setText(body, false);
+        helper.addAttachment(filename, new ByteArrayResource(content), contentType);
+        mailSender.send(message);
+    }
+
     /**
      * FR-7.1c: a marketing email — HTML with a plain-text alternative, our own Message-ID, and a
      * List-Unsubscribe header so mail apps offer one-click opt-out. Throws on failure.

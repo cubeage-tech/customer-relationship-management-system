@@ -47,6 +47,9 @@ const ServiceTickets = lazy(() => import("../pages/service/ServiceTickets"));
 const ServiceTicketDetail = lazy(() => import("../pages/service/ServiceTicketDetail"));
 const Campaigns = lazy(() => import("../pages/marketing/Campaigns"));
 const CampaignDetail = lazy(() => import("../pages/marketing/CampaignDetail"));
+const Segments = lazy(() => import("../pages/marketing/Segments"));
+const Promotions = lazy(() => import("../pages/marketing/Promotions"));
+const SalesForce = lazy(() => import("../pages/salesforce/SalesForce"));
 const Approvals = lazy(() => import("../pages/finance/Approvals"));
 const Reports = lazy(() => import("../pages/reports/Reports"));
 
@@ -300,6 +303,28 @@ const AppRoutes = () => {
           >
             <Route path={RoutePath.CAMPAIGNS} element={<Campaigns />} />
             <Route path={RoutePath.EDIT_CAMPAIGN} element={<CampaignDetail />} />
+            <Route path={RoutePath.SEGMENTS} element={<Segments />} />
+            <Route path={RoutePath.PROMOTIONS} element={<Promotions />} />
+          </Route>
+
+          {/* ================= SALES FORCE (Module 8) — every tenant role checks in ================= */}
+
+          <Route
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  USER_ROLES.ADMIN,
+                  USER_ROLES.SALES_MANAGER,
+                  USER_ROLES.SALES_EXECUTIVE,
+                  USER_ROLES.MARKETING_EXECUTIVE,
+                  USER_ROLES.SERVICE_AGENT,
+                  USER_ROLES.FINANCE_APPROVER,
+                  USER_ROLES.EXECUTIVE_OWNER,
+                ]}
+              />
+            }
+          >
+            <Route path={RoutePath.SALES_FORCE} element={<SalesForce />} />
           </Route>
 
           {/* ================= FINANCE / APPROVALS ================= */}

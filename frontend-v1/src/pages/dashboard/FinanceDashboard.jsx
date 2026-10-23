@@ -1,4 +1,5 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
+import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
 import EmptyState from '../../components/common/EmptyState';
 
 const STATS = [
@@ -15,6 +16,7 @@ const FinanceDashboard = () => {
       subtitle="Discount approvals and revenue reporting."
       stats={STATS}
     >
+      <HeadlineMetrics />
       <EmptyState
         title="No approvals pending"
         message="Quotations that need a discount approval will be queued here."

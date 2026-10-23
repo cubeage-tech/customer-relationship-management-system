@@ -129,6 +129,7 @@ public class QuotationService {
         }
 
         quotation.setStatus(QuotationStatus.PENDING);
+        quotation.setSentAt(LocalDateTime.now());
         if (quotation.getViewToken() == null) {
             quotation.setViewToken(newViewToken());
         }
