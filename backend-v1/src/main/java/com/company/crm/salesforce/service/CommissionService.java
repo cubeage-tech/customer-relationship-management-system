@@ -1,5 +1,7 @@
 package com.company.crm.salesforce.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.sales.entity.Opportunity;
@@ -38,6 +40,7 @@ public class CommissionService {
     private static final Set<RoleType> FINANCE = Set.of(RoleType.ADMIN, RoleType.FINANCE_APPROVER);
 
     private final CommissionRuleRepository ruleRepository;
+    private final AuditService auditService;
     private final CommissionEntryRepository entryRepository;
     private final UserRepository userRepository;
     private final SalesTeamRepository salesTeamRepository;
@@ -57,6 +60,8 @@ public class CommissionService {
                 if (CommissionEntry.PENDING.equals(e.getStatus()) || CommissionEntry.APPROVED.equals(e.getStatus())) {
                     e.setStatus(CommissionEntry.VOID);
                     entryRepository.save(e);
+                    auditService.recordSystem(opportunity.getTenant().getId(), AuditAction.COMMISSION_VOIDED, AUDIT_ENTITY, e.getId(),
+                            "opportunity=" + opportunity.getId() + ", amount=" + e.getAmount() + " (deal no longer won)");
                 }
             });
         }
@@ -105,7 +110,12 @@ public class CommissionService {
         e.setApprovedAt(null);
         e.setPaidAt(null);
         entryRepository.save(e);
+        auditService.recordSystem(o.getTenant().getId(), AuditAction.COMMISSION_RECORDED, AUDIT_ENTITY, e.getId(),
+                "opportunity=" + o.getId() + ", user=" + owner.getFullName() + ", rule=" + e.getRuleName()
+                        + ", dealValue=" + value + ", amount=" + e.getAmount());
     }
+
+    private static final String AUDIT_ENTITY = "commission";
 
     // ==================== Entries ====================
 
@@ -129,6 +139,7 @@ public class CommissionService {
         e.setStatus(CommissionEntry.APPROVED);
         e.setApprovedBy(currentUser);
         e.setApprovedAt(LocalDateTime.now());
+        auditService.record(currentUser, AuditAction.COMMISSION_APPROVED, AUDIT_ENTITY, e.getId(), "amount=" + e.getAmount());
         return toDto(entryRepository.save(e));
     }
 
@@ -140,6 +151,7 @@ public class CommissionService {
         }
         e.setStatus(CommissionEntry.PAID);
         e.setPaidAt(LocalDateTime.now());
+        auditService.record(currentUser, AuditAction.COMMISSION_PAID, AUDIT_ENTITY, e.getId(), "amount=" + e.getAmount());
         return toDto(entryRepository.save(e));
     }
 
@@ -155,20 +167,30 @@ public class CommissionService {
         CommissionRule r = new CommissionRule();
         r.setTenant(currentUser.getTenant());
         applyFields(currentUser, r, dto);
-        return toDto(ruleRepository.save(r));
+        CommissionRule saved = ruleRepository.save(r);
+        auditService.record(currentUser, AuditAction.COMMISSION_RULE_CREATED, "commission_rule", saved.getId(), ruleSummary(saved));
+        return toDto(saved);
     }
 
     @Transactional
     public CommissionRuleRes updateRule(User currentUser, Long ruleId, CommissionRuleReq dto) {
         CommissionRule r = findRule(currentUser, ruleId);
         applyFields(currentUser, r, dto);
-        return toDto(ruleRepository.save(r));
+        CommissionRule saved = ruleRepository.save(r);
+        auditService.record(currentUser, AuditAction.COMMISSION_RULE_UPDATED, "commission_rule", saved.getId(), ruleSummary(saved));
+        return toDto(saved);
     }
 
     /** Recorded commissions keep the rule's name and rate. */
     @Transactional
     public void deleteRule(User currentUser, Long ruleId) {
-        ruleRepository.delete(findRule(currentUser, ruleId));
+        CommissionRule r = findRule(currentUser, ruleId);
+        auditService.record(currentUser, AuditAction.COMMISSION_RULE_DELETED, "commission_rule", r.getId(), ruleSummary(r));
+        ruleRepository.delete(r);
+    }
+
+    private static String ruleSummary(CommissionRule r) {
+        return "name=" + r.getName() + ", rate=" + r.getRatePercent() + "%, priority=" + r.getPriority();
     }
 
     // ==================== Helpers ====================

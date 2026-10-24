@@ -174,34 +174,34 @@ const ServiceTickets = () => {
           <div role="dialog" aria-modal="true" aria-labelledby="new-ticket-title" className="relative z-10 my-auto w-full max-w-2xl overflow-hidden rounded-lg border border-white/70 bg-white shadow-2xl">
             <form onSubmit={handleAddTicket}>
               <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
-                <span className="grid size-10 place-items-center rounded-lg bg-violet-100 text-violet-700"><Ticket size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><Ticket size={19} /></span>
                 <div className="min-w-0 flex-1"><h2 id="new-ticket-title" className="text-base font-bold text-slate-900">Raise a service ticket</h2><p className="mt-0.5 text-xs text-slate-500">Tell the service team what needs attention.</p></div>
                 <button type="button" onClick={() => setShowForm(false)} className="grid size-9 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Close ticket form"><X size={18} /></button>
               </div>
               <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">Customer <span className="text-rose-500">*</span>
-                  <select autoFocus name="customerId" value={form.customerId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required>
+                  <select autoFocus name="customerId" value={form.customerId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" required>
                     <option value="">Select customer</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}
                   </select>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">Priority
-                  <select name="priority" value={form.priority} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                  <select name="priority" value={form.priority} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                     {TICKET_PRIORITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 {customerAssets.length > 0 && (
                   <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Asset <span className="font-normal text-slate-400">Optional</span>
-                    <select name="assetId" value={form.assetId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                    <select name="assetId" value={form.assetId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                       <option value="">Not about a specific asset</option>
                       {customerAssets.map((a) => <option key={a.id} value={a.id}>{a.name}{a.serialNumber ? ` (${a.serialNumber})` : ''}</option>)}
                     </select>
                   </label>
                 )}
                 <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Issue <span className="text-rose-500">*</span>
-                  <input type="text" name="subject" placeholder="e.g. Machine not working" value={form.subject} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
+                  <input type="text" name="subject" placeholder="e.g. Machine not working" value={form.subject} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" required />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Description <span className="font-normal text-slate-400">Optional</span>
-                  <textarea name="description" placeholder="Add helpful details for the service team" value={form.description} onChange={handleChange} className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" rows={3} />
+                  <textarea name="description" placeholder="Add helpful details for the service team" value={form.description} onChange={handleChange} className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" rows={3} />
                 </label>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 sm:col-span-2"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button type="submit" icon={Plus}>Raise ticket</Button></div>
               </div>
@@ -217,13 +217,13 @@ const ServiceTickets = () => {
           <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 className="text-base font-bold text-slate-900">Ticket queue</h2><p className="mt-1 text-xs text-slate-500">Track support requests, urgency, and SLA health.</p></div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="relative min-w-48 flex-1 sm:flex-none"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><span className="sr-only">Search by subject or customer</span><input type="search" placeholder="Search tickets" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></label>
+              <label className="relative min-w-48 flex-1 sm:flex-none"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><span className="sr-only">Search by subject or customer</span><input type="search" placeholder="Search tickets" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" /></label>
               <label className="sr-only" htmlFor="ticket-status-filter">Filter by status</label>
             <select
               id="ticket-status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">All statuses</option>
               {TICKET_STATUS_OPTIONS.map((option) => (
@@ -235,7 +235,7 @@ const ServiceTickets = () => {
               id="ticket-priority-filter"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">All priorities</option>
               {TICKET_PRIORITY_OPTIONS.map((option) => (
@@ -250,7 +250,7 @@ const ServiceTickets = () => {
           ) : loadError ? (
             <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-rose-50 text-rose-700"><CircleAlert size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">Couldn't load tickets</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{loadError}</p><Button className="mt-5" variant="outline" onClick={() => { setLoading(true); refresh(); }}>Retry</Button></div>
           ) : tickets.length === 0 ? (
-            <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Ticket size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">{search || statusFilter || priorityFilter ? 'No matching tickets' : 'No service tickets yet'}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || statusFilter || priorityFilter ? 'Try changing your search or filters.' : canCreate ? 'Raise a ticket to start tracking a customer support request.' : 'Tickets assigned to you will appear here with their customer, priority, and SLA.'}</p>{canCreate && !search && !statusFilter && !priorityFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Raise first ticket</Button>}</div>
+            <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-primary/5 text-primary"><Ticket size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">{search || statusFilter || priorityFilter ? 'No matching tickets' : 'No service tickets yet'}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || statusFilter || priorityFilter ? 'Try changing your search or filters.' : canCreate ? 'Raise a ticket to start tracking a customer support request.' : 'Tickets assigned to you will appear here with their customer, priority, and SLA.'}</p>{canCreate && !search && !statusFilter && !priorityFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Raise first ticket</Button>}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px] text-left text-sm">
@@ -258,7 +258,7 @@ const ServiceTickets = () => {
                 <tbody className="divide-y divide-slate-100">
                   {tickets.map((t) => (
                     <tr key={t.id} className="transition-colors hover:bg-slate-50/70">
-                      <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><Ticket size={17} /></span><Link to={RoutePath.EDIT_SERVICE_TICKET.replace(':id', t.id)} className="font-semibold text-slate-800 hover:text-violet-700 hover:underline">{t.subject}</Link></div></td>
+                      <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/5 text-primary"><Ticket size={17} /></span><Link to={RoutePath.EDIT_SERVICE_TICKET.replace(':id', t.id)} className="font-semibold text-slate-800 hover:text-primary/80 hover:underline">{t.subject}</Link></div></td>
                       <td className="px-4 py-3.5 text-slate-600">{t.customerName}</td>
                       <td className="px-4 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${t.priority === 'critical' || t.priority === 'high' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{TICKET_PRIORITY_LABELS[t.priority] || t.priority}</span></td>
                       <td className="px-4 py-3.5"><span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{TICKET_STATUS_LABELS[t.status] || t.status}</span></td>

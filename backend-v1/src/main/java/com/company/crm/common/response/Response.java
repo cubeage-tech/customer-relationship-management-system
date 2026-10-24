@@ -37,4 +37,9 @@ public class Response<T> {
     public static <T> Response<T> error(String message, String errorCode) {
         return new Response<>(false, message, null, errorCode);
     }
+
+    /** UI-6: a failure with details in {@code data} — e.g. VALIDATION_FAILED with field → message. */
+    public static <T> Response<T> error(String message, String errorCode, T data) {
+        return new Response<>(false, message, data, errorCode);
+    }
 }

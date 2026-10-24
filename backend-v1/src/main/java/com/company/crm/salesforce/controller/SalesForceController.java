@@ -32,6 +32,8 @@ import java.util.List;
 /**
  * Module 8 — sales force management: targets and attainment (FR-8.1/8.2), activities (FR-8.3),
  * attendance (FR-8.4) and commission (FR-8.5). What each caller sees follows SalesForceScope.
+ * API-G09: the SRS §10.2 paths /targets, /attendance and /commissions; targets also answer at
+ * /sales-targets, which the web app uses.
  */
 @RestController
 @RequestMapping("/api")
@@ -52,21 +54,21 @@ public class SalesForceController {
 
     // ==================== FR-8.1/8.2 targets ====================
 
-    @GetMapping("/sales-targets")
+    @GetMapping({"/sales-targets", "/targets"})
     @PreAuthorize(SALES_VIEW)
     @Operation(summary = "FR-8.2: targets with live attainment from won deals")
     public Response<List<TargetRes>> targets(@AuthenticationPrincipal User currentUser) {
         return Response.ok(targetService.list(currentUser));
     }
 
-    @PostMapping("/sales-targets")
+    @PostMapping({"/sales-targets", "/targets"})
     @PreAuthorize(MANAGERS)
     @Operation(summary = "FR-8.1: set a revenue/units target for a salesperson or team")
     public Response<TargetRes> createTarget(@AuthenticationPrincipal User currentUser, @Valid @RequestBody TargetReq dto) {
         return Response.ok("Target set", targetService.create(currentUser, dto));
     }
 
-    @PutMapping("/sales-targets/{targetId}")
+    @PutMapping({"/sales-targets/{targetId}", "/targets/{targetId}"})
     @PreAuthorize(MANAGERS)
     @Operation(summary = "FR-8.1: change a target")
     public Response<TargetRes> updateTarget(@AuthenticationPrincipal User currentUser, @PathVariable Long targetId,
@@ -74,7 +76,7 @@ public class SalesForceController {
         return Response.ok("Target updated", targetService.update(currentUser, targetId, dto));
     }
 
-    @DeleteMapping("/sales-targets/{targetId}")
+    @DeleteMapping({"/sales-targets/{targetId}", "/targets/{targetId}"})
     @PreAuthorize(MANAGERS)
     @Operation(summary = "FR-8.1: delete a target")
     public Response<Void> deleteTarget(@AuthenticationPrincipal User currentUser, @PathVariable Long targetId) {

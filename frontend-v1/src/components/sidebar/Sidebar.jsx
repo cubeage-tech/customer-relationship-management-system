@@ -9,7 +9,8 @@ import { USER_ROLES } from "../../core/constants/app.constant";
 const AI_CREDITS_USED = 8420;
 const AI_CREDITS_TOTAL = 10000;
 
-const Sidebar = () => {
+/** onNavigate: called when a link is chosen (closes the mobile drawer, NFR-7.9). */
+const Sidebar = ({ onNavigate }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -36,10 +37,11 @@ const Sidebar = () => {
               <NavLink
                 key={menu.path}
                 to={menu.path}
+                onClick={onNavigate}
                 className={({ isActive }) =>
                   `relative flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-600"
+                      ? "bg-primary/5 text-primary"
                       : "text-slate-600 hover:bg-slate-50"
                   }`
                 }
@@ -47,7 +49,7 @@ const Sidebar = () => {
                 {({ isActive }) => (
                   <>
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />
                     )}
 
                     <span className="flex items-center gap-3">
@@ -59,7 +61,7 @@ const Sidebar = () => {
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                           isActive
-                            ? "bg-indigo-100 text-indigo-600"
+                            ? "bg-primary/10 text-primary"
                             : "bg-slate-100 text-slate-500"
                         }`}
                       >
@@ -68,7 +70,7 @@ const Sidebar = () => {
                     )}
 
                     {menu.isNew && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-600 text-white">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-white">
                         New
                       </span>
                     )}
@@ -85,12 +87,15 @@ const Sidebar = () => {
         <div className="p-4 border-t border-slate-200 shrink-0">
           <button
             type="button"
-            onClick={() => navigate(RoutePath.AI_CREDITS)}
-            className="w-full text-left rounded-xl bg-indigo-50 p-4 hover:bg-indigo-100/70 transition-colors"
+            onClick={() => {
+              onNavigate?.();
+              navigate(RoutePath.AI_CREDITS);
+            }}
+            className="w-full text-left rounded-xl bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
           >
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={16} className="text-indigo-600" />
-              <span className="text-sm font-semibold text-indigo-700">
+              <Sparkles size={16} className="text-primary" />
+              <span className="text-sm font-semibold text-primary">
                 AI Credits
               </span>
             </div>
@@ -98,9 +103,9 @@ const Sidebar = () => {
               {AI_CREDITS_USED.toLocaleString()} of{" "}
               {AI_CREDITS_TOTAL.toLocaleString()} monthly credits
             </p>
-            <div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-primary/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-600 rounded-full"
+                className="h-full bg-primary rounded-full"
                 style={{ width: `${creditsPct}%` }}
               />
             </div>

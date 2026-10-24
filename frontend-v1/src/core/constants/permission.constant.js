@@ -88,6 +88,8 @@ export const PERMISSIONS = {
   USERS_MANAGE: 'users.manage',
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_MANAGE: 'settings.manage',
+  // NFR-7.2d: the tenant's audit trail (backend: /api/audit-events, ADMIN / EXECUTIVE_OWNER).
+  AUDIT_VIEW: 'audit.view',
   // Plan, usage and upgrades — the tenant owner only (backend: @PreAuthorize ADMIN).
   BILLING_VIEW: 'billing.view',
   // Sales teams define what a sales manager sees — tenant owner only (backend: /api/sales-teams, ADMIN).
@@ -215,6 +217,7 @@ export const ROLE_PERMISSIONS = {
   ],
 
   [USER_ROLES.EXECUTIVE_OWNER]: [
+    PERMISSIONS.AUDIT_VIEW,
     PERMISSIONS.CUSTOMERS_VIEW,
     PERMISSIONS.LEADS_VIEW,
     PERMISSIONS.OPPORTUNITIES_VIEW,

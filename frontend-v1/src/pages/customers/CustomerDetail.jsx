@@ -167,7 +167,7 @@ const CustomerDetail = () => {
       <EmptyState
         title="Customer not found"
         message="This customer may have been removed, or you may not have access to it."
-        action={<Link to={RoutePath.CUSTOMERS} className="text-indigo-600 hover:underline">Back to customers</Link>}
+        action={<Link to={RoutePath.CUSTOMERS} className="text-primary hover:underline">Back to customers</Link>}
       />
     );
   }
@@ -199,7 +199,7 @@ const CustomerDetail = () => {
             <button
               type="button"
               onClick={() => setEditingProfile(true)}
-              className="text-sm text-indigo-600 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               Edit
             </button>
@@ -286,7 +286,7 @@ const CustomerDetail = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-900">Contact persons</h2>
           {canEdit && (
-            <button type="button" onClick={startAddContact} className="text-sm text-indigo-600 hover:underline">
+            <button type="button" onClick={startAddContact} className="text-sm text-primary hover:underline">
               Add contact
             </button>
           )}
@@ -340,6 +340,7 @@ const CustomerDetail = () => {
         {customer.contacts.length === 0 ? (
           <p className="text-sm text-slate-500">No contact persons added yet.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="border-b border-slate-300">
@@ -359,7 +360,7 @@ const CustomerDetail = () => {
                   <td className="py-2 pr-4">{contact.email || '—'}</td>
                   {canEdit && (
                     <td className="py-2 pr-4 flex gap-3">
-                      <button type="button" onClick={() => startEditContact(contact)} className="text-xs text-indigo-600 hover:underline">
+                      <button type="button" onClick={() => startEditContact(contact)} className="text-xs text-primary hover:underline">
                         Edit
                       </button>
                       <button type="button" onClick={() => handleContactDelete(contact.id)} className="text-xs text-red-600 hover:underline">
@@ -371,6 +372,7 @@ const CustomerDetail = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -401,11 +403,11 @@ const CustomerDetail = () => {
                     <td className="py-2 pr-4 font-medium">{formatCurrency(p.orderValue)}</td>
                     <td className="py-2 pr-4">
                       {p.source === 'quotation' ? (
-                        <Link to={RoutePath.EDIT_QUOTATION.replace(':id', p.sourceId)} className="text-indigo-600 hover:underline">
+                        <Link to={RoutePath.EDIT_QUOTATION.replace(':id', p.sourceId)} className="text-primary hover:underline">
                           Quotation {p.reference}
                         </Link>
                       ) : (
-                        <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', p.sourceId)} className="text-indigo-600 hover:underline">
+                        <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', p.sourceId)} className="text-primary hover:underline">
                           Won deal
                         </Link>
                       )}

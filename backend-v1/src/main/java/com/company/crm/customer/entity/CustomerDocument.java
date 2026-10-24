@@ -32,6 +32,10 @@ public class CustomerDocument {
     @Column(name = "storage_key", nullable = false, unique = true)
     private String storageKey;
 
+    /** DB-E16: which storage backend holds the file ({@link com.company.crm.common.storage.DocumentStorage#provider()}). */
+    @Column(name = "storage_provider", nullable = false, length = 20)
+    private String storageProvider = "local";
+
     @Column(name = "file_name", nullable = false)
     private String fileName;
 

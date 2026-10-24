@@ -4,7 +4,8 @@ import Button from '../common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import { apiErrorMessage } from '../../core/utils/apiError';
-import { listCommunications, logCall, sendEmail, sendWhatsApp } from '../../core/services/communication.service';
+import { listCommunications, logCall, sendEmail, sendSms, sendWhatsApp } from '../../core/services/communication.service';
+import { generateMessage } from '../../core/services/ai.service';
 
 const CHANNEL = {
   email: { label: 'Email', Icon: Mail },
@@ -27,7 +28,7 @@ const STATUS_CLASS = {
   failed: 'bg-red-50 text-red-700',
   delivered: 'bg-green-50 text-green-700',
   read: 'bg-green-50 text-green-700',
-  received: 'bg-indigo-50 text-indigo-700',
+  received: 'bg-primary/5 text-primary',
 };
 
 const label = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1).replace('_', ' ') : '');
@@ -52,9 +53,26 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
 
   const [items, setItems] = useState([]);
   const [loadError, setLoadError] = useState('');
-  const [mode, setMode] = useState(null); // 'call' | 'email' | 'whatsapp'
+  const [mode, setMode] = useState(null); // 'call' | 'email' | 'whatsapp' | 'sms'
   const [form, setForm] = useState({});
   const [formError, setFormError] = useState('');
+  const [drafting, setDrafting] = useState(false);
+
+  // FR-AI-5: draft the message with AI from a short purpose; the user edits it before sending.
+  const draftWithAi = async () => {
+    const purpose = window.prompt('What should the message do? (e.g. follow up on the demo)');
+    if (!purpose) return;
+    setDrafting(true);
+    setFormError('');
+    try {
+      const draft = await generateMessage({ ...scope, channel: mode, purpose });
+      setForm((prev) => ({ ...prev, subject: draft.subject ?? prev.subject, body: draft.body }));
+    } catch (err) {
+      setFormError(apiErrorMessage(err, 'Could not draft the message.'));
+    } finally {
+      setDrafting(false);
+    }
+  };
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = () =>
@@ -75,7 +93,7 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
     setMode(mode === next ? null : next);
     if (next === 'call') setForm({ direction: 'outbound', outcome: 'connected', minutes: '', notes: '', occurredAt: nowLocal(), phone: defaultPhone });
     if (next === 'email') setForm({ to: defaultEmail, subject: '', body: '' });
-    if (next === 'whatsapp') setForm({ to: defaultPhone, body: '' });
+    if (next === 'whatsapp' || next === 'sms') setForm({ to: defaultPhone, body: '' });
   };
 
   const change = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -99,6 +117,8 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
         });
       } else if (mode === 'email') {
         saved = await sendEmail({ ...scope, to: form.to, subject: form.subject, body: form.body });
+      } else if (mode === 'sms') {
+        saved = await sendSms({ ...scope, to: form.to, body: form.body });
       } else {
         saved = await sendWhatsApp({ ...scope, to: form.to, body: form.body });
       }
@@ -124,6 +144,7 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
             <Button type="button" variant="secondary" onClick={() => open('call')}>Log call</Button>
             <Button type="button" variant="secondary" onClick={() => open('email')}>Send email</Button>
             <Button type="button" variant="secondary" onClick={() => open('whatsapp')}>Send WhatsApp</Button>
+            <Button type="button" variant="secondary" onClick={() => open('sms')}>Send SMS</Button>
           </div>
         )}
       </div>
@@ -170,7 +191,7 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
               </label>
             </>
           )}
-          {mode === 'whatsapp' && (
+          {(mode === 'whatsapp' || mode === 'sms') && (
             <>
               <label className="text-sm">To (phone with country code)
                 <input name="to" required value={form.to} onChange={change} className={inputClass} placeholder="+919876543210" />
@@ -181,7 +202,12 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
             </>
           )}
           {formError && <p className="text-sm text-red-600 sm:col-span-2">{formError}</p>}
-          <div className="flex gap-2 sm:col-span-2">
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
+            {mode !== 'call' && (
+              <Button type="button" variant="outline" disabled={drafting} onClick={draftWithAi}>
+                {drafting ? 'Drafting…' : 'Draft with AI'}
+              </Button>
+            )}
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Saving…' : mode === 'call' ? 'Log call' : 'Send'}
             </Button>

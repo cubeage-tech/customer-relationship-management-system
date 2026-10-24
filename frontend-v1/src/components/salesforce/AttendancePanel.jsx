@@ -60,7 +60,8 @@ const AttendancePanel = ({ canSeeTeam }) => {
             : <Button disabled={busy} onClick={() => act(checkIn)}>{busy ? 'Saving…' : 'Check in'}</Button>}
         </div>
         {mine?.recent?.length > 0 && (
-          <table className="mt-4 w-full text-left text-sm">
+          <div className="overflow-x-auto mt-4">
+          <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 text-xs text-slate-500"><tr><th className="py-1.5">Day</th><th>In</th><th>Out</th><th>Hours</th></tr></thead>
             <tbody>
               {mine.recent.map((r) => (
@@ -73,6 +74,7 @@ const AttendancePanel = ({ canSeeTeam }) => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -83,7 +85,8 @@ const AttendancePanel = ({ canSeeTeam }) => {
             <input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="border border-slate-300 rounded px-2 py-1 text-sm" aria-label="Day" />
           </div>
           {team.length === 0 ? <p className="mt-3 text-sm text-slate-500">Nobody checked in on this day.</p> : (
-            <table className="mt-3 w-full text-left text-sm">
+            <div className="overflow-x-auto mt-3">
+            <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 text-xs text-slate-500"><tr><th className="py-1.5">Person</th><th>In</th><th>Out</th><th>Hours</th></tr></thead>
               <tbody>
                 {team.map((r) => (
@@ -96,6 +99,7 @@ const AttendancePanel = ({ canSeeTeam }) => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

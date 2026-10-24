@@ -122,7 +122,7 @@ const TargetsPanel = ({ canManage }) => {
                   </span>
                 </div>
                 <div className="mt-1 h-2 rounded bg-slate-100" role="progressbar" aria-valuenow={t.attainmentPercent} aria-valuemin={0} aria-valuemax={100}>
-                  <div className={`h-2 rounded ${t.attainmentPercent >= 100 ? 'bg-emerald-500' : 'bg-violet-500'}`} style={{ width: `${pct}%` }} />
+                  <div className={`h-2 rounded ${t.attainmentPercent >= 100 ? 'bg-emerald-500' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                 </div>
               </li>
             );

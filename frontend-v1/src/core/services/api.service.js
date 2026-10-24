@@ -262,6 +262,37 @@ class ApiService {
     return this.apipost(ServerUrl.reportScheduleSend(id));
   }
 
+  /** DB-E16: base = ServerUrl.quotationAttachments(id) or ServerUrl.ticketAttachments(id). */
+  static getAttachments(base) {
+    return this.apiget(base);
+  }
+
+  static uploadAttachment(base, file) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.axiosInstance.post(base, form).then((res) => res.data?.data);
+  }
+
+  static downloadAttachment(base, attachmentId, inline = false) {
+    return this.axiosInstance.get(`${base}/${attachmentId}/download`, { params: { inline }, responseType: 'blob' });
+  }
+
+  static deleteAttachment(base, attachmentId) {
+    return this.apidelete(`${base}/${attachmentId}`);
+  }
+
+  static getAuditEvents(params) {
+    return this.apiget(ServerUrl.AUDIT_EVENTS, params);
+  }
+
+  static getTenantSettings() {
+    return this.apiget(ServerUrl.TENANT_SETTINGS);
+  }
+
+  static updateTenantSettings(data) {
+    return this.apiput(ServerUrl.TENANT_SETTINGS, data);
+  }
+
   static getDashboardPreferences() {
     return this.apiget(ServerUrl.DASHBOARD_PREFERENCES);
   }
@@ -404,6 +435,38 @@ class ApiService {
 
   static sendWhatsApp(data) {
     return this.apipost(ServerUrl.COMMUNICATION_WHATSAPP, data);
+  }
+
+  static getInbox(params) {
+    return this.apiget(ServerUrl.COMMUNICATION_INBOX, params);
+  }
+
+  static getAiStatus() {
+    return this.apiget(`${ServerUrl.AI}/status`);
+  }
+
+  static getLeadScores(params) {
+    return this.apiget(`${ServerUrl.AI}/lead-score`, params);
+  }
+
+  static getForecast(params) {
+    return this.apiget(`${ServerUrl.AI}/forecast`, params);
+  }
+
+  static askAi(question) {
+    return this.apipost(`${ServerUrl.AI}/chat`, { question });
+  }
+
+  static generateMessage(data) {
+    return this.apipost(`${ServerUrl.AI}/generate-email`, data);
+  }
+
+  static analyseSentiment(data) {
+    return this.apipost(`${ServerUrl.AI}/sentiment`, data);
+  }
+
+  static sendSms(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_SMS, data);
   }
 
   static getSmsAlerts() {

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
+import AttachmentsPanel from '../../components/common/AttachmentsPanel';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import {
@@ -95,7 +96,7 @@ const ServiceTicketDetail = () => {
       <EmptyState
         title="Service ticket not found"
         message="This ticket may have been removed, or you may not have access to it."
-        action={<Link to={RoutePath.SERVICE_TICKETS} className="text-indigo-600 hover:underline">Back to tickets</Link>}
+        action={<Link to={RoutePath.SERVICE_TICKETS} className="text-primary hover:underline">Back to tickets</Link>}
       />
     );
   }
@@ -130,8 +131,8 @@ const ServiceTicketDetail = () => {
       />
 
       {needsClaim && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 p-4" role="status">
-          <p className="text-sm text-violet-900">This ticket is in the queue. Claim it to start working on it.</p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4" role="status">
+          <p className="text-sm text-primary">This ticket is in the queue. Claim it to start working on it.</p>
           <Button size="sm" onClick={handleClaim}>Claim this ticket</Button>
         </div>
       )}
@@ -163,8 +164,8 @@ const ServiceTicketDetail = () => {
               onClick={() => handleStatusChange(option.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                 ticket.status === option.value
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-300 hover:border-primary/50'
               } ${!editable ? 'cursor-not-allowed opacity-60' : ''}`}
             >
               {option.label}
@@ -248,6 +249,9 @@ const ServiceTicketDetail = () => {
           </p>
         )}
       </div>
+
+      {/* ---------------- Attachments (DB-E16) ---------------- */}
+      <AttachmentsPanel kind="ticket" recordId={ticket.id} canEdit={can(PERMISSIONS.TICKETS_EDIT)} hint="Attach photos, logs or reports" />
     </section>
   );
 };

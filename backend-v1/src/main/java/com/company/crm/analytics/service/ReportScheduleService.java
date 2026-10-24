@@ -11,6 +11,7 @@ import com.company.crm.analytics.repository.ReportScheduleRepository;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.mail.MailQueuedException;
 import com.company.crm.common.mail.MailService;
 import com.company.crm.salesforce.service.SalesForceScope;
 import com.company.crm.user.entity.User;
@@ -139,6 +140,10 @@ public class ReportScheduleService {
                     file.filename(), file.bytes(), file.contentType());
             s.setLastStatus("sent");
             s.setLastError(null);
+        } catch (MailQueuedException e) {
+            // NFR-7.4a: built and handed to the mail outbox, which keeps retrying it.
+            s.setLastStatus("sent");
+            s.setLastError("Mail server was unavailable — the email is queued and will be retried automatically");
         } catch (RuntimeException | MessagingException e) { // access lost, bad filter, or mail failure: recorded on the schedule
             log.warn("Scheduled report {} failed: {}", s.getId(), e.getMessage());
             s.setLastStatus("failed");

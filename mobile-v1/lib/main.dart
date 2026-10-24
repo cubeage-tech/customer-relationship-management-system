@@ -6,6 +6,7 @@ import 'push/push_service.dart';
 import 'storage/local_store.dart';
 import 'ui/home_shell.dart';
 import 'ui/login_screen.dart';
+import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,8 +63,9 @@ class _SmartCrmAppState extends State<SmartCrmApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SmartCRM',
-      theme: ThemeData(colorSchemeSeed: const Color(0xFF7C3AED), useMaterial3: true),
-      darkTheme: ThemeData(colorSchemeSeed: const Color(0xFF7C3AED), brightness: Brightness.dark, useMaterial3: true),
+      // UI-5: same design tokens as the web app (design-tokens.json).
+      theme: crmTheme(Brightness.light),
+      darkTheme: crmTheme(Brightness.dark),
       home: _started
           ? HomeShell(app: widget.app, pushTick: _pushTick, openInbox: _openInbox)
           : LoginScreen(session: widget.app.session, api: widget.app.api),

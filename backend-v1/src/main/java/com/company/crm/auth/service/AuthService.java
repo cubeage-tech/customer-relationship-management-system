@@ -1,5 +1,8 @@
 package com.company.crm.auth.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.crypto.DataEncryption;
 import com.company.crm.auth.dto.request.AdminSignupRequest;
 import com.company.crm.auth.dto.request.LoginRequest;
 import com.company.crm.auth.dto.response.AuthResponse;
@@ -49,6 +52,7 @@ public class AuthService {
     private static final int THROTTLE_WINDOW_MINUTES = 15;
 
     private final UserRepository userRepository;
+    private final AuditService auditService;
     private final RoleRepository roleRepository;
     private final TenantRepository tenantRepository;
     private final LoginAttemptRepository loginAttemptRepository;
@@ -138,6 +142,8 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setStatus(AccountStatus.PENDING_VERIFICATION);
         user = userRepository.save(user);
+        auditService.recordSystem(tenant.getId(), AuditAction.TENANT_SIGNED_UP, "user", user.getId(),
+                "organization=" + tenant.getCompanyName() + ", admin=" + user.getFullName());
 
         emailVerificationTokenService.issueToken(user);
 
@@ -172,14 +178,16 @@ public class AuthService {
         passwordResetTokenRepository.findByUserIdAndUsedAtIsNullAndExpiresAtAfter(user.getId(), now)
                 .forEach(old -> old.setExpiresAt(now));
 
+        // NFR-7.2b: only the token's hash is stored; the raw value exists only in the emailed link.
+        String rawResetToken = UUID.randomUUID().toString();
         PasswordResetToken token = new PasswordResetToken();
         token.setUser(user);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(DataEncryption.sha256(rawResetToken));
         token.setExpiresAt(now.plusHours(PASSWORD_RESET_EXPIRY_HOURS));
         passwordResetTokenRepository.save(token);
 
         log.info("Password reset requested for userId={} (link expires in {}h)", user.getId(), PASSWORD_RESET_EXPIRY_HOURS);
-        sendResetAfterCommit(user.getEmail(), user.getFullName(), token.getToken());
+        sendResetAfterCommit(user.getEmail(), user.getFullName(), rawResetToken);
     }
 
     private void sendResetAfterCommit(String email, String fullName, String rawToken) {
@@ -198,7 +206,7 @@ public class AuthService {
 
     @Transactional
     public void resetPassword(String rawToken, String newPassword) {
-        PasswordResetToken token = passwordResetTokenRepository.findByToken(rawToken)
+        PasswordResetToken token = passwordResetTokenRepository.findByToken(DataEncryption.sha256(rawToken))
                 .orElseThrow(() -> new InvalidTokenException("Invalid reset token"));
 
         if (token.getUsedAt() != null) {
@@ -214,6 +222,8 @@ public class AuthService {
         User user = token.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        auditService.recordSystem(user.getTenant() != null ? user.getTenant().getId() : null, AuditAction.PASSWORD_RESET, "user", user.getId(),
+                "password reset via emailed link");
     }
 
     private void recordAttempt(User user, String emailAttempted, boolean successful, String failureReason) {

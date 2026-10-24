@@ -3,6 +3,7 @@ package com.company.crm.customer.service;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.common.storage.DocumentStorage;
+import com.company.crm.common.storage.UploadPolicy;
 import com.company.crm.customer.dto.response.CustomerDocumentResDto;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.entity.CustomerDocument;
@@ -20,34 +21,19 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 /**
- * FR-1.5: upload, list, view/download and delete documents on a customer record. Files are
- * limited to PDF, DOCX, XLSX, JPG and PNG up to 25 MB (SRS §15); both the extension and the
- * file's leading bytes must match, so a renamed executable is rejected.
+ * FR-1.5: upload, list, view/download and delete documents on a customer record. What may be
+ * uploaded is set by {@link UploadPolicy} (SRS §15).
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CustomerDocumentService {
 
-    public static final long MAX_BYTES = 25L * 1024 * 1024;
-
-    private record FileKind(String contentType, byte[] signature) {}
-
-    private static final byte[] ZIP = {0x50, 0x4B, 0x03, 0x04};
-    private static final Map<String, FileKind> ALLOWED = Map.of(
-            "pdf", new FileKind("application/pdf", "%PDF-".getBytes()),
-            "docx", new FileKind("application/vnd.openxmlformats-officedocument.wordprocessingml.document", ZIP),
-            "xlsx", new FileKind("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ZIP),
-            "jpg", new FileKind("image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF}),
-            "jpeg", new FileKind("image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF}),
-            "png", new FileKind("image/png", new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}));
+    public static final long MAX_BYTES = UploadPolicy.MAX_BYTES;
 
     private final CustomerDocumentRepository documentRepository;
     private final CustomerRepository customerRepository;
@@ -67,18 +53,7 @@ public class CustomerDocumentService {
     @Transactional
     public CustomerDocumentResDto upload(User currentUser, Long customerId, MultipartFile file) {
         Customer customer = findAccessibleCustomer(currentUser, customerId);
-        if (file == null || file.isEmpty()) {
-            throw ApiException.badRequest("Choose a file to upload");
-        }
-        if (file.getSize() > MAX_BYTES) {
-            throw ApiException.badRequest("File is too large — the limit is 25 MB");
-        }
-        String fileName = cleanFileName(file.getOriginalFilename());
-        String extension = fileName.contains(".") ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
-        FileKind kind = ALLOWED.get(extension);
-        if (kind == null || !startsWith(file, kind.signature())) {
-            throw ApiException.badRequest("Only PDF, DOCX, XLSX, JPG and PNG files can be uploaded");
-        }
+        UploadPolicy.Accepted accepted = UploadPolicy.check(file);
 
         String key = customer.getTenant().getId() + "/" + customer.getId() + "/" + UUID.randomUUID();
         try (InputStream in = file.getInputStream()) {
@@ -92,8 +67,9 @@ public class CustomerDocumentService {
         document.setTenant(customer.getTenant());
         document.setCustomer(customer);
         document.setStorageKey(key);
-        document.setFileName(fileName);
-        document.setContentType(kind.contentType());
+        document.setStorageProvider(documentStorage.provider());
+        document.setFileName(accepted.fileName());
+        document.setContentType(accepted.contentType());
         document.setSizeBytes(file.getSize());
         document.setUploadedBy(currentUser);
         // If the row is rolled back, don't leave an orphan file behind.
@@ -145,25 +121,6 @@ public class CustomerDocumentService {
     private CustomerDocument findDocument(User currentUser, Long customerId, Long documentId) {
         return documentRepository.findByIdAndTenantIdAndCustomerId(documentId, requireTenantId(currentUser), customerId)
                 .orElseThrow(() -> ApiException.notFound("Document not found"));
-    }
-
-    private static boolean startsWith(MultipartFile file, byte[] signature) {
-        try (InputStream in = file.getInputStream()) {
-            byte[] head = in.readNBytes(signature.length);
-            return Arrays.equals(head, signature);
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    /** Keeps only the base name, without control characters, at most 255 chars. */
-    private static String cleanFileName(String original) {
-        String name = original == null ? "" : original.replace('\\', '/');
-        name = name.substring(name.lastIndexOf('/') + 1).replaceAll("[\\p{Cntrl}\"]", "").trim();
-        if (name.isEmpty()) {
-            name = "document";
-        }
-        return name.length() <= 255 ? name : name.substring(name.length() - 255);
     }
 
     private void afterRollback(Runnable action) {

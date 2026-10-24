@@ -1,5 +1,8 @@
 package com.company.crm.customer.entity;
 
+import com.company.crm.common.crypto.BlindIndexed;
+import com.company.crm.common.crypto.DataEncryption;
+import com.company.crm.common.crypto.EncryptedString;
 import com.company.crm.common.enums.CustomerStatus;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.user.entity.User;
@@ -13,11 +16,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@EntityListeners(BlindIndexed.Listener.class)
 @Table(name = "customers")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Customer {
+public class Customer implements BlindIndexed {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,13 +41,27 @@ public class Customer {
     @Column(nullable = false)
     private CustomerStatus status = CustomerStatus.ACTIVE;
 
+    @Convert(converter = EncryptedString.class)
     private String email;
 
+    @Convert(converter = EncryptedString.class)
     private String phone;
 
     private String website;
 
+    /** API-G12: this customer's code in the tenant's ERP (set by the ERP integration). */
+    @Column(name = "erp_code", length = 64)
+    private String erpCode;
+
+    @Convert(converter = EncryptedString.class)
     private String address;
+
+    /** NFR-7.2b: blind indexes for matching inbound email / calls / SMS. */
+    @Column(name = "email_hash", length = 64)
+    private String emailHash;
+
+    @Column(name = "phone_hash", length = 64)
+    private String phoneHash;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -71,6 +89,12 @@ public class Customer {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Override
+    public void refreshBlindIndexes(DataEncryption encryption) {
+        emailHash = encryption.emailIndex(email);
+        phoneHash = encryption.phoneIndex(phone);
+    }
 
     @PrePersist
     protected void onCreate() {

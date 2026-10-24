@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import StatCard from '../../components/common/StatCard';
@@ -59,13 +60,13 @@ const Table = ({ title, head, rows, empty = 'Nothing in this period.' }) => (
   </div>
 );
 
-const SalesView = ({ data }) => (
+const SalesView = ({ data, drill }) => (
   <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-2">
       <StatCard label="Opportunities created" value={data.totalCount} />
       <StatCard label="Total value" value={formatMoney(data.totalValue)} />
     </div>
-    <BarList title="By stage" rows={data.byStage} />
+    <BarList title="By stage" rows={data.byStage} onSelect={(r) => drill('stage', r)} selectHint="Open these opportunities" />
     <Table
       title="By owner"
       head={['Owner', 'Open', 'Open value', 'Won', 'Won value', 'Lost', 'Lost value', 'Total value']}
@@ -80,7 +81,7 @@ const SalesView = ({ data }) => (
   </div>
 );
 
-const CustomersView = ({ data }) => (
+const CustomersView = ({ data, drill }) => (
   <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Active customers" value={data.activeCustomers} />
@@ -89,36 +90,39 @@ const CustomersView = ({ data }) => (
       <StatCard label="Not contacted" value={data.notContactedCustomers} />
     </div>
     <div className="grid gap-6 lg:grid-cols-2">
-      <BarList title="Active customers by industry" rows={data.byIndustry} measure="count" />
+      <BarList title="Active customers by industry" rows={data.byIndustry} measure="count"
+        onSelect={(r) => drill('industry', r)} selectHint="Open these customers" />
       <BarList title="Activity by channel" rows={data.activityByChannel} measure="count" />
     </div>
     {data.segments.length > 0 && <BarList title="Marketing segments" rows={data.segments} measure="count" />}
   </div>
 );
 
-const RevenueView = ({ data }) => (
+const RevenueView = ({ data, drill }) => (
   <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-2">
       <StatCard label="Revenue (won deals)" value={formatMoney(data.totalRevenue)} />
       <StatCard label="Deals won" value={data.wonDeals} />
     </div>
     <div className="grid gap-6 lg:grid-cols-2">
-      <BarList title="By month" rows={data.byMonth} />
-      <BarList title="By salesperson" rows={data.bySalesperson} />
+      <BarList title="By month" rows={data.byMonth} onSelect={(r) => drill('month', r)} selectHint="Show just this month" />
+      <BarList title="By salesperson" rows={data.bySalesperson} onSelect={(r) => drill('user', r)} selectHint="Show just this salesperson" />
       <BarList title="By product / service" rows={data.byProduct} />
-      <BarList title="By industry" rows={data.byIndustry} />
+      <BarList title="By industry" rows={data.byIndustry} onSelect={(r) => drill('industry', r)} selectHint="Open these customers" />
     </div>
   </div>
 );
 
-const TeamView = ({ data }) => (
+const TeamView = ({ data, drill }) => (
   <div className="space-y-6">
     <Table
       title="Salespeople"
       head={['Name', 'Team', 'Revenue', 'Won', 'Target', 'Attainment', 'Calls', 'Meetings', 'Quotations sent', 'Visits', 'Commission']}
       rows={data.people.map((p) => (
         <tr key={p.userId} className="border-b border-slate-100">
-          <td className={td}>{p.name}</td><td className={td}>{p.teamName ?? '—'}</td><td className={td}>{formatMoney(p.revenue)}</td>
+          <td className={td}>
+            <button type="button" className="text-primary hover:underline" onClick={() => drill('user', { key: String(p.userId) })}>{p.name}</button>
+          </td><td className={td}>{p.teamName ?? '—'}</td><td className={td}>{formatMoney(p.revenue)}</td>
           <td className={td}>{p.wonDeals}</td><td className={td}>{formatMoney(p.targetValue)}</td><td className={td}>{pct(p.attainmentPercent)}</td>
           <td className={td}>{p.calls}</td><td className={td}>{p.meetings}</td><td className={td}>{p.quotationsSent}</td><td className={td}>{p.visits}</td>
           <td className={td}>{formatMoney(p.commission)}</td>
@@ -141,15 +145,19 @@ const TeamView = ({ data }) => (
   </div>
 );
 
-const serviceRows = (rows) => rows.map((r) => (
+const serviceRows = (rows, onPick) => rows.map((r) => (
   <tr key={r.key ?? 'none'} className="border-b border-slate-100">
-    <td className={td}>{r.label}</td><td className={td}>{r.created}</td><td className={td}>{r.resolved}</td>
+    <td className={td}>
+      {onPick && r.key && r.key !== 'null'
+        ? <button type="button" className="text-primary hover:underline" onClick={() => onPick(r)}>{r.label}</button>
+        : r.label}
+    </td><td className={td}>{r.created}</td><td className={td}>{r.resolved}</td>
     <td className={td}>{num(r.avgResolutionHours)}</td><td className={td}>{pct(r.slaCompliancePercent)}</td><td className={td}>{num(r.averageFeedback)}</td>
   </tr>
 ));
 const SERVICE_HEAD = ['', 'Raised', 'Resolved', 'Avg resolution (h)', 'SLA compliance', 'Avg feedback'];
 
-const ServiceView = ({ data }) => (
+const ServiceView = ({ data, drill }) => (
   <div className="space-y-6">
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Tickets raised" value={data.created} hint={`${data.resolved} resolved`} />
@@ -157,8 +165,8 @@ const ServiceView = ({ data }) => (
       <StatCard label="SLA compliance" value={pct(data.slaCompliancePercent)} hint={`${data.resolvedWithinSla} within SLA · ${data.openBreached} open past SLA now`} />
       <StatCard label="Feedback score" value={data.averageFeedback == null ? '—' : `${data.averageFeedback} / 5`} hint={`${data.feedbackCount} ratings`} />
     </div>
-    <Table title="By priority" head={SERVICE_HEAD} rows={serviceRows(data.byPriority)} />
-    <Table title="By technician" head={SERVICE_HEAD} rows={serviceRows(data.byTechnician)} />
+    <Table title="By priority" head={SERVICE_HEAD} rows={serviceRows(data.byPriority, (r) => drill('priority', r))} />
+    <Table title="By technician" head={SERVICE_HEAD} rows={serviceRows(data.byTechnician, (r) => drill('technician', r))} />
   </div>
 );
 
@@ -194,8 +202,29 @@ const Reports = () => {
   const { can, scopeFor } = usePermissions();
   const live = LIVE_REPORTS.filter((r) => r.permissions.some((p) => can(p)));
 
-  const [tab, setTab] = useState(live[0]?.key);
-  const [filters, setFilters] = useState(() => ({ ...periodRange('month'), industry: '', teamId: '', userId: '', priority: '', technicianId: '' }));
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  // UI-7/UI-8: dashboard report links and chart drill-downs open a tab with its filters.
+  const [tab, setTab] = useState(() => (live.some((r) => r.key === params.get('tab')) ? params.get('tab') : live[0]?.key));
+  const [filters, setFilters] = useState(() => {
+    const base = { ...periodRange('month'), industry: '', teamId: '', userId: '', priority: '', technicianId: '' };
+    Object.keys(base).forEach((k) => { if (params.get(k)) base[k] = params.get(k); });
+    return base;
+  });
+
+  /** UI-8 drill-down: narrow this report, or open the matching records. */
+  const drill = (kind, row) => {
+    if (kind === 'stage') navigate(`/opportunities?stage=${encodeURIComponent(row.key)}`);
+    else if (kind === 'industry') navigate(`/customers?industry=${encodeURIComponent(row.key)}`);
+    else if (kind === 'user') setFilters((f) => ({ ...f, userId: row.key }));
+    else if (kind === 'priority') setFilters((f) => ({ ...f, priority: row.key }));
+    else if (kind === 'technician') setFilters((f) => ({ ...f, technicianId: row.key }));
+    else if (kind === 'month') {
+      const [y, m] = row.key.split('-').map(Number);
+      const last = new Date(y, m, 0).getDate();
+      setFilters((f) => ({ ...f, from: `${row.key}-01`, to: `${row.key}-${String(last).padStart(2, '0')}` }));
+    }
+  };
   const [result, setResult] = useState({ key: null, data: null, error: '' });
   const [technicians, setTechnicians] = useState([]);
   const [exportError, setExportError] = useState('');
@@ -263,8 +292,8 @@ const Reports = () => {
                   aria-selected={tab === r.key}
                   onClick={() => setTab(r.key)}
                   className={`px-3 py-1.5 rounded-md text-sm border ${tab === r.key
-                    ? 'border-violet-400 bg-violet-50 text-violet-700'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300'}`}
+                    ? 'border-primary/50 bg-primary/5 text-primary'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-primary/50'}`}
                 >
                   {r.title}
                 </button>
@@ -304,7 +333,7 @@ const Reports = () => {
           {loaded && result.error && <p className="text-sm text-red-600">{result.error}</p>}
           {loaded && result.data && (
             <>
-              <View data={result.data} />
+              <View data={result.data} drill={drill} />
               <p className="text-xs text-slate-400 mt-4">
                 {result.data.from} to {result.data.to} · generated {new Date(result.data.generatedAt).toLocaleString()}
               </p>

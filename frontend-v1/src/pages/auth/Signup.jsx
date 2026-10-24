@@ -102,7 +102,7 @@ const Signup = () => {
             </div>
             <div>
               <h1 className="font-bold text-lg leading-tight">SmartCRM AI</h1>
-              <p className="text-xs text-indigo-200">Enterprise Suite</p>
+              <p className="text-xs text-primary-foreground/80">Enterprise Suite</p>
             </div>
           </div>
 
@@ -110,7 +110,7 @@ const Signup = () => {
             <h2 className="text-4xl font-bold mb-6 leading-tight pr-8">
               The revenue workspace your whole company can trust.
             </h2>
-            <p className="text-base text-indigo-100 mb-12 pr-12">
+            <p className="text-base text-primary-foreground/80 mb-12 pr-12">
               One secure workspace for sales, marketing, service and finance — with permissions that match how your teams actually operate.
             </p>
 
@@ -121,7 +121,7 @@ const Signup = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">AI copilot built in</h3>
-                  <p className="text-sm text-indigo-100/80">Lead scoring, next-best action and auto summaries.</p>
+                  <p className="text-sm text-primary-foreground/80">Lead scoring, next-best action and auto summaries.</p>
                 </div>
               </div>
 
@@ -131,7 +131,7 @@ const Signup = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Role-based access</h3>
-                  <p className="text-sm text-indigo-100/80">Seven granular roles with SOC 2 aligned audit trails.</p>
+                  <p className="text-sm text-primary-foreground/80">Seven granular roles with SOC 2 aligned audit trails.</p>
                 </div>
               </div>
 
@@ -141,13 +141,13 @@ const Signup = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Live revenue clarity</h3>
-                  <p className="text-sm text-indigo-100/80">Pipeline, forecast and campaign ROI in one workspace.</p>
+                  <p className="text-sm text-primary-foreground/80">Pipeline, forecast and campaign ROI in one workspace.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-between items-center text-xs text-indigo-200/80 font-medium">
+          <div className="flex justify-between items-center text-xs text-primary-foreground/80 font-medium">
             <p>Trusted by 4,200+ revenue teams · 99.99% uptime</p>
           </div>
         </div>
@@ -157,7 +157,7 @@ const Signup = () => {
       <div className="w-full lg:w-1/2 flex justify-center p-8 sm:p-12 xl:p-16 relative bg-[#FAFAFA] overflow-y-auto">
         <div className="w-full max-w-[420px] my-auto ">
           <div className="mb-6">
-            <p className="text-indigo-600 font-bold text-xs tracking-[0.15em] uppercase mb-3">14-day free trial</p>
+            <p className="text-primary font-bold text-xs tracking-[0.15em] uppercase mb-3">14-day free trial</p>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Create your workspace account</h2>
             <p className="text-gray-500 text-sm">No credit card required. You'll be set up as the workspace admin (tenant owner).</p>
           </div>
@@ -175,7 +175,7 @@ const Signup = () => {
                     type="text"
                     name="firstName"
                     className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                      errors.firstName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                      errors.firstName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                     }`}
                     placeholder="John"
                     value={form.firstName}
@@ -196,7 +196,7 @@ const Signup = () => {
                     type="text"
                     name="lastName"
                     className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                      errors.lastName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                      errors.lastName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                     }`}
                     placeholder="Doe"
                     value={form.lastName}
@@ -219,7 +219,7 @@ const Signup = () => {
                   type="email"
                   name="email"
                   className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="john.doe@company.com"
                   value={form.email}
@@ -241,7 +241,7 @@ const Signup = () => {
                   type="text"
                   name="organizationName"
                   className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                    errors.organizationName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    errors.organizationName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="Acme Corp"
                   value={form.organizationName}
@@ -264,7 +264,7 @@ const Signup = () => {
                   inputMode="numeric"
                   name="bankAccountNumber"
                   className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                    errors.bankAccountNumber ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    errors.bankAccountNumber ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="e.g. 123456789012"
                   value={form.bankAccountNumber}
@@ -290,7 +290,7 @@ const Signup = () => {
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   className={`block w-full pl-9 pr-10 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="Create a strong password"
                   value={form.password}
@@ -339,7 +339,7 @@ const Signup = () => {
                   className={`block w-full pl-9 pr-10 py-2.5 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
                     (form.confirmPassword && form.confirmPassword !== form.password) || errors.confirmPassword
                       ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                      : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                      : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="Re-enter your password"
                   value={form.confirmPassword}
@@ -368,12 +368,12 @@ const Signup = () => {
                 id="termsAccepted"
                 name="termsAccepted"
                 type="checkbox"
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                className="h-4 w-4 text-primary focus:ring-primary/40 border-gray-300 rounded cursor-pointer"
                 checked={form.termsAccepted}
                 onChange={handleChange}
               />
               <label htmlFor="termsAccepted" className="ml-2 block text-xs text-gray-600 cursor-pointer select-none">
-                I agree to the <a href="#" className="text-indigo-600 hover:underline">Terms of Service</a> and <a href="#" className="text-indigo-600 hover:underline">Privacy Policy</a>.
+                I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> and <a href="#" className="text-primary hover:underline">Privacy Policy</a>.
               </label>
             </div>
             {errors.termsAccepted && <p className="text-xs text-red-500">{errors.termsAccepted}</p>}
@@ -383,7 +383,7 @@ const Signup = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full flex justify-center py-3 px-4 mt-2 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3 px-4 mt-2 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/40 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? 'Creating account…' : 'Create account'}
             </button>
@@ -407,7 +407,7 @@ const Signup = () => {
           </div>
 
           <div className="mt-8 text-center text-sm text-gray-600">
-            Already have an account? <Link to={RoutePath.LOGIN} className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Sign in</Link>
+            Already have an account? <Link to={RoutePath.LOGIN} className="font-semibold text-primary hover:text-primary/80 transition-colors">Sign in</Link>
           </div>
         </div>
       </div>

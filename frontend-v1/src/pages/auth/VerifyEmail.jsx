@@ -72,7 +72,7 @@ const VerifyEmail = () => {
       <div className="w-full max-w-[420px] text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-10">
         {status === 'verifying' && (
           <>
-            <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900">Verifying your email…</h2>
             <p className="text-gray-500 text-sm mt-2">Hang tight, this only takes a second.</p>
           </>
@@ -96,7 +96,7 @@ const VerifyEmail = () => {
                 type="email"
                 aria-label="Your email"
                 placeholder="you@company.com"
-                className="min-w-0 flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="min-w-0 flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary"
                 value={resendEmail}
                 onChange={(e) => setResendEmail(sanitizeEmail(e.target.value))}
               />

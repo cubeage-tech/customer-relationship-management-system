@@ -67,6 +67,9 @@ const RolesPermissions = lazy(() => import("../pages/platform/RolesPermissions")
 const PlatformSettings = lazy(() => import("../pages/platform/PlatformSettings"));
 const PlatformReports = lazy(() => import("../pages/platform/PlatformReports"));
 const AuditLogs = lazy(() => import("../pages/platform/AuditLogs"));
+const TenantAuditLog = lazy(() => import("../pages/admin/AuditLog"));
+const Communications = lazy(() => import("../pages/communications/Communications"));
+const AiAssistant = lazy(() => import("../pages/ai/AiAssistant"));
 
 // Common
 const Profile = lazy(() => import("../pages/common/Profile"));
@@ -375,6 +378,28 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.ADMIN_SETTINGS} element={<Settings />} />
+          </Route>
+
+          {/* UI-1: Communications inbox (anyone who sees customers) and the AI Assistant (every tenant role) */}
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.CUSTOMERS_VIEW]}
+              />
+            }
+          >
+            <Route path={RoutePath.COMMUNICATIONS} element={<Communications />} />
+          </Route>
+          <Route path={RoutePath.AI_ASSISTANT} element={<AiAssistant />} />
+
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.AUDIT_VIEW]}
+              />
+            }
+          >
+            <Route path={RoutePath.ADMIN_AUDIT_LOG} element={<TenantAuditLog />} />
           </Route>
 
           <Route

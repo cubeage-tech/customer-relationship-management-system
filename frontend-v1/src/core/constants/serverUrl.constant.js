@@ -58,6 +58,10 @@ class ServerUrl {
     static COMMUNICATION_CALLS = ServerUrl.COMMUNICATIONS + "/calls";
     static COMMUNICATION_EMAIL = ServerUrl.COMMUNICATIONS + "/email";
     static COMMUNICATION_WHATSAPP = ServerUrl.COMMUNICATIONS + "/whatsapp";
+    static COMMUNICATION_SMS = ServerUrl.COMMUNICATIONS + "/sms";
+    static COMMUNICATION_INBOX = ServerUrl.COMMUNICATIONS + "/inbox";
+    // API-G11 AI services
+    static AI = ServerUrl.API_MODULE_USER + "/ai";
     static COMMUNICATION_SMS_ALERTS = ServerUrl.COMMUNICATIONS + "/sms-alerts";
     static customerContact = (customerId, contactId) =>
       `${ServerUrl.CUSTOMERS}/${customerId}/contacts/${contactId}`;
@@ -144,6 +148,12 @@ class ServerUrl {
     static ANALYTICS_TEAM_PERFORMANCE = ServerUrl.ANALYTICS + "/team-performance";
     static ANALYTICS_FILTER_OPTIONS = ServerUrl.ANALYTICS + "/filter-options";
     static DASHBOARD_PREFERENCES = ServerUrl.ANALYTICS + "/dashboard-preferences";
+    // NFR-7.2d audit trail, NFR-7.6b tenant thresholds
+    static AUDIT_EVENTS = ServerUrl.API_MODULE_USER + "/audit-events";
+    // DB-E16: files on quotations and service tickets
+    static quotationAttachments = (id) => `${ServerUrl.API_MODULE_USER}/quotations/${id}/attachments`;
+    static ticketAttachments = (id) => `${ServerUrl.API_MODULE_USER}/tickets/${id}/attachments`;
+    static TENANT_SETTINGS = ServerUrl.API_MODULE_USER + "/tenant-settings";
     static ANALYTICS_SERVICE = ServerUrl.ANALYTICS + "/service";
     static ANALYTICS_CAMPAIGNS = ServerUrl.ANALYTICS + "/campaigns";
     static analyticsExport = (report) => `${ServerUrl.ANALYTICS}/export/${report}`;

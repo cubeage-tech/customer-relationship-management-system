@@ -29,7 +29,7 @@ const SalesForce = () => {
       <div className="mb-4 flex flex-wrap gap-2" role="tablist">
         {tabs.map((t) => (
           <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${tab === t.key ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-violet-400'}`}>
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${tab === t.key ? 'border-primary bg-primary text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-primary/50'}`}>
             {t.label}
           </button>
         ))}

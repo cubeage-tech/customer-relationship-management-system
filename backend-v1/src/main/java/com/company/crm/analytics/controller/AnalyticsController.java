@@ -42,7 +42,8 @@ import java.time.LocalDate;
  * Service (REP-SVC) and Campaign (REP-CMP) reports, and PDF/XLSX export of any report (FR-9.7).
  */
 @RestController
-@RequestMapping("/api/analytics")
+// API-G10 (SRS §10.2): the reports also answer at /api/reports/... (e.g. /api/reports/sales, /api/reports/revenue).
+@RequestMapping({"/api/analytics", "/api/reports"})
 @RequiredArgsConstructor
 public class AnalyticsController {
 

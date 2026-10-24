@@ -74,7 +74,7 @@ const Pricing = () => {
   if (loading) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
         <p className="text-slate-500 font-medium">Loading pricing options...</p>
       </div>
     );
@@ -85,7 +85,7 @@ const Pricing = () => {
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-16">
       <div className="mb-12 flex flex-col items-center text-center md:items-start md:text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50/80 text-indigo-600 text-xs font-semibold mb-6 border border-indigo-100">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-semibold mb-6 border border-primary/20">
           <Sparkles size={14} />
           PLANS & PRICING
         </div>
@@ -122,12 +122,12 @@ const Pricing = () => {
               key={planKey}
               className={`bg-white rounded-2xl border p-6 flex flex-col relative shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
                 plan.highlight
-                  ? 'border-indigo-100 shadow-[0_8px_30px_-12px_rgba(99,102,241,0.2)] hover:border-indigo-300'
-                  : 'border-slate-200 hover:border-indigo-200'
+                  ? 'border-primary/20 shadow-[0_8px_30px_-12px_rgba(99,102,241,0.2)] hover:border-primary/50'
+                  : 'border-slate-200 hover:border-primary/20'
               }`}
             >
               {plan.highlight && (
-                <div className="absolute -top-3 left-6 bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
+                <div className="absolute -top-3 left-6 bg-primary text-white text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
                   Most Popular
                 </div>
               )}
@@ -155,8 +155,8 @@ const Pricing = () => {
               <button
                 className={`w-full py-2.5 px-4 rounded-xl font-medium transition-colors ${
                   plan.highlight
-                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                    : 'border border-slate-200 text-slate-900 hover:border-violet-500 hover:bg-violet-50 hover:text-violet-700'
+                    ? 'bg-primary hover:bg-primary/90 text-white'
+                    : 'border border-slate-200 text-slate-900 hover:border-primary hover:bg-primary/5 hover:text-primary/80'
                 }`}
               >
                 {planKey === 'enterprise' ? 'Contact sales' : 'Buy now'}

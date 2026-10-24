@@ -23,17 +23,17 @@ const Hero = () => {
       {/* soft ambient backdrop */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-40 right-[-10%] h-[520px] w-[520px] rounded-full bg-indigo-600/10 blur-3xl"
+        className="pointer-events-none absolute -top-40 right-[-10%] h-[520px] w-[520px] rounded-full bg-primary/10 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-32 left-[-10%] h-[420px] w-[420px] rounded-full bg-indigo-600/5 blur-3xl"
+        className="pointer-events-none absolute -bottom-32 left-[-10%] h-[420px] w-[420px] rounded-full bg-primary/5 blur-3xl"
       />
 
       <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-2 gap-16 items-center">
         {/* Left — message */}
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold tracking-wide text-indigo-700 uppercase">
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold tracking-wide text-primary uppercase">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             AI-Native CRM
           </span>
@@ -49,7 +49,7 @@ const Hero = () => {
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
               to={RoutePath.PLANS}
-              className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-primary/90"
             >
               See plans
             </Link>
@@ -83,14 +83,14 @@ const Hero = () => {
               {PIPELINE_PREVIEW.map((deal) => (
                 <li
                   key={deal.account}
-                  className="rounded-xl border border-slate-100 p-4 transition-colors hover:border-indigo-100 hover:bg-indigo-50/30"
+                  className="rounded-xl border border-slate-100 p-4 transition-colors hover:border-primary/20 hover:bg-primary/5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-[#0F172A]">{deal.account}</p>
                       <p className="text-xs text-[#6B7280] mt-0.5">{deal.stage}</p>
                     </div>
-                    <p className="font-semibold text-indigo-600 whitespace-nowrap">
+                    <p className="font-semibold text-primary whitespace-nowrap">
                       {deal.amount}
                     </p>
                   </div>

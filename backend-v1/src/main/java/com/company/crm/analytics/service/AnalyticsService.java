@@ -93,7 +93,8 @@ public class AnalyticsService {
 
     // ==================== FR-9.2 ====================
 
-    @Transactional(readOnly = true)
+    // Not read-only: the first look at a new tenant's pipeline seeds its default stages.
+    @Transactional
     public SalesReport sales(User user, ReportScope s) {
         Map<String, String> stageLabels = pipelineStageService.stages(s.tenantId()).stream()
                 .collect(Collectors.toMap(PipelineStage::getCode, PipelineStage::getLabel));
@@ -127,7 +128,8 @@ public class AnalyticsService {
 
     // ==================== FR-9.3 ====================
 
-    @Transactional(readOnly = true)
+    // Not read-only: the first look at a new tenant's industries seeds the defaults.
+    @Transactional
     public CustomerReport customers(User user, ReportScope s) {
         Map<String, String> industries = industryLabels(user);
         long[] counts = query.customerCounts(s);
@@ -145,7 +147,8 @@ public class AnalyticsService {
 
     // ==================== FR-9.4 ====================
 
-    @Transactional(readOnly = true)
+    // Not read-only: the first look at a new tenant's industries seeds the defaults.
+    @Transactional
     public RevenueReport revenue(User user, ReportScope s) {
         Bucket won = query.won(s);
         List<Row> byMonth = query.revenueByMonth(s).stream().map(b -> new Row(b.key(), b.key(), b.count(), b.value())).toList();

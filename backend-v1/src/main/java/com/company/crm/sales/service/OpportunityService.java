@@ -1,5 +1,7 @@
 package com.company.crm.sales.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.period.ReportingPeriods;
 import com.company.crm.sales.dto.response.OpportunityKpiDto;
 import com.company.crm.sales.repository.OpportunitySummaryQuery;
@@ -41,6 +43,7 @@ import java.util.Map;
 public class OpportunityService {
 
     private final OpportunityRepository opportunityRepository;
+    private final AuditService auditService;
     private final DataScopeResolver dataScopeResolver;
     private final OpportunitySummaryQuery opportunitySummaryQuery;
     private final ReportingPeriods reportingPeriods;
@@ -181,6 +184,7 @@ public class OpportunityService {
         opportunity.setStage(pipelineStageService.firstOpenStage(requireTenantId(currentUser)));
         applyFields(currentUser, opportunity, dto);
         Opportunity saved = opportunityRepository.save(opportunity);
+        auditService.record(currentUser, AuditAction.OPPORTUNITY_CREATED, "opportunity", saved.getId(), summary(saved));
         announceAssignment(currentUser, null, saved);
         return opportunityMapper.toDto(saved);
     }
@@ -194,6 +198,7 @@ public class OpportunityService {
         applyFields(currentUser, opportunity, dto);
         Opportunity saved = opportunityRepository.save(opportunity);
         commissionService.onWonDealEdited(saved);
+        auditService.record(currentUser, AuditAction.OPPORTUNITY_UPDATED, "opportunity", saved.getId(), summary(saved));
         announceAssignment(currentUser, previousOwnerId, saved);
         return opportunityMapper.toDto(saved);
     }
@@ -229,6 +234,8 @@ public class OpportunityService {
         Opportunity saved = opportunityRepository.save(opportunity);
         // AC-8.2: winning a deal records the owner's commission (re-opening it voids it).
         commissionService.onStageChanged(saved, previousStage);
+        auditService.record(currentUser, AuditAction.OPPORTUNITY_STAGE_CHANGED, "opportunity", saved.getId(),
+                "stage " + previousStage + " → " + saved.getStage() + ", dealValue=" + saved.getDealValue());
         return opportunityMapper.toDto(saved);
     }
 
@@ -261,6 +268,12 @@ public class OpportunityService {
         } else if (dto.getOwnerId() != null) {
             opportunity.setOwner(resolveOwner(currentUser, dto.getOwnerId()));
         }
+    }
+
+    /** NFR-7.2d audit detail. */
+    private static String summary(Opportunity o) {
+        return "customer=" + o.getCustomer().getCompanyName() + ", dealValue=" + o.getDealValue() + ", stage=" + o.getStage()
+                + ", owner=" + (o.getOwner() != null ? o.getOwner().getFullName() : "none");
     }
 
     /** FR-M.4: tell the new owner (unless they assigned it to themselves); sent once the change commits. */

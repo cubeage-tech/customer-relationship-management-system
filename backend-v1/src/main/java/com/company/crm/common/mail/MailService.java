@@ -1,13 +1,16 @@
 package com.company.crm.common.mail;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import java.util.Properties;
 public class MailService {
 
     private final JavaMailSender mailSender;
+    private final MailOutboxService mailOutbox;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -63,7 +67,7 @@ public class MailService {
         if (!customerEmailReplyTo.isBlank()) {
             helper.setReplyTo(customerEmailReplyTo);
         }
-        mailSender.send(message);
+        deliver(message);
     }
 
     /** Sends the "confirm your email" message with a button linking back to the frontend. */
@@ -76,7 +80,7 @@ public class MailService {
             helper.setTo(toEmail);
             helper.setSubject("Verify your SmartCRM AI account");
             helper.setText(buildVerificationEmailHtml(fullName, verifyUrl), true);
-            mailSender.send(message);
+            deliver(message);
         } catch (MailException | MessagingException e) {
             // The account was already created — a mail outage shouldn't fail signup itself,
             // but the user has no way to verify without this link, so this needs to be loud.
@@ -94,7 +98,7 @@ public class MailService {
             helper.setTo(toEmail);
             helper.setSubject("Reset your SmartCRM AI password");
             helper.setText(buildPasswordResetEmailHtml(fullName, resetUrl), true);
-            mailSender.send(message);
+            deliver(message);
         } catch (MailException | MessagingException e) {
             log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage());
         }
@@ -113,7 +117,7 @@ public class MailService {
         if (ics != null) {
             attachIcs(helper, ics);
         }
-        mailSender.send(message);
+        deliver(message);
     }
 
     /** REP-SCH: a scheduled report, attached as PDF or XLSX. Throws on failure so the caller can record it. */
@@ -125,7 +129,7 @@ public class MailService {
         helper.setSubject(subject);
         helper.setText(body, false);
         helper.addAttachment(filename, new ByteArrayResource(content), contentType);
-        mailSender.send(message);
+        deliver(message);
     }
 
     /**
@@ -152,7 +156,39 @@ public class MailService {
         }
         message.setHeader("List-Unsubscribe", "<" + unsubscribeUrl + ">");
         message.setHeader("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
-        mailSender.send(message);
+        deliver(message);
+    }
+
+    /**
+     * NFR-7.4a: every email goes out through here. If the mail server doesn't take it (down,
+     * unreachable, temporarily refusing), the message is saved and retried automatically, and the
+     * caller gets {@link MailQueuedException}. A permanent rejection (e.g. an invalid address) is
+     * thrown as before: retrying it can't help.
+     */
+    private void deliver(MimeMessage message) throws MessagingException {
+        try {
+            mailSender.send(message);
+        } catch (MailSendException e) {
+            if (!retryable(e)) {
+                throw e;
+            }
+            mailOutbox.enqueue(message, e);
+            throw new MailQueuedException("Mail server unavailable; the email was queued and will be retried automatically", e);
+        } catch (MailAuthenticationException e) {
+            // Usually a temporary credentials/server issue; retried with backoff, then given up on.
+            mailOutbox.enqueue(message, e);
+            throw new MailQueuedException("Mail server refused the login; the email was queued and will be retried automatically", e);
+        }
+    }
+
+    /** A send failure is worth retrying unless the server rejected the recipient addresses themselves. */
+    private static boolean retryable(MailSendException e) {
+        for (Exception failure : e.getMessageExceptions()) {
+            if (failure instanceof SendFailedException sfe && sfe.getInvalidAddresses() != null && sfe.getInvalidAddresses().length > 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void attachIcs(MimeMessageHelper helper, String ics) throws MessagingException {
@@ -187,7 +223,7 @@ public class MailService {
                   <p style="color:#6b7280;font-size:13px;">Set a new follow-up date on the lead to get another reminder.</p>
                 </div>
                 """.formatted(escape(fullName), escape(leadName), escape(companyName), dueAt, leadUrl), true);
-        mailSender.send(message);
+        deliver(message);
     }
 
     private static String escape(String value) {

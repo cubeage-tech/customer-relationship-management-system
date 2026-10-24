@@ -30,7 +30,7 @@ const OpportunityBoard = ({ opportunities, stages, stageOptionsFor, canEdit, onS
           <section
             key={stage}
             aria-label={`${label} column`}
-            className={`flex w-72 shrink-0 flex-col rounded-lg border bg-slate-50 ${overStage === stage ? 'border-violet-400 ring-2 ring-violet-100' : 'border-slate-200'}`}
+            className={`flex w-72 shrink-0 flex-col rounded-lg border bg-slate-50 ${overStage === stage ? 'border-primary/50 ring-2 ring-primary/20' : 'border-slate-200'}`}
             onDragOver={canEdit ? (e) => { e.preventDefault(); setOverStage(stage); } : undefined}
             onDragLeave={canEdit ? () => setOverStage((s) => (s === stage ? null : s)) : undefined}
             onDrop={canEdit ? (e) => { e.preventDefault(); drop(stage); } : undefined}
@@ -52,7 +52,7 @@ const OpportunityBoard = ({ opportunities, stages, stageOptionsFor, canEdit, onS
                   onDragEnd={() => { setDragId(null); setOverStage(null); }}
                   className={`rounded-md border border-slate-200 bg-white p-3 shadow-sm ${canEdit ? 'cursor-grab active:cursor-grabbing' : ''} ${dragId === o.id ? 'opacity-50' : ''}`}
                 >
-                  <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', o.id)} className="text-sm font-semibold text-slate-800 hover:text-violet-700 hover:underline">
+                  <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', o.id)} className="text-sm font-semibold text-slate-800 hover:text-primary/80 hover:underline">
                     {o.customerName}
                   </Link>
                   {o.productService && <p className="mt-0.5 truncate text-xs text-slate-500">{o.productService}</p>}
@@ -68,7 +68,7 @@ const OpportunityBoard = ({ opportunities, stages, stageOptionsFor, canEdit, onS
                       value={o.stage}
                       onChange={(e) => onStageChange(o, e.target.value)}
                       aria-label={`Stage for ${o.customerName}`}
-                      className="mt-2 h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="mt-2 h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     >
                       {stageOptionsFor(o.stage).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>

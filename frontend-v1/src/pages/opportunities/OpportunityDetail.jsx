@@ -96,7 +96,7 @@ const OpportunityDetail = () => {
       <EmptyState
         title="Opportunity not found"
         message="This opportunity may have been removed, or you may not have access to it."
-        action={<Link to={RoutePath.OPPORTUNITIES} className="text-indigo-600 hover:underline">Back to opportunities</Link>}
+        action={<Link to={RoutePath.OPPORTUNITIES} className="text-primary hover:underline">Back to opportunities</Link>}
       />
     );
   }
@@ -125,8 +125,8 @@ const OpportunityDetail = () => {
               onClick={() => handleStageChange(option.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                 opportunity.stage === option.value
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-300 hover:border-primary/50'
               } ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}
             >
               {option.label}
@@ -141,7 +141,7 @@ const OpportunityDetail = () => {
         {opportunity.leadId && (
           <p className="mt-3 text-sm text-slate-500">
             Created from lead —{' '}
-            <Link to={RoutePath.EDIT_LEAD.replace(':id', opportunity.leadId)} className="text-indigo-600 underline">
+            <Link to={RoutePath.EDIT_LEAD.replace(':id', opportunity.leadId)} className="text-primary underline">
               view lead
             </Link>
           </p>
@@ -156,7 +156,7 @@ const OpportunityDetail = () => {
             <button
               type="button"
               onClick={() => setEditingProfile(true)}
-              className="text-sm text-indigo-600 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               Edit
             </button>
