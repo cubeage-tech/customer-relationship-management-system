@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import StatCard from '../common/StatCard';
+import DashboardInsights from './DashboardInsights';
 import Button from '../common/Button';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getDashboardPreferences, getHeadline, saveDashboardPreferences } from '../../core/services/analytics.service';
@@ -102,6 +103,8 @@ const HeadlineMetrics = () => {
           ))}
         </div>
       )}
+
+      <DashboardInsights />
     </div>
   );
 };

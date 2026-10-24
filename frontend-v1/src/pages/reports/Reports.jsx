@@ -202,13 +202,13 @@ const Reports = () => {
   const { can, scopeFor } = usePermissions();
   const live = LIVE_REPORTS.filter((r) => r.permissions.some((p) => can(p)));
 
-  const [params] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   // UI-7/UI-8: dashboard report links and chart drill-downs open a tab with its filters.
-  const [tab, setTab] = useState(() => (live.some((r) => r.key === params.get('tab')) ? params.get('tab') : live[0]?.key));
+  const [tab, setTab] = useState(() => (live.some((r) => r.key === searchParams.get('tab')) ? searchParams.get('tab') : live[0]?.key));
   const [filters, setFilters] = useState(() => {
     const base = { ...periodRange('month'), industry: '', teamId: '', userId: '', priority: '', technicianId: '' };
-    Object.keys(base).forEach((k) => { if (params.get(k)) base[k] = params.get(k); });
+    Object.keys(base).forEach((k) => { if (searchParams.get(k)) base[k] = searchParams.get(k); });
     return base;
   });
 
