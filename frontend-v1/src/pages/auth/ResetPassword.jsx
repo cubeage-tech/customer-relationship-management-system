@@ -49,7 +49,7 @@ const ResetPassword = () => {
   };
 
   const inputClass =
-    'block w-full px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm';
+    'block w-full px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm bg-white shadow-sm';
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] p-8">
@@ -110,7 +110,7 @@ const ResetPassword = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-60"
+                className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/40 transition-all disabled:opacity-60"
               >
                 {submitting ? 'Saving…' : 'Reset password'}
               </button>

@@ -59,7 +59,8 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(error.getField(), error.getDefaultMessage());
         }
-        return ResponseEntity.badRequest().body(Response.error("Validation failed: " + fieldErrors));
+        // UI-6: data carries field → message so forms can show each error next to its field.
+        return ResponseEntity.badRequest().body(Response.error("Validation failed: " + fieldErrors, "VALIDATION_FAILED", fieldErrors));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -133,7 +133,7 @@ const HelpCenter = () => {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-600"><MessageSquareText size={19} /></span>
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/5 text-primary"><MessageSquareText size={19} /></span>
           <div><p className="text-xl font-bold leading-none text-slate-900">{requests.length}</p><p className="mt-1 text-xs text-slate-500">User requests</p></div>
         </div>
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
@@ -151,21 +151,21 @@ const HelpCenter = () => {
           <div className="border-b border-slate-100 p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div><h2 className="text-sm font-bold text-slate-900">Incoming requests</h2><p className="mt-0.5 text-xs text-slate-500">Select a conversation to respond</p></div>
-              <span className="grid size-9 place-items-center rounded-md bg-indigo-50 text-indigo-600"><LifeBuoy size={17} /></span>
+              <span className="grid size-9 place-items-center rounded-md bg-primary/5 text-primary"><LifeBuoy size={17} /></span>
             </div>
             <label className="relative block">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by user or request" className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by user or request" className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary/50 focus:bg-white focus:ring-2 focus:ring-primary/20" />
             </label>
             <div className="mt-3 flex gap-1 rounded-md bg-slate-100 p-1" role="group" aria-label="Filter requests">
               {FILTERS.map((item) => (
-                <button key={item} type="button" onClick={() => setFilter(item)} className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${filter === item ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{item}</button>
+                <button key={item} type="button" onClick={() => setFilter(item)} className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${filter === item ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{item}</button>
               ))}
             </div>
           </div>
           <div className="max-h-[280px] flex-1 overflow-y-auto p-2 lg:max-h-none">
             {visibleRequests.length ? visibleRequests.map((request) => (
-              <button key={request.id} type="button" onClick={() => { setSelectedId(request.id); setSent(false); }} className={`mb-1 w-full rounded-md border p-3 text-left transition ${selectedId === request.id ? 'border-indigo-200 bg-indigo-50/70' : 'border-transparent hover:bg-slate-50'}`}>
+              <button key={request.id} type="button" onClick={() => { setSelectedId(request.id); setSent(false); }} className={`mb-1 w-full rounded-md border p-3 text-left transition ${selectedId === request.id ? 'border-primary/20 bg-primary/5' : 'border-transparent hover:bg-slate-50'}`}>
                 <span className="flex items-start justify-between gap-2"><span className="line-clamp-2 text-sm font-semibold leading-5 text-slate-800">{request.subject}</span><ChevronRight size={15} className="mt-0.5 shrink-0 text-slate-400" /></span>
                 <span className="mt-2 flex items-center justify-between gap-2"><span className="truncate text-xs text-slate-500">{request.requester} · {request.organization}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${statusStyles[request.status]}`}>{request.status}</span></span>
                 <span className="mt-2 block truncate text-xs text-slate-500">{request.messages.at(-1)?.body}</span>
@@ -190,7 +190,7 @@ const HelpCenter = () => {
                 <div><p className="text-[10px] font-semibold uppercase text-slate-400">Requester</p><p className="mt-0.5 font-medium text-slate-800">{selectedRequest.requester}</p></div>
                 <div><p className="text-[10px] font-semibold uppercase text-slate-400">Workspace</p><p className="mt-0.5 font-medium text-slate-800">{selectedRequest.organization}</p></div>
                 <div><p className="text-[10px] font-semibold uppercase text-slate-400">Role</p><p className="mt-0.5 font-medium text-slate-800">{selectedRequest.role}</p></div>
-                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-slate-400">Email</p><p className="mt-0.5 truncate font-medium text-indigo-700">{selectedRequest.email}</p></div>
+                <div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-slate-400">Email</p><p className="mt-0.5 truncate font-medium text-primary">{selectedRequest.email}</p></div>
               </div>
 
               <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50/60 px-4 py-5 sm:px-6">
@@ -199,11 +199,11 @@ const HelpCenter = () => {
                   const isAdmin = message.role === 'admin';
                   return (
                     <div key={message.id} className={`flex items-end gap-2.5 ${isAdmin ? 'flex-row-reverse' : ''}`}>
-                      <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${isAdmin ? 'bg-indigo-600 text-white' : 'bg-sky-100 text-sky-800'}`}>{isAdmin ? <ShieldCheck size={15} /> : message.author.slice(0, 1).toUpperCase()}</span>
+                      <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${isAdmin ? 'bg-primary text-white' : 'bg-sky-100 text-sky-800'}`}>{isAdmin ? <ShieldCheck size={15} /> : message.author.slice(0, 1).toUpperCase()}</span>
                       <div className={`max-w-[min(88%,38rem)] ${isAdmin ? 'text-right' : ''}`}>
                         <div className={`mb-1 flex items-center gap-2 text-[11px] text-slate-500 ${isAdmin ? 'justify-end' : ''}`}><span className="font-semibold text-slate-700">{isAdmin ? `${message.author} · Platform admin` : message.author}</span><span>{formatTime(message.createdAt)}</span></div>
-                        <div className={`rounded-xl px-4 py-3 text-left text-sm leading-relaxed ${isAdmin ? 'rounded-br-sm bg-indigo-600 text-white' : 'rounded-bl-sm border border-slate-200 bg-white text-slate-700 shadow-sm'}`}>{message.body}</div>
-                        {isAdmin && <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-400">Sent <CheckCheck size={12} className="text-indigo-500" /></span>}
+                        <div className={`rounded-xl px-4 py-3 text-left text-sm leading-relaxed ${isAdmin ? 'rounded-br-sm bg-primary text-white' : 'rounded-bl-sm border border-slate-200 bg-white text-slate-700 shadow-sm'}`}>{message.body}</div>
+                        {isAdmin && <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-400">Sent <CheckCheck size={12} className="text-primary" /></span>}
                       </div>
                     </div>
                   );
@@ -213,13 +213,13 @@ const HelpCenter = () => {
               <form onSubmit={handleSendResponse} className="border-t border-slate-100 bg-white p-4 sm:px-6">
                 {sent && <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-emerald-700" role="status"><CheckCheck size={14} />Your response was added to the conversation.</p>}
                 <label className="sr-only" htmlFor="admin-response">Write your response</label>
-                <textarea id="admin-response" rows={3} maxLength={3000} value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Write your response to the user…" className="w-full resize-y rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-400">Your response will appear in the conversation thread.</p><button type="submit" disabled={!response.trim()} className="inline-flex h-9 items-center gap-2 rounded-md bg-indigo-600 px-3.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={14} />Send response</button></div>
+                <textarea id="admin-response" rows={3} maxLength={3000} value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Write your response to the user…" className="w-full resize-y rounded-md border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20" />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-400">Your response will appear in the conversation thread.</p><button type="submit" disabled={!response.trim()} className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"><Send size={14} />Send response</button></div>
               </form>
             </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center px-6 py-14 text-center">
-              <span className="grid size-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600"><MessageSquareText size={25} /></span>
+              <span className="grid size-14 place-items-center rounded-2xl bg-primary/5 text-primary"><MessageSquareText size={25} /></span>
               <h2 className="mt-4 text-base font-bold text-slate-900">Select a user request</h2>
               <p className="mt-1 max-w-sm text-sm text-slate-500">Incoming comments and requests will appear here for your team to review and answer.</p>
             </div>
@@ -227,7 +227,7 @@ const HelpCenter = () => {
         </div>
       </div>
 
-      <p className="flex items-center gap-1.5 px-1 text-xs text-slate-500"><Clock3 size={13} className="text-indigo-500" />Demo inbox: replies are stored in this browser until a support API is connected.</p>
+      <p className="flex items-center gap-1.5 px-1 text-xs text-slate-500"><Clock3 size={13} className="text-primary" />Demo inbox: replies are stored in this browser until a support API is connected.</p>
     </section>
   );
 };

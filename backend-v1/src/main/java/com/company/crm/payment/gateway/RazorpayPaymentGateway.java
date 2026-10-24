@@ -8,6 +8,7 @@ import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,6 +19,7 @@ import java.util.Optional;
 @Component
 @ConditionalOnProperty(name = "payment.gateway.provider", havingValue = "razorpay", matchIfMissing = true)
 @RequiredArgsConstructor
+@Slf4j
 public class RazorpayPaymentGateway implements PaymentGateway {
 
     private final PaymentProperties paymentProperties;
@@ -41,15 +43,43 @@ public class RazorpayPaymentGateway implements PaymentGateway {
         orderRequest.put("currency", currency);
         orderRequest.put("receipt", receipt);
 
+        // NFR-7.4a: the user is waiting at checkout, so a temporary gateway error (network, 5xx) is
+        // retried a couple of times on the spot rather than queued; a refusal (4xx) is not retried.
+        RazorpayException last = null;
+        for (int attempt = 1; attempt <= ORDER_ATTEMPTS; attempt++) {
+            try {
+                RazorpayClient client = new RazorpayClient(paymentProperties.keyId(), paymentProperties.keySecret());
+                Order order = client.orders.create(orderRequest);
+                return new GatewayOrder(
+                        order.get("id"),
+                        order.get("currency"),
+                        Long.parseLong(order.get("amount").toString()));
+            } catch (RazorpayException e) {
+                last = e;
+                if (!isTransient(e) || attempt == ORDER_ATTEMPTS) {
+                    break;
+                }
+                log.warn("Payment order attempt {} failed, retrying: {}", attempt, e.getMessage());
+                pause(attempt * ORDER_RETRY_DELAY_MS);
+            }
+        }
+        throw new PaymentGatewayException("Could not create payment order: " + last.getMessage(), last);
+    }
+
+    private static final int ORDER_ATTEMPTS = 3;
+    private static final long ORDER_RETRY_DELAY_MS = 400;
+
+    /** Razorpay prefixes refusals with BAD_REQUEST_ERROR; anything else (I/O, server errors) may pass on retry. */
+    public static boolean isTransient(RazorpayException e) {
+        String message = e.getMessage() == null ? "" : e.getMessage();
+        return !message.contains("BAD_REQUEST") && !message.contains("Authentication failed");
+    }
+
+    private static void pause(long millis) {
         try {
-            RazorpayClient client = new RazorpayClient(paymentProperties.keyId(), paymentProperties.keySecret());
-            Order order = client.orders.create(orderRequest);
-            return new GatewayOrder(
-                    order.get("id"),
-                    order.get("currency"),
-                    Long.parseLong(order.get("amount").toString()));
-        } catch (RazorpayException e) {
-            throw new PaymentGatewayException("Could not create payment order: " + e.getMessage(), e);
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

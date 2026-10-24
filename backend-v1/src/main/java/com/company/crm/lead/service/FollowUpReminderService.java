@@ -5,6 +5,8 @@ import com.company.crm.common.mail.MailService;
 import com.company.crm.communication.service.SmsAlertService;
 import com.company.crm.lead.entity.Lead;
 import com.company.crm.lead.repository.LeadRepository;
+import com.company.crm.notification.entity.Notification;
+import com.company.crm.notification.service.NotificationService;
 import com.company.crm.user.entity.User;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class FollowUpReminderService {
     private final LeadRepository leadRepository;
     private final MailService mailService;
     private final SmsAlertService smsAlertService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<Long> findDue() {
@@ -60,5 +63,10 @@ public class FollowUpReminderService {
             log.warn("Follow-up reminder email for lead {} failed: {}", leadId, e.getMessage());
         }
         smsAlertService.onFollowUpDue(lead, recipient);
+        // FR-M.4: also in the app's inbox, pushed to the phone.
+        notificationService.notify(lead.getTenant().getId(), recipient.getId(), Notification.FOLLOW_UP,
+                "Follow-up due: " + lead.getLeadName(),
+                (lead.getCompanyName() != null ? lead.getCompanyName() + " · " : "") + "due " + DUE.format(lead.getFollowUpDate()),
+                "lead", lead.getId(), null);
     }
 }

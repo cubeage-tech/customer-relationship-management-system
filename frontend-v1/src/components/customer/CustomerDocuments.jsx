@@ -123,11 +123,11 @@ const CustomerDocuments = ({ customerId, canEdit }) => {
                   <td className="py-2 pr-4 whitespace-nowrap">
                     <div className="flex gap-3">
                       {isViewable(doc) && (
-                        <button type="button" onClick={() => handleOpen(doc, true)} className="text-xs text-indigo-600 hover:underline">
+                        <button type="button" onClick={() => handleOpen(doc, true)} className="text-xs text-primary hover:underline">
                           View
                         </button>
                       )}
-                      <button type="button" onClick={() => handleOpen(doc, false)} className="text-xs text-indigo-600 hover:underline">
+                      <button type="button" onClick={() => handleOpen(doc, false)} className="text-xs text-primary hover:underline">
                         Download
                       </button>
                       {canEdit && (

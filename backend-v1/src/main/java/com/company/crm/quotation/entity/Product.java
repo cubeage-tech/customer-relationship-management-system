@@ -40,6 +40,10 @@ public class Product {
     @Column(nullable = false)
     private boolean active = true;
 
+    /** API-G12: this product's code in the tenant's ERP; the ERP's price sync matches on it. */
+    @Column(name = "erp_code", length = 64)
+    private String erpCode;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

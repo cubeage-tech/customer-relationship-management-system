@@ -82,6 +82,14 @@ class RoutePath {
 
   static CAMPAIGNS = "/campaigns";
   static EDIT_CAMPAIGN = "/campaigns/:id";
+  // FR-7.2 / FR-7.3
+  static SEGMENTS = "/segments";
+  static PROMOTIONS = "/promotions";
+  // Module 8
+  static SALES_FORCE = "/sales-force";
+  // UI-1
+  static COMMUNICATIONS = "/communications";
+  static AI_ASSISTANT = "/ai-assistant";
 
   // ======================================================
   // FINANCE / APPROVALS
@@ -104,6 +112,7 @@ class RoutePath {
   static ADMIN_EDIT_USER = `${this.ADMIN_BASE}/users/:id`;
   static ADMIN_ROLES = `${this.ADMIN_BASE}/roles`;
   static ADMIN_SETTINGS = `${this.ADMIN_BASE}/settings`;
+  static ADMIN_AUDIT_LOG = `${this.ADMIN_BASE}/audit-log`;
   static ADMIN_MY_PLAN = `${this.ADMIN_BASE}/my-plan`;
   static ADMIN_TEAMS = `${this.ADMIN_BASE}/teams`;
 

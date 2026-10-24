@@ -20,7 +20,7 @@ const Contact = () => {
     <section className="page-canvas overflow-hidden px-4 py-10 sm:px-6 sm:py-16 lg:py-[5.25rem]">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-[760px]">
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
             <Sparkles size={14} strokeWidth={2.5} />
             Contact us
           </div>
@@ -42,8 +42,8 @@ const Contact = () => {
                   onClick={() => setActiveEnquiry(type)}
                   className={`rounded-full border px-2.5 py-2 text-xs transition-colors sm:px-3 ${
                     activeEnquiry === type
-                      ? 'border-indigo-300 bg-indigo-50 font-medium text-indigo-700'
-                      : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-700'
+                      ? 'border-primary/50 bg-primary/5 font-medium text-primary'
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-primary/20 hover:text-primary/80'
                   }`}
                 >
                   {type}
@@ -55,7 +55,7 @@ const Contact = () => {
               <label className="min-w-0 text-xs font-semibold text-slate-700">
                 Full name
                 <input
-                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   placeholder="John Doe"
                   type="text"
                 />
@@ -63,7 +63,7 @@ const Contact = () => {
               <label className="min-w-0 text-xs font-semibold text-slate-700">
                 Work email
                 <input
-                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   placeholder="john@company.com"
                   type="email"
                 />
@@ -71,7 +71,7 @@ const Contact = () => {
               <label className="min-w-0 text-xs font-semibold text-slate-700">
                 Company{isSupportEnquiry ? ' (optional)' : ''}
                 <input
-                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   placeholder={isSupportEnquiry ? 'Acme Inc. or Account / Org ID' : 'Acme Inc.'}
                   type="text"
                 />
@@ -79,7 +79,7 @@ const Contact = () => {
               {isSupportEnquiry ? (
                 <label className="min-w-0 text-xs font-semibold text-slate-700">
                   Plan
-                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" defaultValue="Starter">
+                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" defaultValue="Starter">
                     <option>Starter</option>
                     <option>Growth</option>
                     <option>Scale</option>
@@ -89,7 +89,7 @@ const Contact = () => {
               ) : isPartnershipEnquiry ? (
                 <label className="min-w-0 text-xs font-semibold text-slate-700">
                   Partnership type
-                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" defaultValue="Integration/Tech partner">
+                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" defaultValue="Integration/Tech partner">
                     <option>Integration/Tech partner</option>
                     <option>Reseller</option>
                     <option>Agency</option>
@@ -100,7 +100,7 @@ const Contact = () => {
               ) : (
                 <label className="text-xs font-semibold text-slate-700">
                   Team size
-                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" defaultValue="11-50">
+                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" defaultValue="11-50">
                     <option>1-10</option>
                     <option>11-50</option>
                     <option>51-200</option>
@@ -111,7 +111,7 @@ const Contact = () => {
               {isSupportEnquiry && (
                 <label className="text-xs font-semibold text-slate-700">
                   Priority/urgency
-                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100" defaultValue="Normal">
+                  <select className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" defaultValue="Normal">
                     <option>Low</option>
                     <option>Normal</option>
                     <option>High</option>
@@ -123,7 +123,7 @@ const Contact = () => {
                 <label className="min-w-0 text-xs font-semibold text-slate-700 sm:col-span-2">
                   Which plan are you interested in?
                   <select
-                    className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     defaultValue="Not sure yet"
                   >
                     <option>Starter</option>
@@ -138,7 +138,7 @@ const Contact = () => {
                 <label className="min-w-0 text-xs font-semibold text-slate-700 sm:col-span-2">
                   Company website
                   <input
-                    className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    className="mt-2 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     placeholder="https://yourcompany.com"
                     type="url"
                   />
@@ -155,7 +155,7 @@ const Contact = () => {
                     ? 'Tell us about the opportunity'
                   : 'How can we help?'}
               <textarea
-                className="mt-2 block min-h-[108px] w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal leading-5 text-slate-700 outline-none placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                className="mt-2 block min-h-[108px] w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-normal leading-5 text-slate-700 outline-none placeholder:text-slate-400 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                 placeholder={
                   isSupportEnquiry
                     ? "What's happening, when did it start, steps to reproduce..."

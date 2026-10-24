@@ -1,0 +1,20 @@
+{
+  "$description": "UI-5: SmartCRM design tokens shared by the web app (frontend-v1/src/index.css, :root) and the mobile app (mobile-v1/lib/ui/theme.dart). Change a value here and in both places; hex values are the sRGB equivalents of the web's oklch tokens.",
+  "color": {
+    "primary": "#454FDB",
+    "primaryForeground": "#FFFFFF",
+    "background": "#F9FAFD",
+    "foreground": "#111826",
+    "mutedForeground": "#687284",
+    "border": "#E2E5EA",
+    "destructive": "#E62B34",
+    "success": "#00A365",
+    "warning": "#ED990E"
+  },
+  "radius": {
+    "base": 14
+  },
+  "font": {
+    "family": "Inter"
+  }
+}

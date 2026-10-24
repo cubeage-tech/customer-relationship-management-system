@@ -1,5 +1,6 @@
 package com.company.crm.auth.service;
 
+import com.company.crm.common.crypto.DataEncryption;
 import com.company.crm.auth.entity.EmailVerificationToken;
 import com.company.crm.auth.repository.EmailVerificationTokenRepository;
 import com.company.crm.common.enums.AccountStatus;
@@ -44,14 +45,16 @@ public class EmailVerificationTokenService {
         tokenRepository.findByUserIdAndVerifiedAtIsNullAndExpiresAtAfter(user.getId(), now)
                 .forEach(old -> old.setExpiresAt(now));
 
+        // NFR-7.2b: only the token's hash is stored; the raw value exists only in the emailed link.
+        String rawToken = UUID.randomUUID().toString();
         EmailVerificationToken token = new EmailVerificationToken();
         token.setUser(user);
-        token.setToken(UUID.randomUUID().toString());
+        token.setToken(DataEncryption.sha256(rawToken));
         token.setExpiresAt(now.plusHours(EXPIRY_HOURS));
         tokenRepository.save(token);
 
         log.info("Email verification token issued for userId={} (expires in {}h)", user.getId(), EXPIRY_HOURS);
-        sendAfterCommit(user.getEmail(), user.getFullName(), token.getToken());
+        sendAfterCommit(user.getEmail(), user.getFullName(), rawToken);
     }
 
     /** Re-sends the link to a still-unverified user. Silent otherwise, so it can't be used to probe emails. */
@@ -67,7 +70,7 @@ public class EmailVerificationTokenService {
 
     @Transactional
     public void verify(String rawToken) {
-        EmailVerificationToken token = tokenRepository.findByToken(rawToken)
+        EmailVerificationToken token = tokenRepository.findByToken(DataEncryption.sha256(rawToken))
                 .orElseThrow(() -> new InvalidTokenException("Invalid verification token"));
 
         if (token.getVerifiedAt() != null) {

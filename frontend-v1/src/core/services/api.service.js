@@ -177,6 +177,175 @@ class ApiService {
     return this.apiget(ServerUrl.campaignRecipients(id));
   }
 
+  // Module 8 sales force
+  static getSalesTargets() {
+    return this.apiget(ServerUrl.SALES_TARGETS);
+  }
+
+  static createSalesTarget(data) {
+    return this.apipost(ServerUrl.SALES_TARGETS, data);
+  }
+
+  static updateSalesTarget(id, data) {
+    return this.apiput(ServerUrl.salesTarget(id), data);
+  }
+
+  static deleteSalesTarget(id) {
+    return this.apidelete(ServerUrl.salesTarget(id));
+  }
+
+  static logVisit(data) {
+    return this.apipost(ServerUrl.SALES_VISITS, data);
+  }
+
+  static getVisits(params) {
+    return this.apiget(ServerUrl.SALES_VISITS, params);
+  }
+
+  static getActivitySummary(params) {
+    return this.apiget(ServerUrl.SALES_ACTIVITY_SUMMARY, params);
+  }
+
+  static getAnalyticsHeadline(params) {
+    return this.apiget(ServerUrl.ANALYTICS_HEADLINE, params);
+  }
+
+  static getSalesReport(params) {
+    return this.apiget(ServerUrl.ANALYTICS_SALES, params);
+  }
+
+  static getCustomerReport(params) {
+    return this.apiget(ServerUrl.ANALYTICS_CUSTOMERS, params);
+  }
+
+  static getRevenueReport(params) {
+    return this.apiget(ServerUrl.ANALYTICS_REVENUE, params);
+  }
+
+  static getTeamPerformance(params) {
+    return this.apiget(ServerUrl.ANALYTICS_TEAM_PERFORMANCE, params);
+  }
+
+  static getReportFilterOptions() {
+    return this.apiget(ServerUrl.ANALYTICS_FILTER_OPTIONS);
+  }
+
+  static getServiceReport(params) {
+    return this.apiget(ServerUrl.ANALYTICS_SERVICE, params);
+  }
+
+  static getCampaignReport(params) {
+    return this.apiget(ServerUrl.ANALYTICS_CAMPAIGNS, params);
+  }
+
+  static exportReport(report, params) {
+    return this.axiosInstance.get(ServerUrl.analyticsExport(report), { params, responseType: 'blob' });
+  }
+
+  static getReportSchedules() {
+    return this.apiget(ServerUrl.REPORT_SCHEDULES);
+  }
+
+  static createReportSchedule(data) {
+    return this.apipost(ServerUrl.REPORT_SCHEDULES, data);
+  }
+
+  static updateReportSchedule(id, data) {
+    return this.apiput(ServerUrl.reportSchedule(id), data);
+  }
+
+  static deleteReportSchedule(id) {
+    return this.apidelete(ServerUrl.reportSchedule(id));
+  }
+
+  static sendReportSchedule(id) {
+    return this.apipost(ServerUrl.reportScheduleSend(id));
+  }
+
+  /** DB-E16: base = ServerUrl.quotationAttachments(id) or ServerUrl.ticketAttachments(id). */
+  static getAttachments(base) {
+    return this.apiget(base);
+  }
+
+  static uploadAttachment(base, file) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.axiosInstance.post(base, form).then((res) => res.data?.data);
+  }
+
+  static downloadAttachment(base, attachmentId, inline = false) {
+    return this.axiosInstance.get(`${base}/${attachmentId}/download`, { params: { inline }, responseType: 'blob' });
+  }
+
+  static deleteAttachment(base, attachmentId) {
+    return this.apidelete(`${base}/${attachmentId}`);
+  }
+
+  static getAuditEvents(params) {
+    return this.apiget(ServerUrl.AUDIT_EVENTS, params);
+  }
+
+  static getTenantSettings() {
+    return this.apiget(ServerUrl.TENANT_SETTINGS);
+  }
+
+  static updateTenantSettings(data) {
+    return this.apiput(ServerUrl.TENANT_SETTINGS, data);
+  }
+
+  static getDashboardPreferences() {
+    return this.apiget(ServerUrl.DASHBOARD_PREFERENCES);
+  }
+
+  static saveDashboardPreferences(data) {
+    return this.apiput(ServerUrl.DASHBOARD_PREFERENCES, data);
+  }
+
+  static getMyAttendance() {
+    return this.apiget(ServerUrl.ATTENDANCE_ME);
+  }
+
+  static checkIn(location) {
+    return this.apipost(ServerUrl.ATTENDANCE_CHECK_IN, location);
+  }
+
+  static checkOut(location) {
+    return this.apipost(ServerUrl.ATTENDANCE_CHECK_OUT, location);
+  }
+
+  static getAttendance(params) {
+    return this.apiget(ServerUrl.ATTENDANCE, params);
+  }
+
+  static getCommissions(params) {
+    return this.apiget(ServerUrl.COMMISSIONS, params);
+  }
+
+  static approveCommission(id) {
+    return this.apipatch(ServerUrl.commissionApprove(id));
+  }
+
+  static markCommissionPaid(id) {
+    return this.apipatch(ServerUrl.commissionPaid(id));
+  }
+
+  static getCommissionRules() {
+    return this.apiget(ServerUrl.COMMISSION_RULES);
+  }
+
+  static createCommissionRule(data) {
+    return this.apipost(ServerUrl.COMMISSION_RULES, data);
+  }
+
+  static updateCommissionRule(id, data) {
+    return this.apiput(ServerUrl.commissionRule(id), data);
+  }
+
+  static deleteCommissionRule(id) {
+    return this.apidelete(ServerUrl.commissionRule(id));
+  }
+
+
   // FR-7.2 segments
   static getSegments() {
     return this.apiget(ServerUrl.SEGMENTS);
@@ -266,6 +435,38 @@ class ApiService {
 
   static sendWhatsApp(data) {
     return this.apipost(ServerUrl.COMMUNICATION_WHATSAPP, data);
+  }
+
+  static getInbox(params) {
+    return this.apiget(ServerUrl.COMMUNICATION_INBOX, params);
+  }
+
+  static getAiStatus() {
+    return this.apiget(`${ServerUrl.AI}/status`);
+  }
+
+  static getLeadScores(params) {
+    return this.apiget(`${ServerUrl.AI}/lead-score`, params);
+  }
+
+  static getForecast(params) {
+    return this.apiget(`${ServerUrl.AI}/forecast`, params);
+  }
+
+  static askAi(question) {
+    return this.apipost(`${ServerUrl.AI}/chat`, { question });
+  }
+
+  static generateMessage(data) {
+    return this.apipost(`${ServerUrl.AI}/generate-email`, data);
+  }
+
+  static analyseSentiment(data) {
+    return this.apipost(`${ServerUrl.AI}/sentiment`, data);
+  }
+
+  static sendSms(data) {
+    return this.apipost(ServerUrl.COMMUNICATION_SMS, data);
   }
 
   static getSmsAlerts() {

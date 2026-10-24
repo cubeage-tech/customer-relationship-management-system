@@ -10,6 +10,8 @@ import BrandingSettings from '../../components/branding/BrandingSettings';
 import PipelineStageSettings from '../../components/opportunity/PipelineStageSettings';
 import { SupportFormSettings, TicketAssignmentRules } from '../../components/service/ServiceSettings';
 import LeadAssignmentRules from '../../components/lead/LeadAssignmentRules';
+import CommissionRulesSettings from '../../components/salesforce/CommissionRulesSettings';
+import ThresholdSettings from '../../components/settings/ThresholdSettings';
 
 const Settings = () => {
   const { can, roleLabel } = usePermissions();
@@ -49,6 +51,10 @@ const Settings = () => {
       {can(PERMISSIONS.SETTINGS_MANAGE) && <PipelineStageSettings />}
 
       {can(PERMISSIONS.SETTINGS_MANAGE) && <LeadAssignmentRules />}
+
+      {can(PERMISSIONS.SETTINGS_MANAGE) && <CommissionRulesSettings />}
+
+      {can(PERMISSIONS.SETTINGS_MANAGE) && <ThresholdSettings />}
 
       {can(PERMISSIONS.SETTINGS_MANAGE) && <SupportFormSettings />}
 

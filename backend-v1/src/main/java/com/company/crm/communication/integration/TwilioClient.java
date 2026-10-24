@@ -59,8 +59,20 @@ public class TwilioClient {
 
     /** Twilio rejected or could not be reached; the message is safe to show to the user. */
     public static class TwilioException extends RuntimeException {
+        /** NFR-7.4a: worth retrying later (provider unreachable, rate-limited or erroring) rather than a refusal. */
+        private final boolean retryable;
+
         public TwilioException(String message) {
+            this(message, false);
+        }
+
+        public TwilioException(String message, boolean retryable) {
             super(message);
+            this.retryable = retryable;
+        }
+
+        public boolean isRetryable() {
+            return retryable;
         }
     }
 
@@ -105,17 +117,17 @@ public class TwilioClient {
             if (response.statusCode() >= 300) {
                 String message = json.path("message").asText("Twilio returned HTTP " + response.statusCode());
                 log.warn("Twilio send failed ({}): {}", response.statusCode(), message);
-                throw new TwilioException(message);
+                throw new TwilioException(message, response.statusCode() == 429 || response.statusCode() >= 500);
             }
             return new SendResult(json.path("sid").asText(), json.path("status").asText("queued"));
         } catch (TwilioException e) {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new TwilioException("Message provider did not respond");
+            throw new TwilioException("Message provider did not respond", true);
         } catch (Exception e) {
             log.warn("Twilio send error: {}", e.getMessage());
-            throw new TwilioException("Message provider did not respond");
+            throw new TwilioException("Message provider did not respond", true);
         }
     }
 

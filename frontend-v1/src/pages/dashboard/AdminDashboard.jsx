@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import DashboardShell from '../../components/dashboard/DashboardShell';
+import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
 import { ROLE_LABELS, TICKET_STATUS_LABELS } from '../../core/constants/app.constant';
 import { usePipelineStages } from '../../core/hooks/usePipelineStages';
 import { listCustomers } from '../../core/services/customer.service';
@@ -125,6 +126,7 @@ const AdminDashboard = () => {
       subtitle="Full visibility across every team, module and tenant setting."
       stats={stats}
     >
+      <HeadlineMetrics />
       <section className="rounded-lg border border-slate-200 bg-white p-5 sm:p-6" aria-labelledby="tenant-chart-heading">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>

@@ -70,7 +70,7 @@ const TicketFeedback = () => {
               <div className="mt-2 flex flex-wrap gap-2">
                 {SCORES.map((s) => (
                   <button key={s.value} type="button" onClick={() => setScore(s.value)} aria-pressed={score === s.value}
-                    className={`rounded-md border px-3 py-2 ${score === s.value ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+                    className={`rounded-md border px-3 py-2 ${score === s.value ? 'border-primary bg-primary text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
                     {s.value} · {s.label}
                   </button>
                 ))}

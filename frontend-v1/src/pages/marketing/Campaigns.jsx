@@ -134,30 +134,30 @@ const Campaigns = () => {
           <div role="dialog" aria-modal="true" aria-labelledby="new-campaign-title" className="relative z-10 my-auto w-full max-w-2xl overflow-hidden rounded-lg border border-white/70 bg-white shadow-2xl">
             <form onSubmit={handleAddCampaign}>
               <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
-                <span className="grid size-10 place-items-center rounded-lg bg-violet-100 text-violet-700"><Megaphone size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><Megaphone size={19} /></span>
                 <div className="min-w-0 flex-1"><h2 id="new-campaign-title" className="text-base font-bold text-slate-900">Create a campaign</h2><p className="mt-0.5 text-xs text-slate-500">Set up a channel, schedule, and budget for your campaign.</p></div>
                 <button type="button" onClick={() => setShowForm(false)} className="grid size-9 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Close campaign form"><X size={18} /></button>
               </div>
               <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
                 <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Campaign name <span className="text-rose-500">*</span>
-                  <input autoFocus type="text" name="name" placeholder="e.g. Spring product launch" value={form.name} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
+                  <input autoFocus type="text" name="name" placeholder="e.g. Spring product launch" value={form.name} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" required />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">Channel
-                  <select name="channel" value={form.channel} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                  <select name="channel" value={form.channel} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                     {CAMPAIGN_CHANNEL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">Budget <span className="font-normal text-slate-400">Optional</span>
-                  <input type="number" name="budget" placeholder="0.00" min="0" step="0.01" value={form.budget} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                  <input type="number" name="budget" placeholder="0.00" min="0" step="0.01" value={form.budget} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">Start date <span className="font-normal text-slate-400">Optional</span>
-                  <span className="relative block"><CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input type="date" name="startDate" value={form.startDate} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></span>
+                  <span className="relative block"><CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input type="date" name="startDate" value={form.startDate} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" /></span>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">End date <span className="font-normal text-slate-400">Optional</span>
-                  <span className="relative block"><CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input type="date" name="endDate" value={form.endDate} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></span>
+                  <span className="relative block"><CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input type="date" name="endDate" value={form.endDate} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" /></span>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">Description <span className="font-normal text-slate-400">Optional</span>
-                  <textarea name="description" placeholder="What is this campaign about?" value={form.description} onChange={handleChange} className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" rows={3} />
+                  <textarea name="description" placeholder="What is this campaign about?" value={form.description} onChange={handleChange} className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" rows={3} />
                 </label>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 sm:col-span-2"><Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button type="submit" icon={Plus}>Create campaign</Button></div>
               </div>
@@ -171,13 +171,13 @@ const Campaigns = () => {
           <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div><h2 className="text-base font-bold text-slate-900">Campaign directory</h2><p className="mt-1 text-xs text-slate-500">Compare channels, lead results, and campaign budgets.</p></div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="relative min-w-48 flex-1 sm:flex-none"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><span className="sr-only">Search by campaign name</span><input type="search" placeholder="Search campaigns" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" /></label>
+              <label className="relative min-w-48 flex-1 sm:flex-none"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" /><span className="sr-only">Search by campaign name</span><input type="search" placeholder="Search campaigns" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" /></label>
               <label className="sr-only" htmlFor="campaign-status-filter">Filter by status</label>
             <select
               id="campaign-status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">All statuses</option>
               {CAMPAIGN_STATUS_OPTIONS.map((option) => (
@@ -189,7 +189,7 @@ const Campaigns = () => {
               id="campaign-channel-filter"
               value={channelFilter}
               onChange={(e) => setChannelFilter(e.target.value)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">All channels</option>
               {CAMPAIGN_CHANNEL_OPTIONS.map((option) => (
@@ -202,7 +202,7 @@ const Campaigns = () => {
           {loading ? (
             <div className="space-y-3 p-5" role="status" aria-label="Loading campaigns">{[0, 1, 2].map((row) => <div key={row} className="h-12 animate-pulse rounded-md bg-slate-100" />)}</div>
           ) : campaigns.length === 0 ? (
-            <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Megaphone size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">{search || statusFilter || channelFilter ? 'No matching campaigns' : 'No campaigns yet'}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || statusFilter || channelFilter ? 'Try changing your search or filters.' : canManage ? 'Launch a campaign to capture leads and measure conversion.' : 'Campaigns run by the marketing team will be listed here.'}</p>{canManage && !search && !statusFilter && !channelFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Create first campaign</Button>}</div>
+            <div className="px-5 py-14 text-center"><span className="mx-auto grid size-12 place-items-center rounded-xl bg-primary/5 text-primary"><Megaphone size={22} /></span><h3 className="mt-4 text-base font-bold text-slate-900">{search || statusFilter || channelFilter ? 'No matching campaigns' : 'No campaigns yet'}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || statusFilter || channelFilter ? 'Try changing your search or filters.' : canManage ? 'Launch a campaign to capture leads and measure conversion.' : 'Campaigns run by the marketing team will be listed here.'}</p>{canManage && !search && !statusFilter && !channelFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Create first campaign</Button>}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px] text-left text-sm">
@@ -210,7 +210,7 @@ const Campaigns = () => {
                 <tbody className="divide-y divide-slate-100">
                   {campaigns.map((c) => (
                     <tr key={c.id} className="transition-colors hover:bg-slate-50/70">
-                      <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><Megaphone size={17} /></span><Link to={RoutePath.EDIT_CAMPAIGN.replace(':id', c.id)} className="font-semibold text-slate-800 hover:text-violet-700 hover:underline">{c.name}</Link></div></td>
+                      <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/5 text-primary"><Megaphone size={17} /></span><Link to={RoutePath.EDIT_CAMPAIGN.replace(':id', c.id)} className="font-semibold text-slate-800 hover:text-primary/80 hover:underline">{c.name}</Link></div></td>
                       <td className="px-4 py-3.5 text-slate-600">{CAMPAIGN_CHANNEL_LABELS[c.channel] || c.channel}</td>
                       <td className="px-4 py-3.5"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${c.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{CAMPAIGN_STATUS_LABELS[c.status] || c.status}</span></td>
                       <td className="px-4 py-3.5 font-medium text-slate-700">{c.leadsGenerated}</td>

@@ -2,6 +2,7 @@ package com.company.crm.meeting.controller;
 
 import com.company.crm.common.response.Response;
 import com.company.crm.common.security.RoleExpressions;
+import com.company.crm.meeting.dto.MeetingReportReqDto;
 import com.company.crm.meeting.dto.MeetingReqDto;
 import com.company.crm.meeting.dto.MeetingResDto;
 import com.company.crm.meeting.service.MeetingService;
@@ -36,11 +37,13 @@ public class MeetingController {
 
     @GetMapping
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
-    @Operation(summary = "FR-5.5a: a customer's (customerId) or lead's (leadId) meetings, or my upcoming meetings")
+    @Operation(summary = "FR-5.5a: a customer's (customerId) or lead's (leadId) meetings, or my upcoming meetings "
+            + "(recent=true adds my last two weeks, FR-M.3)")
     public Response<List<MeetingResDto>> list(@AuthenticationPrincipal User currentUser,
                                               @RequestParam(required = false) Long customerId,
-                                              @RequestParam(required = false) Long leadId) {
-        return Response.ok(meetingService.list(currentUser, customerId, leadId));
+                                              @RequestParam(required = false) Long leadId,
+                                              @RequestParam(defaultValue = "false") boolean recent) {
+        return Response.ok(meetingService.list(currentUser, customerId, leadId, recent));
     }
 
     @PostMapping
@@ -56,6 +59,14 @@ public class MeetingController {
     public Response<MeetingResDto> update(@AuthenticationPrincipal User currentUser, @PathVariable Long meetingId,
                                           @Valid @RequestBody MeetingReqDto dto) {
         return Response.ok("Meeting updated", meetingService.update(currentUser, meetingId, dto));
+    }
+
+    @PutMapping("/{meetingId}/report")
+    @PreAuthorize(SCHEDULE_ROLES)
+    @Operation(summary = "FR-M.3: submit the meeting report — outcome, notes and next steps")
+    public Response<MeetingResDto> report(@AuthenticationPrincipal User currentUser, @PathVariable Long meetingId,
+                                          @Valid @RequestBody MeetingReportReqDto dto) {
+        return Response.ok("Meeting report saved", meetingService.report(currentUser, meetingId, dto));
     }
 
     @PatchMapping("/{meetingId}/cancel")

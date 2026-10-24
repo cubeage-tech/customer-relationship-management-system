@@ -4,11 +4,16 @@ import com.company.crm.common.enums.CallOutcome;
 import com.company.crm.common.enums.CommunicationChannel;
 import com.company.crm.common.enums.CommunicationDirection;
 import com.company.crm.common.enums.CommunicationStatus;
+import com.company.crm.common.crypto.DataEncryption;
 import com.company.crm.common.exception.ApiException;
+import com.company.crm.common.mail.MailOutboxService;
+import com.company.crm.common.mail.MailQueuedException;
 import com.company.crm.common.mail.MailService;
+import com.company.crm.common.scope.DataScope;
 import com.company.crm.common.scope.DataScopeResolver;
 import com.company.crm.communication.dto.request.CallLogReqDto;
 import com.company.crm.communication.dto.request.EmailSendReqDto;
+import com.company.crm.communication.dto.request.SmsSendReqDto;
 import com.company.crm.communication.dto.request.WhatsAppSendReqDto;
 import com.company.crm.communication.dto.responce.CommunicationResDto;
 import com.company.crm.communication.entity.Communication;
@@ -93,6 +98,32 @@ public class CommunicationService {
                 .toList();
     }
 
+    /** UI-1: one entry of the unified inbox, with the customer or lead it belongs to. */
+    public record InboxItem(CommunicationResDto entry, String recordType, Long recordId, String recordName) {}
+
+    /**
+     * UI-1 (SRS §11.1 Communications → Unified Inbox): the latest emails, WhatsApp messages, SMS and
+     * calls across the customers and leads the caller may see, newest first; optionally one channel
+     * or direction.
+     */
+    @Transactional(readOnly = true)
+    public List<InboxItem> inbox(User currentUser, String channel, String direction, int limit) {
+        Long tenantId = requireTenantId(currentUser);
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        int max = Math.max(1, Math.min(limit, 200));
+        return communicationRepo.findTop500ByTenantIdOrderByOccurredAtDesc(tenantId).stream()
+                .filter(c -> channel == null || channel.isBlank() || c.getChannel().getDbValue().equals(channel))
+                .filter(c -> direction == null || direction.isBlank() || c.getDirection().getDbValue().equals(direction))
+                .filter(c -> c.getCustomer() != null
+                        ? scope.allows(c.getCustomer().getOwner() != null ? c.getCustomer().getOwner().getId() : null)
+                        : c.getLead() != null && scope.allows(c.getLead().getOwner() != null ? c.getLead().getOwner().getId() : null))
+                .limit(max)
+                .map(c -> c.getCustomer() != null
+                        ? new InboxItem(toDto(c), "customer", c.getCustomer().getId(), c.getCustomer().getCompanyName())
+                        : new InboxItem(toDto(c), "lead", c.getLead().getId(), c.getLead().getLeadName()))
+                .toList();
+    }
+
     // ==================== Calls (FR-5.4) ====================
 
     @Transactional
@@ -131,6 +162,10 @@ public class CommunicationService {
         try {
             mailService.sendCustomerEmail(email.getCounterpart(), email.getSubject(), email.getBody(), messageId);
             email.setStatus(CommunicationStatus.SENT);
+        } catch (MailQueuedException e) {
+            log.warn("Email {} queued for retry: {}", email.getId(), e.getMessage());
+            email.setStatus(CommunicationStatus.QUEUED);
+            email.setErrorMessage(truncate("Mail server unavailable — retrying automatically"));
         } catch (MailException | MessagingException e) {
             log.warn("Customer email {} failed: {}", email.getId(), e.getMessage());
             email.setStatus(CommunicationStatus.FAILED);
@@ -172,6 +207,10 @@ public class CommunicationService {
                 mailService.sendCustomerEmail(email.getCounterpart(), subject, body, messageId, ics);
             }
             email.setStatus(CommunicationStatus.SENT);
+        } catch (MailQueuedException e) {
+            log.warn("Email {} queued for retry: {}", email.getId(), e.getMessage());
+            email.setStatus(CommunicationStatus.QUEUED);
+            email.setErrorMessage(truncate("Mail server unavailable — retrying automatically"));
         } catch (MailException | MessagingException e) {
             log.warn("Automated email {} failed: {}", email.getId(), e.getMessage());
             email.setStatus(CommunicationStatus.FAILED);
@@ -198,6 +237,10 @@ public class CommunicationService {
         try {
             mailService.sendMarketingEmail(email.getCounterpart(), subject, text, html, messageId, unsubscribeUrl);
             email.setStatus(CommunicationStatus.SENT);
+        } catch (MailQueuedException e) {
+            log.warn("Email {} queued for retry: {}", email.getId(), e.getMessage());
+            email.setStatus(CommunicationStatus.QUEUED);
+            email.setErrorMessage(truncate("Mail server unavailable — retrying automatically"));
         } catch (MailException | MessagingException e) {
             log.warn("Campaign email {} failed: {}", email.getId(), e.getMessage());
             email.setStatus(CommunicationStatus.FAILED);
@@ -219,6 +262,23 @@ public class CommunicationService {
         message.setBody(dto.getBody());
         applySendResult(message, () -> twilioClient.sendWhatsApp(message.getCounterpart(), dto.getBody()));
         return toDto(communicationRepo.save(message));
+    }
+
+    /**
+     * API-G06: a user sends an SMS to a customer or lead; logged on its timeline. A temporary
+     * provider failure is queued and resent automatically (NFR-7.4a).
+     */
+    @Transactional
+    public CommunicationResDto sendSms(User currentUser, SmsSendReqDto dto) {
+        if (!twilioClient.isSmsEnabled()) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "SMS is not configured for this CRM", "CHANNEL_NOT_CONFIGURED");
+        }
+        Target target = resolveTarget(currentUser, dto.getCustomerId(), dto.getLeadId());
+        Communication sms = newLog(target, CommunicationChannel.SMS, CommunicationDirection.OUTBOUND, currentUser);
+        sms.setCounterpart(phoneNumbers.toE164(dto.getTo()));
+        sms.setBody(dto.getBody());
+        applySendResult(sms, () -> twilioClient.sendSms(sms.getCounterpart(), dto.getBody()));
+        return toDto(communicationRepo.save(sms));
     }
 
     /**
@@ -271,8 +331,8 @@ public class CommunicationService {
             return Optional.empty();
         }
         Optional<Target> owner = ownerOfReply(message.inReplyTo())
-                .or(() -> communicationRepo.findFirstByChannelAndDirectionAndCounterpartOrderByOccurredAtDesc(
-                        message.channel(), CommunicationDirection.OUTBOUND, from).map(this::targetOf))
+                .or(() -> communicationRepo.findFirstByChannelAndDirectionAndCounterpartHashOrderByOccurredAtDesc(
+                        message.channel(), CommunicationDirection.OUTBOUND, DataEncryption.get().counterpartIndex(from)).map(this::targetOf))
                 .or(() -> uniqueMatch(message.channel() == CommunicationChannel.EMAIL ? matchQuery.byEmail(from) : matchQuery.byPhone(from)));
         if (owner.isEmpty()) {
             log.info("Inbound {} from an unknown or ambiguous sender was not logged", message.channel().getDbValue());
@@ -309,8 +369,8 @@ public class CommunicationService {
         if (counterpart == null) {
             return Optional.empty();
         }
-        Optional<Target> owner = communicationRepo.findFirstByChannelAndDirectionAndCounterpartOrderByOccurredAtDesc(
-                        CommunicationChannel.CALL, CommunicationDirection.OUTBOUND, counterpart).map(this::targetOf)
+        Optional<Target> owner = communicationRepo.findFirstByChannelAndDirectionAndCounterpartHashOrderByOccurredAtDesc(
+                        CommunicationChannel.CALL, CommunicationDirection.OUTBOUND, DataEncryption.get().counterpartIndex(counterpart)).map(this::targetOf)
                 .or(() -> uniqueMatch(matchQuery.byPhone(counterpart)));
         if (owner.isEmpty()) {
             log.info("Automatic call log skipped: unknown or ambiguous number");
@@ -351,10 +411,64 @@ public class CommunicationService {
             TwilioClient.SendResult result = send.get();
             row.setProviderMessageId(result.sid());
             row.setStatus(mapProviderStatus(result.status()));
+            row.setErrorMessage(null);
+            row.setNextRetryAt(null);
         } catch (TwilioClient.TwilioException e) {
-            row.setStatus(CommunicationStatus.FAILED);
-            row.setErrorMessage(truncate(e.getMessage()));
+            if (e.isRetryable() && row.getRetryCount() < RETRY_BACKOFF_MINUTES.length) {
+                // NFR-7.4a: temporary provider trouble — keep it queued and resend later.
+                row.setStatus(CommunicationStatus.QUEUED);
+                row.setErrorMessage(truncate(e.getMessage() + " — retrying automatically"));
+                row.setNextRetryAt(LocalDateTime.now().plusMinutes(RETRY_BACKOFF_MINUTES[row.getRetryCount()]));
+            } else {
+                row.setStatus(CommunicationStatus.FAILED);
+                row.setErrorMessage(truncate(e.getMessage()));
+                row.setNextRetryAt(null);
+            }
         }
+    }
+
+    // ==================== NFR-7.4a retries ====================
+
+    /** Minutes before resend n+1 of an SMS/WhatsApp message after a temporary failure. */
+    private static final int[] RETRY_BACKOFF_MINUTES = {1, 5, 15, 60, 180};
+
+    @Transactional(readOnly = true)
+    public List<Long> findRetryDue() {
+        return communicationRepo.findRetryDueIds(LocalDateTime.now());
+    }
+
+    /** Resends one queued SMS/WhatsApp message (own transaction: each outcome is saved on its own). */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void retryMessage(Long id) {
+        Communication row = communicationRepo.findById(id).orElse(null);
+        if (row == null || row.getNextRetryAt() == null
+                || communicationRepo.leaseRetry(id, row.getNextRetryAt(), LocalDateTime.now().plusMinutes(10)) == 0) {
+            return;
+        }
+        Communication msg = communicationRepo.findById(id).orElseThrow();
+        msg.setRetryCount(msg.getRetryCount() + 1);
+        if (msg.getChannel() == CommunicationChannel.SMS) {
+            applySendResult(msg, () -> twilioClient.sendSms(msg.getCounterpart(), msg.getBody()));
+        } else if (msg.getChannel() == CommunicationChannel.WHATSAPP) {
+            applySendResult(msg, () -> twilioClient.sendWhatsApp(msg.getCounterpart(), msg.getBody()));
+        } else {
+            msg.setNextRetryAt(null);
+        }
+        communicationRepo.save(msg);
+    }
+
+    /** NFR-7.4a: an email held in the mail outbox was finally delivered, or given up on. */
+    @org.springframework.transaction.event.TransactionalEventListener(fallbackExecution = true)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void onQueuedEmailOutcome(MailOutboxService.Outcome outcome) {
+        if (outcome.messageId() == null) {
+            return;
+        }
+        communicationRepo.findByProviderMessageId(outcome.messageId()).ifPresent(email -> {
+            email.setStatus(outcome.delivered() ? CommunicationStatus.SENT : CommunicationStatus.FAILED);
+            email.setErrorMessage(outcome.delivered() ? null : truncate("Email could not be sent after several attempts: " + outcome.error()));
+            communicationRepo.save(email);
+        });
     }
 
     private Target resolveTarget(User currentUser, Long customerId, Long leadId) {

@@ -39,7 +39,7 @@ const ForgotPassword = () => {
       <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-sm border border-gray-100 p-10">
         {sent ? (
           <div className="text-center">
-            <MailCheck className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
+            <MailCheck className="w-12 h-12 text-primary mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900">Check your inbox</h2>
             <p className="text-gray-500 text-sm mt-2 mb-6">
               If an account exists for {email}, we've sent a link to reset your password. The link expires in 1 hour.
@@ -58,7 +58,7 @@ const ForgotPassword = () => {
                   id="email"
                   type="email"
                   name="email"
-                  className="block w-full px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white shadow-sm"
+                  className="block w-full px-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm bg-white shadow-sm"
                   placeholder="john.doe@company.com"
                   value={email}
                   onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
@@ -71,7 +71,7 @@ const ForgotPassword = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:opacity-60"
+                className="w-full flex justify-center py-3.5 px-4 rounded-xl text-sm font-semibold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/40 transition-all disabled:opacity-60"
               >
                 {submitting ? 'Sending…' : 'Send reset link'}
               </button>
@@ -79,7 +79,7 @@ const ForgotPassword = () => {
 
             <p className="mt-6 text-center text-sm text-gray-500">
               Remembered it?{' '}
-              <Link to={RoutePath.LOGIN} className="font-semibold text-indigo-600 hover:text-indigo-500">
+              <Link to={RoutePath.LOGIN} className="font-semibold text-primary hover:text-primary/80">
                 Back to login
               </Link>
             </p>

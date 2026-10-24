@@ -37,6 +37,7 @@ class SubscriptionServiceTest {
     @Mock private SubscriptionRepository subscriptionRepository;
     @Mock private PlanRepository planRepository;
     @Mock private TenantRepository tenantRepository;
+    @Mock private com.company.crm.common.audit.AuditService auditService;
 
     @InjectMocks private SubscriptionService subscriptionService;
 

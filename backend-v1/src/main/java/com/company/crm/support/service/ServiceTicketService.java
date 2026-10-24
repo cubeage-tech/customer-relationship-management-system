@@ -25,13 +25,13 @@ import com.company.crm.support.entity.CustomerAsset;
 import com.company.crm.support.entity.ServiceTicket;
 import com.company.crm.support.mapper.ServiceTicketMapper;
 import com.company.crm.support.repository.ServiceTicketRepository;
+import com.company.crm.tenant.service.TenantSettingsService;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.company.crm.support.event.TicketStatusChangedEvent;
 import com.company.crm.support.event.TicketFeedbackRequestedEvent;
 import com.company.crm.support.dto.response.PublicFeedbackDto;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +53,7 @@ public class ServiceTicketService {
     private final ServiceTicketMapper ticketMapper;
     private final PageRequestFactory pageRequestFactory;
     private final AuditService auditService;
+    private final TenantSettingsService tenantSettingsService;
     private final ServiceTicketSummaryQuery ticketSummaryQuery;
     private final ReportingPeriods reportingPeriods;
     private final ApplicationEventPublisher eventPublisher;
@@ -75,17 +76,6 @@ public class ServiceTicketService {
 
     private static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
 
-    @Value("${app.ticket.sla-hours.critical}")
-    private long slaHoursCritical;
-
-    @Value("${app.ticket.sla-hours.high}")
-    private long slaHoursHigh;
-
-    @Value("${app.ticket.sla-hours.medium}")
-    private long slaHoursMedium;
-
-    @Value("${app.ticket.sla-hours.low}")
-    private long slaHoursLow;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (customer, assignedTechnician, tenant), so the session must stay
@@ -208,7 +198,7 @@ public class ServiceTicketService {
     /** Sets the SLA, applies FR-6.3b auto-assignment, and saves a new ticket. */
     private ServiceTicket openTicket(ServiceTicket ticket) {
         ticket.setStatus(TicketStatus.OPEN);
-        ticket.setSlaDueAt(LocalDateTime.now().plusHours(slaHours(ticket.getPriority())));
+        ticket.setSlaDueAt(LocalDateTime.now().plusHours(slaHours(ticket, ticket.getPriority())));
         assignmentRuleService.apply(ticket).ifPresent(agent -> {
             ticket.setAssignedTechnician(agent);
             ticket.setStatus(TicketStatus.ASSIGNED);
@@ -229,7 +219,7 @@ public class ServiceTicketService {
         TicketPriority newPriority = parsePriority(dto.getPriority());
         if (newPriority != ticket.getPriority()) {
             ticket.setPriority(newPriority);
-            ticket.setSlaDueAt(ticket.getCreatedAt().plusHours(slaHours(newPriority)));
+            ticket.setSlaDueAt(ticket.getCreatedAt().plusHours(slaHours(ticket, newPriority)));
         }
 
         return ticketMapper.toDto(ticketRepository.save(ticket));
@@ -353,13 +343,9 @@ public class ServiceTicketService {
 
     // ==================== Helpers ====================
 
-    private long slaHours(TicketPriority priority) {
-        return switch (priority) {
-            case CRITICAL -> slaHoursCritical;
-            case HIGH -> slaHoursHigh;
-            case MEDIUM -> slaHoursMedium;
-            case LOW -> slaHoursLow;
-        };
+    /** NFR-7.6b: the tenant's SLA window for this priority (or the deployment default). */
+    private long slaHours(ServiceTicket ticket, TicketPriority priority) {
+        return tenantSettingsService.slaHours(ticket.getTenant().getId(), priority);
     }
 
     private Customer resolveCustomer(User currentUser, Long customerId) {
@@ -382,6 +368,22 @@ public class ServiceTicketService {
         } catch (IllegalArgumentException ex) {
             throw ApiException.badRequest("Unknown ticket status: " + rawStatus);
         }
+    }
+
+    /** DB-E16: the ticket if the caller may view it (agents also see the unassigned queue). */
+    @Transactional(readOnly = true)
+    public ServiceTicket requireViewable(User currentUser, Long ticketId) {
+        ServiceTicket ticket = findTicket(currentUser, ticketId);
+        assertViewAccess(currentUser, ticket);
+        return ticket;
+    }
+
+    /** DB-E16: the ticket if the caller may change it (agents: only their own). */
+    @Transactional(readOnly = true)
+    public ServiceTicket requireEditable(User currentUser, Long ticketId) {
+        ServiceTicket ticket = findTicket(currentUser, ticketId);
+        assertAccess(currentUser, ticket);
+        return ticket;
     }
 
     private ServiceTicket findTicket(User currentUser, Long ticketId) {

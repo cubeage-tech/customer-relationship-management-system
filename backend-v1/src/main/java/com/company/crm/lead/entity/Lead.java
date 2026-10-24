@@ -1,5 +1,8 @@
 package com.company.crm.lead.entity;
 
+import com.company.crm.common.crypto.BlindIndexed;
+import com.company.crm.common.crypto.DataEncryption;
+import com.company.crm.common.crypto.EncryptedString;
 import com.company.crm.campaign.entity.Campaign;
 import com.company.crm.sales_team.entity.SalesTeam;
 import com.company.crm.common.enums.IndustryType;
@@ -16,11 +19,12 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
+@EntityListeners(BlindIndexed.Listener.class)
 @Table(name = "leads")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Lead {
+public class Lead implements BlindIndexed {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,10 +41,25 @@ public class Lead {
     private String companyName;
 
     @Column(name = "contact_email")
+    @Convert(converter = EncryptedString.class)
     private String contactEmail;
 
     @Column(name = "contact_phone")
+    @Convert(converter = EncryptedString.class)
     private String contactPhone;
+
+    /** NFR-7.2b: blind indexes for matching inbound email / calls / SMS. */
+    @Column(name = "email_hash", length = 64)
+    private String emailHash;
+
+    @Column(name = "phone_hash", length = 64)
+    private String phoneHash;
+
+    @Override
+    public void refreshBlindIndexes(DataEncryption encryption) {
+        emailHash = encryption.emailIndex(contactEmail);
+        phoneHash = encryption.phoneIndex(contactPhone);
+    }
 
     @Column(nullable = false)
     private IndustryType industry;

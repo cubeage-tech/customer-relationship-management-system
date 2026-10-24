@@ -1,5 +1,6 @@
 package com.company.crm.campaign.entity;
 
+import com.company.crm.common.crypto.EncryptedString;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.tenant.entity.Tenant;
 import jakarta.persistence.*;
@@ -41,8 +42,8 @@ public class CampaignRecipient {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    /** The email address or phone number used. */
-    @Column(length = 150)
+    /** The email address or phone number used (NFR-7.2b: encrypted). */
+    @Convert(converter = EncryptedString.class)
     private String address;
 
     @Column(nullable = false, length = 20)

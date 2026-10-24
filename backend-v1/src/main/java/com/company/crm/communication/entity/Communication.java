@@ -1,5 +1,8 @@
 package com.company.crm.communication.entity;
 
+import com.company.crm.common.crypto.BlindIndexed;
+import com.company.crm.common.crypto.DataEncryption;
+import com.company.crm.common.crypto.EncryptedString;
 import com.company.crm.common.enums.CallOutcome;
 import com.company.crm.common.enums.CommunicationChannel;
 import com.company.crm.common.enums.CommunicationDirection;
@@ -20,11 +23,12 @@ import java.time.LocalDateTime;
  * and/or a lead (FR-5.1–5.4). The customer's rows, newest first, are its timeline (FR-5.6).
  */
 @Entity
+@EntityListeners(BlindIndexed.Listener.class)
 @Table(name = "communication_logs")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Communication {
+public class Communication implements BlindIndexed {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,8 +60,18 @@ public class Communication {
     @Column(columnDefinition = "TEXT")
     private String body;
 
-    /** Email address or phone number on the customer's side. */
+    /** Email address or phone number on the customer's side (NFR-7.2b: encrypted). */
+    @Convert(converter = EncryptedString.class)
     private String counterpart;
+
+    /** NFR-7.2b: blind index of {@link #counterpart}, for "latest message to this address/number". */
+    @Column(name = "counterpart_hash", length = 64)
+    private String counterpartHash;
+
+    @Override
+    public void refreshBlindIndexes(DataEncryption encryption) {
+        counterpartHash = encryption.counterpartIndex(counterpart);
+    }
 
     /** Email Message-ID or provider SID — matches replies and delivery callbacks to this row. */
     @Column(name = "provider_message_id")
@@ -65,6 +79,13 @@ public class Communication {
 
     @Column(name = "error_message")
     private String errorMessage;
+
+    /** NFR-7.4a: automatic resend attempts after a temporary SMS/WhatsApp failure, and when the next is due. */
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount;
+
+    @Column(name = "next_retry_at")
+    private LocalDateTime nextRetryAt;
 
     @Column(name = "call_outcome")
     private CallOutcome callOutcome;

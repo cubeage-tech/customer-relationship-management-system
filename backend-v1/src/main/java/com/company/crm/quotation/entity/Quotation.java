@@ -65,6 +65,10 @@ public class Quotation {
     @Column(name = "view_token", length = 64)
     private String viewToken;
 
+    /** FR-8.3: when it was (last) sent to the customer — counted as a sales activity of its owner. */
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
     /** FR-4.5: when the customer first opened the view link. */
     @Column(name = "viewed_at")
     private LocalDateTime viewedAt;

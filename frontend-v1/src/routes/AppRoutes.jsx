@@ -47,6 +47,9 @@ const ServiceTickets = lazy(() => import("../pages/service/ServiceTickets"));
 const ServiceTicketDetail = lazy(() => import("../pages/service/ServiceTicketDetail"));
 const Campaigns = lazy(() => import("../pages/marketing/Campaigns"));
 const CampaignDetail = lazy(() => import("../pages/marketing/CampaignDetail"));
+const Segments = lazy(() => import("../pages/marketing/Segments"));
+const Promotions = lazy(() => import("../pages/marketing/Promotions"));
+const SalesForce = lazy(() => import("../pages/salesforce/SalesForce"));
 const Approvals = lazy(() => import("../pages/finance/Approvals"));
 const Reports = lazy(() => import("../pages/reports/Reports"));
 
@@ -64,6 +67,9 @@ const RolesPermissions = lazy(() => import("../pages/platform/RolesPermissions")
 const PlatformSettings = lazy(() => import("../pages/platform/PlatformSettings"));
 const PlatformReports = lazy(() => import("../pages/platform/PlatformReports"));
 const AuditLogs = lazy(() => import("../pages/platform/AuditLogs"));
+const TenantAuditLog = lazy(() => import("../pages/admin/AuditLog"));
+const Communications = lazy(() => import("../pages/communications/Communications"));
+const AiAssistant = lazy(() => import("../pages/ai/AiAssistant"));
 
 // Common
 const Profile = lazy(() => import("../pages/common/Profile"));
@@ -300,6 +306,28 @@ const AppRoutes = () => {
           >
             <Route path={RoutePath.CAMPAIGNS} element={<Campaigns />} />
             <Route path={RoutePath.EDIT_CAMPAIGN} element={<CampaignDetail />} />
+            <Route path={RoutePath.SEGMENTS} element={<Segments />} />
+            <Route path={RoutePath.PROMOTIONS} element={<Promotions />} />
+          </Route>
+
+          {/* ================= SALES FORCE (Module 8) — every tenant role checks in ================= */}
+
+          <Route
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  USER_ROLES.ADMIN,
+                  USER_ROLES.SALES_MANAGER,
+                  USER_ROLES.SALES_EXECUTIVE,
+                  USER_ROLES.MARKETING_EXECUTIVE,
+                  USER_ROLES.SERVICE_AGENT,
+                  USER_ROLES.FINANCE_APPROVER,
+                  USER_ROLES.EXECUTIVE_OWNER,
+                ]}
+              />
+            }
+          >
+            <Route path={RoutePath.SALES_FORCE} element={<SalesForce />} />
           </Route>
 
           {/* ================= FINANCE / APPROVALS ================= */}
@@ -350,6 +378,28 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.ADMIN_SETTINGS} element={<Settings />} />
+          </Route>
+
+          {/* UI-1: Communications inbox (anyone who sees customers) and the AI Assistant (every tenant role) */}
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.CUSTOMERS_VIEW]}
+              />
+            }
+          >
+            <Route path={RoutePath.COMMUNICATIONS} element={<Communications />} />
+          </Route>
+          <Route path={RoutePath.AI_ASSISTANT} element={<AiAssistant />} />
+
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.AUDIT_VIEW]}
+              />
+            }
+          >
+            <Route path={RoutePath.ADMIN_AUDIT_LOG} element={<TenantAuditLog />} />
           </Route>
 
           <Route

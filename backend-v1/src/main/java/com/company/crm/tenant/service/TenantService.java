@@ -1,10 +1,13 @@
 package com.company.crm.tenant.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.tenant.dto.response.TenantResDto;
 import com.company.crm.tenant.entity.Tenant;
 import com.company.crm.tenant.repository.TenantRepository;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.exception.TenantNotFoundException;
+import com.company.crm.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,7 @@ import java.util.List;
 public class TenantService {
 
     private final TenantRepository tenantRepository;
+    private final AuditService auditService;
 
     public List<TenantResDto> listTenants() {
         return tenantRepository.findAll().stream()
@@ -24,16 +28,18 @@ public class TenantService {
     }
 
     @Transactional
-    public TenantResDto deactivateTenant(Long tenantId) {
+    public TenantResDto deactivateTenant(User actor, Long tenantId) {
         Tenant tenant = findTenant(tenantId);
         tenant.setStatus(AccountStatus.DEACTIVATED);
+        auditService.record(actor, tenantId, AuditAction.TENANT_DEACTIVATED, "tenant", tenantId, "name=" + tenant.getCompanyName());
         return toDto(tenantRepository.save(tenant));
     }
 
     @Transactional
-    public TenantResDto restoreTenant(Long tenantId) {
+    public TenantResDto restoreTenant(User actor, Long tenantId) {
         Tenant tenant = findTenant(tenantId);
         tenant.setStatus(AccountStatus.ACTIVE);
+        auditService.record(actor, tenantId, AuditAction.TENANT_RESTORED, "tenant", tenantId, "name=" + tenant.getCompanyName());
         return toDto(tenantRepository.save(tenant));
     }
 

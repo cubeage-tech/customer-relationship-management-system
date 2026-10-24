@@ -5,6 +5,7 @@ import com.company.crm.common.security.RoleExpressions;
 import com.company.crm.communication.dto.request.CallLogReqDto;
 import com.company.crm.communication.dto.request.EmailSendReqDto;
 import com.company.crm.communication.dto.request.SmsAlertRuleReqDto;
+import com.company.crm.communication.dto.request.SmsSendReqDto;
 import com.company.crm.communication.dto.request.WhatsAppSendReqDto;
 import com.company.crm.communication.dto.responce.CommunicationResDto;
 import com.company.crm.communication.dto.responce.SmsAlertRuleResDto;
@@ -44,6 +45,17 @@ public class CommunicationController {
         return Response.ok(communicationService.timeline(currentUser, customerId, leadId));
     }
 
+    @GetMapping("/inbox")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "UI-1: unified inbox — latest emails, WhatsApp, SMS and calls across records I can see")
+    public Response<List<CommunicationService.InboxItem>> inbox(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) String channel,
+            @RequestParam(required = false) String direction,
+            @RequestParam(defaultValue = "100") int limit) {
+        return Response.ok(communicationService.inbox(currentUser, channel, direction, limit));
+    }
+
     @PostMapping("/calls")
     @PreAuthorize(SEND_ROLES)
     @Operation(summary = "FR-5.4: log a call with outcome and notes")
@@ -69,6 +81,15 @@ public class CommunicationController {
             @AuthenticationPrincipal User currentUser,
             @Valid @RequestBody WhatsAppSendReqDto dto) {
         return Response.ok(communicationService.sendWhatsApp(currentUser, dto));
+    }
+
+    @PostMapping("/sms")
+    @PreAuthorize(SEND_ROLES)
+    @Operation(summary = "API-G06: send an SMS and log it; delivery updates arrive by webhook")
+    public Response<CommunicationResDto> sendSms(
+            @AuthenticationPrincipal User currentUser,
+            @Valid @RequestBody SmsSendReqDto dto) {
+        return Response.ok(communicationService.sendSms(currentUser, dto));
     }
 
     @GetMapping("/sms-alerts")

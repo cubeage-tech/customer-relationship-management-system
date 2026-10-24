@@ -16,6 +16,7 @@ import com.company.crm.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.company.crm.common.crypto.DataEncryption;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -68,7 +69,7 @@ class EmailVerificationTokenServiceTest {
 
     @Test
     void verify_unknownToken_isInvalid() {
-        when(tokenRepository.findByToken("nope")).thenReturn(Optional.empty());
+        when(tokenRepository.findByToken(DataEncryption.sha256("nope"))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.verify("nope"))
                 .isInstanceOf(InvalidTokenException.class)
@@ -79,7 +80,7 @@ class EmailVerificationTokenServiceTest {
     void verify_alreadyUsedToken_isInvalid() {
         EmailVerificationToken token = token(LocalDateTime.now().plusHours(1));
         token.setVerifiedAt(LocalDateTime.now().minusMinutes(5));
-        when(tokenRepository.findByToken("t")).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(DataEncryption.sha256("t"))).thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> service.verify("t"))
                 .isInstanceOf(InvalidTokenException.class)
@@ -88,7 +89,7 @@ class EmailVerificationTokenServiceTest {
 
     @Test
     void verify_expiredToken_isGoneAndUserStaysPending() {
-        when(tokenRepository.findByToken("t")).thenReturn(Optional.of(token(LocalDateTime.now().minusMinutes(1))));
+        when(tokenRepository.findByToken(DataEncryption.sha256("t"))).thenReturn(Optional.of(token(LocalDateTime.now().minusMinutes(1))));
 
         assertThatThrownBy(() -> service.verify("t"))
                 .isInstanceOf(TokenExpiredException.class)
@@ -100,7 +101,7 @@ class EmailVerificationTokenServiceTest {
     @Test
     void verify_pendingAdmin_activatesUserAndStartsTrial() {
         EmailVerificationToken token = token(LocalDateTime.now().plusHours(1));
-        when(tokenRepository.findByToken("t")).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(DataEncryption.sha256("t"))).thenReturn(Optional.of(token));
 
         service.verify("t");
 
@@ -113,7 +114,7 @@ class EmailVerificationTokenServiceTest {
     @Test
     void verify_teamMember_doesNotStartTrial() {
         user.getRole().setName(RoleType.SALES_EXECUTIVE);
-        when(tokenRepository.findByToken("t")).thenReturn(Optional.of(token(LocalDateTime.now().plusHours(1))));
+        when(tokenRepository.findByToken(DataEncryption.sha256("t"))).thenReturn(Optional.of(token(LocalDateTime.now().plusHours(1))));
 
         service.verify("t");
 
@@ -124,7 +125,7 @@ class EmailVerificationTokenServiceTest {
     @Test
     void verify_suspendedUser_isNotReactivatedByAnOldLink() {
         user.setStatus(AccountStatus.SUSPENDED);
-        when(tokenRepository.findByToken("t")).thenReturn(Optional.of(token(LocalDateTime.now().plusHours(1))));
+        when(tokenRepository.findByToken(DataEncryption.sha256("t"))).thenReturn(Optional.of(token(LocalDateTime.now().plusHours(1))));
 
         service.verify("t");
 
@@ -146,8 +147,11 @@ class EmailVerificationTokenServiceTest {
         ArgumentCaptor<EmailVerificationToken> saved = ArgumentCaptor.forClass(EmailVerificationToken.class);
         verify(tokenRepository).save(saved.capture());
         assertThat(saved.getValue().getExpiresAt()).isAfter(LocalDateTime.now().plusHours(47));
-        // No transaction in a unit test, so the mail goes out immediately.
-        verify(mailService).sendVerificationEmail(user.getEmail(), user.getFullName(), saved.getValue().getToken());
+        // No transaction in a unit test, so the mail goes out immediately — with the raw token,
+        // while only its hash is stored (NFR-7.2b).
+        ArgumentCaptor<String> emailed = ArgumentCaptor.forClass(String.class);
+        verify(mailService).sendVerificationEmail(eq(user.getEmail()), eq(user.getFullName()), emailed.capture());
+        assertThat(saved.getValue().getToken()).isEqualTo(DataEncryption.sha256(emailed.getValue())).isNotEqualTo(emailed.getValue());
     }
 
     @Test

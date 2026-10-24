@@ -1,5 +1,6 @@
 package com.company.crm.communication.repository;
 
+import com.company.crm.common.crypto.DataEncryption;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
@@ -21,29 +22,31 @@ public class CommunicationMatchQuery {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /** Case-insensitive address match, via the NFR-7.2b blind indexes (the addresses are encrypted). */
     public List<Match> byEmail(String email) {
-        String value = email.trim().toLowerCase();
+        String hash = DataEncryption.get().emailIndex(email);
+        if (hash == null) {
+            return List.of();
+        }
         List<Match> matches = new ArrayList<>();
-        matches.addAll(run("SELECT tenant_id, id, NULL FROM customers WHERE lower(email) = :v", value));
+        matches.addAll(run("SELECT tenant_id, id, NULL FROM customers WHERE email_hash = :v", hash));
         matches.addAll(run("SELECT cu.tenant_id, cu.id, NULL FROM customer_contacts cc JOIN customers cu ON cu.id = cc.customer_id"
-                + " WHERE lower(cc.email) = :v", value));
-        matches.addAll(run("SELECT tenant_id, NULL, id FROM leads WHERE lower(contact_email) = :v AND converted_customer_id IS NULL", value));
+                + " WHERE cc.email_hash = :v", hash));
+        matches.addAll(run("SELECT tenant_id, NULL, id FROM leads WHERE email_hash = :v AND converted_customer_id IS NULL", hash));
         return matches.stream().distinct().toList();
     }
 
+    /** Match on the last 10 digits, via the NFR-7.2b blind indexes. */
     public List<Match> byPhone(String phone) {
-        String digits = phone.replaceAll("\\D", "");
-        if (digits.length() < 10) {
+        String hash = DataEncryption.get().phoneIndex(phone);
+        if (hash == null) {
             return List.of();
         }
-        String last10 = digits.substring(digits.length() - 10);
         List<Match> matches = new ArrayList<>();
-        matches.addAll(run("SELECT tenant_id, id, NULL FROM customers"
-                + " WHERE right(regexp_replace(phone, '\\D', '', 'g'), 10) = :v", last10));
+        matches.addAll(run("SELECT tenant_id, id, NULL FROM customers WHERE phone_hash = :v", hash));
         matches.addAll(run("SELECT cu.tenant_id, cu.id, NULL FROM customer_contacts cc JOIN customers cu ON cu.id = cc.customer_id"
-                + " WHERE right(regexp_replace(cc.phone, '\\D', '', 'g'), 10) = :v", last10));
-        matches.addAll(run("SELECT tenant_id, NULL, id FROM leads"
-                + " WHERE right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = :v AND converted_customer_id IS NULL", last10));
+                + " WHERE cc.phone_hash = :v", hash));
+        matches.addAll(run("SELECT tenant_id, NULL, id FROM leads WHERE phone_hash = :v AND converted_customer_id IS NULL", hash));
         return matches.stream().distinct().toList();
     }
 
