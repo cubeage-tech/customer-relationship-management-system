@@ -126,6 +126,29 @@ public class AnalyticsService {
                 money(byStage.stream().map(Row::value).reduce(BigDecimal.ZERO, BigDecimal::add)), byStage, byOwner, LocalDateTime.now());
     }
 
+    // ==================== NAV-M03 ====================
+
+    private static final Map<String, String> SOURCE_LABELS = Map.of("website", "Website", "referral", "Referral",
+            "exhibition", "Exhibition", "cold_call", "Cold call", "marketing_campaign", "Marketing campaign", "other", "Other");
+
+    /** Leads created in the period by source, with how many converted. */
+    @Transactional(readOnly = true)
+    public LeadSourceReport leadSources(User user, ReportScope s) {
+        List<SourceRow> rows = query.leadsBySource(s).stream().map(r -> {
+            String key = String.valueOf(r[0]);
+            long leads = ((Number) r[1]).longValue();
+            long converted = ((Number) r[2]).longValue();
+            return new SourceRow(key, SOURCE_LABELS.getOrDefault(key, key), leads, converted, rate(converted, leads));
+        }).toList();
+        long total = rows.stream().mapToLong(SourceRow::leads).sum();
+        long converted = rows.stream().mapToLong(SourceRow::converted).sum();
+        return new LeadSourceReport(s.from(), s.to(), total, converted, rate(converted, total), rows, LocalDateTime.now());
+    }
+
+    private static double rate(long part, long whole) {
+        return whole == 0 ? 0 : Math.round(part * 1000.0 / whole) / 10.0;
+    }
+
     // ==================== FR-9.3 ====================
 
     // Not read-only: the first look at a new tenant's industries seeds the defaults.

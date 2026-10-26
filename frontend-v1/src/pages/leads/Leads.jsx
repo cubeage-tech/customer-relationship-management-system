@@ -16,6 +16,7 @@ import {
 import RoutePath from '../../core/constants/routes.constant';
 import { listLeads, createLead, deleteLead, changeLeadStage } from '../../core/services/lead.service';
 import { listUsers } from '../../core/services/user.service';
+import LeadBoard from '../../components/lead/LeadBoard';
 
 const INITIAL_FORM = {
   leadName: '',
@@ -24,6 +25,15 @@ const INITIAL_FORM = {
   source: LEAD_SOURCE_OPTIONS[0].value,
   contactEmail: '',
   contactPhone: '',
+};
+
+const VIEW_KEY = 'leads.view';
+const readView = () => {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === 'board' ? 'board' : 'table';
+  } catch {
+    return 'table';
+  }
 };
 
 const isOverdue = (lead) =>
@@ -42,7 +52,7 @@ const Leads = () => {
   const [searchParams] = useSearchParams();
   // UI-8: drill-downs from reports and dashboard charts arrive with ?stage=
   const [stageFilter, setStageFilter] = useState(() => searchParams.get('stage') ?? '');
-  const [sourceFilter, setSourceFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState(() => searchParams.get('source') ?? '');
   const [ownerFilter, setOwnerFilter] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
   const [owners, setOwners] = useState([]);
@@ -50,6 +60,17 @@ const Leads = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
+  // NAV-M03: pipeline (kanban) or table, remembered per browser.
+  const [view, setView] = useState(readView);
+  const changeView = (next) => {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // view preference is a convenience only
+    }
+  };
+  const canSeeSourceReport = can(PERMISSIONS.REPORTS_SALES) || can(PERMISSIONS.REPORTS_CAMPAIGN);
 
   const refresh = () => {
     listLeads({ stage: stageFilter, source: sourceFilter, industry: industryFilter, search, ownerId: ownerFilter || undefined })
@@ -284,9 +305,27 @@ const Leads = () => {
         <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900">Lead pipeline</h2>
-            <p className="mt-1 text-xs text-slate-500">Find and track prospects through each stage.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Find and track prospects through each stage.
+              {canSeeSourceReport && (
+                <> <Link to="/reports?tab=lead-sources" className="text-primary hover:underline">Lead source report</Link></>
+              )}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border border-slate-200 p-0.5" role="group" aria-label="View">
+              {[['board', 'Pipeline'], ['table', 'Table']].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => changeView(value)}
+                  aria-pressed={view === value}
+                  className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="relative min-w-48 flex-1 sm:flex-none">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Search by lead or company name</span>
@@ -380,6 +419,14 @@ const Leads = () => {
               <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Add first lead</Button>
             )}
           </div>
+        ) : view === 'board' ? (
+          <LeadBoard
+            leads={leads}
+            stages={stageFilter ? LEAD_STAGE_OPTIONS.filter((o) => o.value === stageFilter) : LEAD_STAGE_OPTIONS}
+            canEdit={canEdit}
+            onStageChange={handleStageChange}
+            isOverdue={isOverdue}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-left text-sm">

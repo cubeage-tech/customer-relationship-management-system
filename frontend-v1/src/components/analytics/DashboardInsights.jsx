@@ -33,6 +33,7 @@ const CHARTS = [
 const REPORT_LINKS = [
   { tab: 'sales', label: 'Sales', permissions: [PERMISSIONS.REPORTS_SALES] },
   { tab: 'customers', label: 'Customers', permissions: [PERMISSIONS.REPORTS_SALES, PERMISSIONS.REPORTS_CAMPAIGN] },
+  { tab: 'lead-sources', label: 'Lead sources', permissions: [PERMISSIONS.REPORTS_SALES, PERMISSIONS.REPORTS_CAMPAIGN] },
   { tab: 'revenue', label: 'Revenue', permissions: [PERMISSIONS.REPORTS_REVENUE] },
   { tab: 'team', label: 'Team performance', permissions: [PERMISSIONS.REPORTS_SALES] },
   { tab: 'service', label: 'Service', permissions: [PERMISSIONS.REPORTS_SERVICE] },
@@ -99,7 +100,7 @@ const DashboardInsights = () => {
           <ul className="space-y-1 text-sm">
             {links.map((l) => (
               <li key={l.tab}>
-                <Link to={`/reports?${qs({ tab: l.tab, ...range })}`} className="text-primary hover:underline">{l.label} report</Link>
+                <Link to={`/reports/${l.tab}?${qs(range)}`} className="text-primary hover:underline">{l.label} report</Link>
               </li>
             ))}
           </ul>

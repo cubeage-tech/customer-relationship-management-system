@@ -20,6 +20,7 @@ import {
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
 import MeetingsPanel from '../../components/meeting/MeetingsPanel';
+import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
 import CustomerAssets from '../../components/customer/CustomerAssets';
 import CustomerPromotions from '../../components/customer/CustomerPromotions';
 import CustomerDocuments from '../../components/customer/CustomerDocuments';
@@ -427,6 +428,9 @@ const CustomerDetail = () => {
       <CustomerAssets customerId={customer.id} />
 
       <CustomerPromotions customerId={customer.id} />
+
+      {/* ARC-9: industry-specific fields */}
+      <div className="mb-6"><CustomFieldsPanel entityType="customer" recordId={customer.id} canEdit={canEdit} reloadKey={customer.industry} /></div>
 
       <MeetingsPanel customerId={customer.id} />
 

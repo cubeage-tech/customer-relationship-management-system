@@ -210,6 +210,10 @@ class ApiService {
     return this.apiget(ServerUrl.ANALYTICS_HEADLINE, params);
   }
 
+  static getLeadSourceReport(params) {
+    return this.apiget(ServerUrl.ANALYTICS_LEAD_SOURCES, params);
+  }
+
   static getSalesReport(params) {
     return this.apiget(ServerUrl.ANALYTICS_SALES, params);
   }
@@ -439,6 +443,39 @@ class ApiService {
 
   static getInbox(params) {
     return this.apiget(ServerUrl.COMMUNICATION_INBOX, params);
+  }
+
+  // ARC-9: custom fields and industry templates
+  static getCustomFields(entityType) {
+    return this.apiget(ServerUrl.CUSTOM_FIELDS, { entityType });
+  }
+
+  static getAllCustomFields() {
+    return this.apiget(`${ServerUrl.CUSTOM_FIELDS}/manage`);
+  }
+
+  static createCustomField(data) {
+    return this.apipost(ServerUrl.CUSTOM_FIELDS, data);
+  }
+
+  static updateCustomField(id, data) {
+    return this.apiput(`${ServerUrl.CUSTOM_FIELDS}/${id}`, data);
+  }
+
+  static getCustomFieldTemplates() {
+    return this.apiget(`${ServerUrl.CUSTOM_FIELDS}/templates`);
+  }
+
+  static applyCustomFieldTemplate(industry) {
+    return this.apipost(`${ServerUrl.CUSTOM_FIELDS}/templates/${industry}/apply`);
+  }
+
+  static getCustomFieldValues(entityType, id) {
+    return this.apiget(ServerUrl.customFieldValues(entityType, id));
+  }
+
+  static saveCustomFieldValues(entityType, id, values) {
+    return this.apiput(ServerUrl.customFieldValues(entityType, id), values);
   }
 
   static getAiStatus() {

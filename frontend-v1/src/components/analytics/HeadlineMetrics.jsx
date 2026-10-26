@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import StatCard from '../common/StatCard';
 import DashboardInsights from './DashboardInsights';
+import DashboardNav from './DashboardNav';
 import Button from '../common/Button';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getDashboardPreferences, getHeadline, saveDashboardPreferences } from '../../core/services/analytics.service';
@@ -62,6 +63,7 @@ const HeadlineMetrics = () => {
 
   return (
     <div className="mb-6">
+      <DashboardNav />
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <p className="text-sm text-slate-500">
           {PERIODS.find((p) => p.value === prefs.period)?.label}

@@ -36,6 +36,12 @@ public final class AnalyticsDtos {
     public record SalesReport(LocalDate from, LocalDate to, long totalCount, BigDecimal totalValue, List<Row> byStage,
                               List<OwnerRow> byOwner, LocalDateTime generatedAt) {}
 
+    // NAV-M03: lead source report
+    public record SourceRow(String key, String label, long leads, long converted, double conversionRate) {}
+
+    public record LeadSourceReport(LocalDate from, LocalDate to, long totalLeads, long convertedLeads, double conversionRate,
+                                   List<SourceRow> bySource, LocalDateTime generatedAt) {}
+
     // FR-9.3
     public record CustomerReport(LocalDate from, LocalDate to, long activeCustomers, long newCustomers, long contactedCustomers,
                                  long notContactedCustomers, List<Row> byIndustry, List<Row> activityByChannel, List<Row> segments,

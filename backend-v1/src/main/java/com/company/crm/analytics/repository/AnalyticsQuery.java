@@ -49,6 +49,17 @@ public class AnalyticsQuery {
         return new Bucket("open", num(row[1]), dec(row[0]));
     }
 
+    // ==================== NAV-M03 lead sources ====================
+
+    /** Leads created in the period by source: rows [source, leads, converted]. */
+    @SuppressWarnings("unchecked")
+    public List<Object[]> leadsBySource(ReportScope s) {
+        return query("SELECT l.source, COUNT(*), COUNT(*) FILTER (WHERE l.stage = 'converted') FROM leads l"
+                + " WHERE l.tenant_id = :tenantId AND l.created_at >= :start AND l.created_at < :end"
+                + owners(s, "l.owner_id") + (s.industry() != null ? " AND l.industry = :industry" : "")
+                + " GROUP BY l.source ORDER BY 2 DESC", s).getResultList();
+    }
+
     // ==================== FR-9.2 sales ====================
 
     /** Opportunities created in the period, by current stage. */

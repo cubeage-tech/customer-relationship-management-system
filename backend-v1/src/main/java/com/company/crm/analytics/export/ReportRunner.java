@@ -83,6 +83,7 @@ public class ReportRunner {
             case TEAM -> team(analyticsService.teamPerformance(user, s), subtitle);
             case SERVICE -> service(serviceCampaignReports.service(user, s, f.priority(), f.technicianId()), subtitle);
             case CAMPAIGNS -> campaigns(serviceCampaignReports.campaigns(user, s), subtitle);
+            case LEAD_SOURCES -> leadSources(analyticsService.leadSources(user, s), subtitle);
         };
     }
 
@@ -149,6 +150,14 @@ public class ReportRunner {
                         map(r.campaigns(), c -> Arrays.asList(c.name(), c.channel(), c.status(), c.sent(), c.opened(), c.clicked(),
                                 c.converted(), c.openRate(), c.clickRate(), c.conversionRate(), c.leadsGenerated(),
                                 c.convertedLeads(), c.actualCost(), c.costPerLead()))));
+    }
+
+    private static ReportDocument leadSources(LeadSourceReport r, String subtitle) {
+        return doc(ReportType.LEAD_SOURCES, subtitle, r.generatedAt(),
+                table("Summary", List.of("Leads", "Converted", "Conversion %"),
+                        List.of(Arrays.asList(r.totalLeads(), r.convertedLeads(), r.conversionRate()))),
+                table("By source", List.of("Source", "Leads", "Converted", "Conversion %"),
+                        map(r.bySource(), x -> Arrays.asList(x.label(), x.leads(), x.converted(), x.conversionRate()))));
     }
 
     // ==================== Helpers ====================

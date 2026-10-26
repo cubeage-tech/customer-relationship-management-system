@@ -20,7 +20,8 @@ public enum ReportType {
     REVENUE("revenue", "Revenue report", Set.of(ADMIN, FINANCE_APPROVER, EXECUTIVE_OWNER)),
     TEAM("team-performance", "Team performance report", Set.of(ADMIN, SALES_MANAGER, EXECUTIVE_OWNER)),
     SERVICE("service", "Service report", Set.of(ADMIN, SERVICE_AGENT, EXECUTIVE_OWNER)),
-    CAMPAIGNS("campaigns", "Campaign performance report", Set.of(ADMIN, MARKETING_EXECUTIVE, EXECUTIVE_OWNER));
+    CAMPAIGNS("campaigns", "Campaign performance report", Set.of(ADMIN, MARKETING_EXECUTIVE, EXECUTIVE_OWNER)),
+    LEAD_SOURCES("lead-sources", "Lead source report", Set.of(ADMIN, SALES_MANAGER, EXECUTIVE_OWNER, MARKETING_EXECUTIVE));
 
     private final String code;
     private final String title;

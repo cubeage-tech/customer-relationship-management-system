@@ -4,6 +4,7 @@ import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import AttachmentsPanel from '../../components/common/AttachmentsPanel';
+import QuotationPdfPreview from '../../components/quotation/QuotationPdfPreview';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import {
@@ -37,6 +38,7 @@ const QuotationDetail = () => {
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const refresh = () => {
     getQuotation(id)
@@ -120,12 +122,24 @@ const QuotationDetail = () => {
             <Link to={RoutePath.QUOTATIONS} className="text-sm text-slate-500 hover:underline">
               Back to quotations
             </Link>
+            <Button variant="outline" onClick={() => setPreviewing(true)}>
+              Preview PDF
+            </Button>
             <Button variant="secondary" onClick={() => downloadQuotationPdf(id, quotation.quotationNumber)}>
               Download PDF
             </Button>
           </div>
         }
       />
+
+      {previewing && (
+        <QuotationPdfPreview
+          quotationId={id}
+          quotationNumber={quotation.quotationNumber}
+          onClose={() => setPreviewing(false)}
+          onDownload={() => downloadQuotationPdf(id, quotation.quotationNumber)}
+        />
+      )}
 
       {/* ---------------- Status & actions ---------------- */}
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">

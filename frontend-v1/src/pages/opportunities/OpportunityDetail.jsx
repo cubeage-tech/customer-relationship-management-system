@@ -8,6 +8,7 @@ import { PERMISSIONS } from '../../core/constants/permission.constant';
 import { OPPORTUNITY_STAGES } from '../../core/constants/app.constant';
 import { usePipelineStages } from '../../core/hooks/usePipelineStages';
 import RoutePath from '../../core/constants/routes.constant';
+import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
 import { getOpportunity, updateOpportunity, changeOpportunityStage } from '../../core/services/opportunity.service';
 import { listUsers } from '../../core/services/user.service';
 
@@ -236,6 +237,9 @@ const OpportunityDetail = () => {
           </dl>
         )}
       </div>
+
+      {/* ARC-9: industry-specific fields (from the customer's industry) */}
+      <div className="mt-6"><CustomFieldsPanel entityType="opportunity" recordId={opportunity.id} canEdit={canEdit} reloadKey={opportunity.customerId} /></div>
     </section>
   );
 };

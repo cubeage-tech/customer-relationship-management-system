@@ -355,6 +355,8 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.REPORTS} element={<Reports />} />
+            {/* NAV-M01: one address per report, e.g. /reports/sales */}
+            <Route path={`${RoutePath.REPORTS}/:tab`} element={<Reports />} />
           </Route>
 
           {/* ================= TENANT ADMINISTRATION ================= */}

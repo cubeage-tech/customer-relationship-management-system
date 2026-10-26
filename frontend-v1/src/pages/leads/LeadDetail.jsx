@@ -19,6 +19,7 @@ import { apiErrorMessage } from '../../core/utils/apiError';
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
 import MeetingsPanel from '../../components/meeting/MeetingsPanel';
+import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
 
 const toProfileForm = (lead) => ({
   leadName: lead.leadName || '',
@@ -346,6 +347,9 @@ const LeadDetail = () => {
           </dl>
         )}
       </div>
+
+      {/* ARC-9: industry-specific fields */}
+      <div className="mb-6"><CustomFieldsPanel entityType="lead" recordId={lead.id} canEdit={canEdit} reloadKey={lead.industry} /></div>
 
       {/* FR-5.1/5.2/5.4: communications logged against the lead; after conversion they also show on the customer. */}
       <MeetingsPanel leadId={lead.id} />

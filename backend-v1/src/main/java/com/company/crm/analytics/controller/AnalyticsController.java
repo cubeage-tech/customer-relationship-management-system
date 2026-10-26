@@ -4,6 +4,7 @@ import com.company.crm.analytics.dto.AnalyticsDtos.CampaignReport;
 import com.company.crm.analytics.dto.AnalyticsDtos.CustomerReport;
 import com.company.crm.analytics.dto.AnalyticsDtos.FilterOptions;
 import com.company.crm.analytics.dto.AnalyticsDtos.Headline;
+import com.company.crm.analytics.dto.AnalyticsDtos.LeadSourceReport;
 import com.company.crm.analytics.dto.AnalyticsDtos.Preferences;
 import com.company.crm.analytics.dto.AnalyticsDtos.RevenueReport;
 import com.company.crm.analytics.dto.AnalyticsDtos.SalesReport;
@@ -82,6 +83,19 @@ public class AnalyticsController {
                                        @RequestParam(required = false) Long userId) {
         ReportScope scope = scopeResolver.resolve(currentUser, from, to, industry, teamId, userId);
         return Response.ok(analyticsService.sales(currentUser, scope));
+    }
+
+    @GetMapping("/lead-sources")
+    @PreAuthorize(CUSTOMER_REPORTS)
+    @Operation(summary = "NAV-M03: leads created in the period by source, with conversions")
+    public Response<LeadSourceReport> leadSources(@AuthenticationPrincipal User currentUser,
+                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                                                  @RequestParam(required = false) String industry,
+                                                  @RequestParam(required = false) Long teamId,
+                                                  @RequestParam(required = false) Long userId) {
+        ReportScope scope = scopeResolver.resolve(currentUser, from, to, industry, teamId, userId);
+        return Response.ok(analyticsService.leadSources(currentUser, scope));
     }
 
     @GetMapping("/customers")

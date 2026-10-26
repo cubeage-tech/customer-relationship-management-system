@@ -6,6 +6,8 @@ import ApiService from './api.service';
  */
 export const getHeadline = (params) => ApiService.getAnalyticsHeadline(params);
 export const getSalesReport = (params) => ApiService.getSalesReport(params);
+/** NAV-M03: leads created in the period by source, with conversions. */
+export const getLeadSourceReport = (params) => ApiService.getLeadSourceReport(params);
 export const getCustomerReport = (params) => ApiService.getCustomerReport(params);
 export const getRevenueReport = (params) => ApiService.getRevenueReport(params);
 export const getTeamPerformance = (params) => ApiService.getTeamPerformance(params);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import StatCard from '../../components/common/StatCard';
@@ -15,6 +15,7 @@ import {
   exportReport,
   getCampaignReport,
   getCustomerReport,
+  getLeadSourceReport,
   getRevenueReport,
   getSalesReport,
   getServiceReport,
@@ -28,6 +29,7 @@ import {
 const LIVE_REPORTS = [
   { key: 'sales', code: 'sales', title: 'Sales', permissions: [PERMISSIONS.REPORTS_SALES], load: getSalesReport },
   { key: 'customers', code: 'customers', title: 'Customers', permissions: [PERMISSIONS.REPORTS_SALES, PERMISSIONS.REPORTS_CAMPAIGN], load: getCustomerReport },
+  { key: 'lead-sources', code: 'lead-sources', title: 'Lead sources', permissions: [PERMISSIONS.REPORTS_SALES, PERMISSIONS.REPORTS_CAMPAIGN], load: getLeadSourceReport },
   { key: 'revenue', code: 'revenue', title: 'Revenue', permissions: [PERMISSIONS.REPORTS_REVENUE], load: getRevenueReport },
   { key: 'team', code: 'team-performance', title: 'Team performance', permissions: [PERMISSIONS.REPORTS_SALES], load: getTeamPerformance },
   { key: 'service', code: 'service', title: 'Service', permissions: [PERMISSIONS.REPORTS_SERVICE], load: getServiceReport },
@@ -57,6 +59,28 @@ const Table = ({ title, head, rows, empty = 'Nothing in this period.' }) => (
         </table>
       </div>
     )}
+  </div>
+);
+
+/** NAV-M03: where leads come from and how well each source converts. */
+const LeadSourcesView = ({ data, drill }) => (
+  <div className="space-y-6">
+    <div className="grid gap-4 sm:grid-cols-3">
+      <StatCard label="Leads created" value={data.totalLeads} />
+      <StatCard label="Converted" value={data.convertedLeads} />
+      <StatCard label="Conversion rate" value={pct(data.conversionRate)} />
+    </div>
+    <BarList title="Leads by source" rows={data.bySource.map((r) => ({ ...r, count: r.leads }))} measure="count"
+      onSelect={(r) => drill('source', r)} selectHint="Open these leads" />
+    <Table
+      title="Conversion by source"
+      head={['Source', 'Leads', 'Converted', 'Conversion rate']}
+      rows={data.bySource.map((r) => (
+        <tr key={r.key} className="border-b border-slate-100">
+          <td className={td}>{r.label}</td><td className={td}>{r.leads}</td><td className={td}>{r.converted}</td><td className={td}>{pct(r.conversionRate)}</td>
+        </tr>
+      ))}
+    />
   </div>
 );
 
@@ -196,7 +220,7 @@ const CampaignsView = ({ data }) => (
   </div>
 );
 
-const VIEWS = { sales: SalesView, customers: CustomersView, revenue: RevenueView, team: TeamView, service: ServiceView, campaigns: CampaignsView };
+const VIEWS = { sales: SalesView, customers: CustomersView, 'lead-sources': LeadSourcesView, revenue: RevenueView, team: TeamView, service: ServiceView, campaigns: CampaignsView };
 
 const Reports = () => {
   const { can, scopeFor } = usePermissions();
@@ -204,8 +228,17 @@ const Reports = () => {
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  // NAV-M01: each report has its own address (/reports/sales, /reports/revenue, ...).
+  const { tab: pathTab } = useParams();
   // UI-7/UI-8: dashboard report links and chart drill-downs open a tab with its filters.
-  const [tab, setTab] = useState(() => (live.some((r) => r.key === searchParams.get('tab')) ? searchParams.get('tab') : live[0]?.key));
+  const [tab, setTabState] = useState(() => {
+    const wanted = pathTab ?? searchParams.get('tab');
+    return live.some((r) => r.key === wanted) ? wanted : live[0]?.key;
+  });
+  const setTab = (key) => {
+    setTabState(key);
+    navigate(`/reports/${key}`, { replace: true });
+  };
   const [filters, setFilters] = useState(() => {
     const base = { ...periodRange('month'), industry: '', teamId: '', userId: '', priority: '', technicianId: '' };
     Object.keys(base).forEach((k) => { if (searchParams.get(k)) base[k] = searchParams.get(k); });
@@ -215,6 +248,7 @@ const Reports = () => {
   /** UI-8 drill-down: narrow this report, or open the matching records. */
   const drill = (kind, row) => {
     if (kind === 'stage') navigate(`/opportunities?stage=${encodeURIComponent(row.key)}`);
+    else if (kind === 'source') navigate(`/leads?source=${encodeURIComponent(row.key)}`);
     else if (kind === 'industry') navigate(`/customers?industry=${encodeURIComponent(row.key)}`);
     else if (kind === 'user') setFilters((f) => ({ ...f, userId: row.key }));
     else if (kind === 'priority') setFilters((f) => ({ ...f, priority: row.key }));

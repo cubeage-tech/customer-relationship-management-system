@@ -62,6 +62,9 @@ class ServerUrl {
     static COMMUNICATION_INBOX = ServerUrl.COMMUNICATIONS + "/inbox";
     // API-G11 AI services
     static AI = ServerUrl.API_MODULE_USER + "/ai";
+    // ARC-9
+    static CUSTOM_FIELDS = ServerUrl.API_MODULE_USER + "/custom-fields";
+    static customFieldValues = (entityType, id) => `${ServerUrl.CUSTOM_FIELDS}/values/${entityType}/${id}`;
     static COMMUNICATION_SMS_ALERTS = ServerUrl.COMMUNICATIONS + "/sms-alerts";
     static customerContact = (customerId, contactId) =>
       `${ServerUrl.CUSTOMERS}/${customerId}/contacts/${contactId}`;
@@ -144,6 +147,7 @@ class ServerUrl {
     static ANALYTICS_HEADLINE = ServerUrl.ANALYTICS + "/headline";
     static ANALYTICS_SALES = ServerUrl.ANALYTICS + "/sales";
     static ANALYTICS_CUSTOMERS = ServerUrl.ANALYTICS + "/customers";
+    static ANALYTICS_LEAD_SOURCES = ServerUrl.ANALYTICS + "/lead-sources";
     static ANALYTICS_REVENUE = ServerUrl.ANALYTICS + "/revenue";
     static ANALYTICS_TEAM_PERFORMANCE = ServerUrl.ANALYTICS + "/team-performance";
     static ANALYTICS_FILTER_OPTIONS = ServerUrl.ANALYTICS + "/filter-options";

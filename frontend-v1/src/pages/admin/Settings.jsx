@@ -6,6 +6,7 @@ import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import SmsAlertSettings from '../../components/communication/SmsAlertSettings';
 import IndustrySettings from '../../components/customer/IndustrySettings';
+import CustomFieldSettings from '../../components/customfield/CustomFieldSettings';
 import BrandingSettings from '../../components/branding/BrandingSettings';
 import PipelineStageSettings from '../../components/opportunity/PipelineStageSettings';
 import { SupportFormSettings, TicketAssignmentRules } from '../../components/service/ServiceSettings';
@@ -47,6 +48,9 @@ const Settings = () => {
       {can(PERMISSIONS.SETTINGS_MANAGE) && <BrandingSettings />}
 
       {can(PERMISSIONS.SETTINGS_MANAGE) && <IndustrySettings />}
+
+      {/* ARC-9 */}
+      {can(PERMISSIONS.SETTINGS_MANAGE) && <CustomFieldSettings />}
 
       {can(PERMISSIONS.SETTINGS_MANAGE) && <PipelineStageSettings />}
 
