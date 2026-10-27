@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import Button from '../../components/common/Button';
 import { signup as signupRequest } from '../../core/services/auth.service';
 import RoutePath from '../../core/constants/routes.constant';
 import { USER_ROLES } from '../../core/constants/app.constant';
@@ -11,6 +10,14 @@ import { Eye, EyeOff, Bot, ShieldCheck, BarChart3, Sparkles, Check, Landmark } f
 const STRENGTH_COLORS = ['bg-gray-200', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
 const STRENGTH_TEXT_COLORS = ['text-gray-400', 'text-red-500', 'text-orange-500', 'text-yellow-600', 'text-green-600'];
 
+const EDITIONS = [
+  { value: 'standard', label: 'Standard CRM' },
+  { value: 'manufacturing', label: 'Manufacturing' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'industrial_sales', label: 'Industrial Sales' },
+];
+
 const Signup = () => {
   const [form, setForm] = useState({
     firstName: '',
@@ -18,6 +25,7 @@ const Signup = () => {
     email: '',
     organizationName: '',
     bankAccountNumber: '',
+    edition: 'standard',
     password: '',
     confirmPassword: '',
     termsAccepted: false,
@@ -79,6 +87,7 @@ const Signup = () => {
         password: form.password,
         organizationName: form.organizationName,
         bankAccountNumber: form.bankAccountNumber,
+        edition: form.edition,
         role: USER_ROLES.ADMIN,
       });
       navigate(`${RoutePath.LOGIN}?signup=check-email&email=${encodeURIComponent(form.email)}`);
@@ -250,6 +259,15 @@ const Signup = () => {
                 />
               </div>
               {errors.organizationName && <p className="mt-1 text-xs text-red-500">{errors.organizationName}</p>}
+            </div>
+
+            {/* BIZ-2: start with your industry's fields and pipeline stages (can be changed later in Settings) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="edition">Industry edition</label>
+              <select id="edition" name="edition" value={form.edition} onChange={handleChange}
+                className="block w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white shadow-sm focus:ring-2 focus:ring-primary/40 focus:border-primary">
+                {EDITIONS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
+              </select>
             </div>
 
             <div>

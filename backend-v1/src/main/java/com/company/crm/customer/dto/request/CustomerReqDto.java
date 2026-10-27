@@ -1,5 +1,6 @@
 package com.company.crm.customer.dto.request;
 
+import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class CustomerReqDto {
     @Email
     private String email;
 
+    @ValidPhone // VAL-2
     private String phone;
 
     private String website;

@@ -1,5 +1,7 @@
 package com.company.crm.communication.integration;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,10 @@ public class TwilioClient {
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
     private final ObjectMapper objectMapper;
+
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
 
     @Value("${app.communication.twilio.account-sid:}")
     private String accountSid;
@@ -117,7 +123,13 @@ public class TwilioClient {
             if (response.statusCode() >= 300) {
                 String message = json.path("message").asText("Twilio returned HTTP " + response.statusCode());
                 log.warn("Twilio send failed ({}): {}", response.statusCode(), message);
+                if (response.statusCode() == 401 && integrationHealth != null) {
+                    integrationHealth.authFailed(IntegrationHealthService.TWILIO, "Twilio answered HTTP 401: " + message);
+                }
                 throw new TwilioException(message, response.statusCode() == 429 || response.statusCode() >= 500);
+            }
+            if (integrationHealth != null) {
+                integrationHealth.ok(IntegrationHealthService.TWILIO);
             }
             return new SendResult(json.path("sid").asText(), json.path("status").asText("queued"));
         } catch (TwilioException e) {

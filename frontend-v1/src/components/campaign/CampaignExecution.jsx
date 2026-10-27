@@ -5,7 +5,8 @@ import { getCampaignMetrics, getCampaignRecipients, launchCampaign, scheduleCamp
 import { listSegments } from '../../core/services/marketing.service';
 import { campaignPayload } from '../../core/utils/campaignPayload';
 
-const SENDABLE = new Set(['email', 'sms']);
+// NOT-2: WhatsApp campaigns reach only customers who opted in (NOT-7).
+const SENDABLE = new Set(['email', 'sms', 'whatsapp']);
 const inputClass = 'border border-slate-300 rounded px-2 py-1 w-full';
 
 const Stat = ({ label, value }) => (

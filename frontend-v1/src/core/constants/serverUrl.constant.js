@@ -7,10 +7,15 @@ class ServerUrl {
     static AUTH_LOGIN = ServerUrl.API_MODULE_AUTH + "/login";
     static AUTH_REGISTER = ServerUrl.API_MODULE_AUTH + "/signup";
     static AUTH_LOGOUT = ServerUrl.API_MODULE_AUTH + "/logout";
+    static AUTH_REFRESH = ServerUrl.API_MODULE_AUTH + "/refresh";
     static AUTH_VERIFY_EMAIL = ServerUrl.API_MODULE_AUTH + "/verify-email";
     static AUTH_FORGOT_PASSWORD = ServerUrl.API_MODULE_AUTH + "/forgot-password";
     static AUTH_RESET_PASSWORD = ServerUrl.API_MODULE_AUTH + "/reset-password";
     static AUTH_RESEND_VERIFICATION = ServerUrl.API_MODULE_AUTH + "/resend-verification";
+    // SEC-1c: the second sign-in step
+    static AUTH_MFA_VERIFY = ServerUrl.API_MODULE_AUTH + "/mfa/verify";
+    static AUTH_MFA_SETUP = ServerUrl.API_MODULE_AUTH + "/mfa/setup";
+    static AUTH_MFA_SETUP_CONFIRM = ServerUrl.API_MODULE_AUTH + "/mfa/setup/confirm";
 
   static API_MODULE_USER = "/api";
 
@@ -62,6 +67,22 @@ class ServerUrl {
     static COMMUNICATION_INBOX = ServerUrl.COMMUNICATIONS + "/inbox";
     // API-G11 AI services
     static AI = ServerUrl.API_MODULE_USER + "/ai";
+    // API-G02, NAV-M11, SEC-8, BIZ-2
+    static customerHistory = (id) => `${ServerUrl.API_MODULE_USER}/customers/${id}/history`;
+    static INTEGRATION_STATUS = ServerUrl.API_MODULE_USER + "/integrations/status";
+    static INTEGRATION_KEYS = ServerUrl.API_MODULE_USER + "/integration-keys";
+    static DATA_REQUESTS = ServerUrl.API_MODULE_USER + "/data-requests";
+    static EDITIONS = ServerUrl.API_MODULE_USER + "/editions";
+    // NOT-5..NOT-8, INT-8, SEC-1c
+    static NOTIFICATIONS = ServerUrl.API_MODULE_USER + "/notifications";
+    static NOTIFICATION_SETTINGS = ServerUrl.API_MODULE_USER + "/notification-settings";
+    static NOTIFICATION_DELIVERIES = ServerUrl.API_MODULE_USER + "/notification-deliveries";
+    static customerConsent = (id) => `${ServerUrl.API_MODULE_USER}/customers/${id}/communication-preferences`;
+    static INTEGRATION_HEALTH = ServerUrl.API_MODULE_USER + "/integration-health";
+    static MFA = ServerUrl.API_MODULE_USER + "/mfa";
+    // ROLE-8 / NOT-1
+    static ROLE_PERMISSIONS = ServerUrl.API_MODULE_USER + "/role-permissions";
+    static NOTIFICATION_PREFERENCES = ServerUrl.API_MODULE_USER + "/notifications/preferences";
     // ARC-9
     static CUSTOM_FIELDS = ServerUrl.API_MODULE_USER + "/custom-fields";
     static customFieldValues = (entityType, id) => `${ServerUrl.CUSTOM_FIELDS}/values/${entityType}/${id}`;

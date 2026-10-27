@@ -32,7 +32,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * FR-7.1c/FR-7.4: actually sends email and SMS campaigns, and tracks what recipients do.
+ * FR-7.1c/FR-7.4: actually sends email, SMS and (NOT-2) WhatsApp campaigns, and tracks what recipients do.
  * <ul>
  *   <li>Launch snapshots the segment into recipients — queued, or skipped (unsubscribed / no
  *       address) — and activates the campaign. Other channels just activate.</li>
@@ -60,7 +60,7 @@ public class CampaignDeliveryService {
     private String publicApiUrl;
 
     public static boolean isSendable(CampaignChannel channel) {
-        return channel == CampaignChannel.EMAIL || channel == CampaignChannel.SMS;
+        return channel == CampaignChannel.EMAIL || channel == CampaignChannel.SMS || channel == CampaignChannel.WHATSAPP;
     }
 
     /** What a sendable campaign needs before it can launch or be scheduled (no segment = activate only). */
@@ -76,7 +76,7 @@ public class CampaignDeliveryService {
         }
     }
 
-    /** Activates the campaign and, for email/SMS with a segment, queues one message per segment customer. */
+    /** Activates the campaign and, for email/SMS/WhatsApp with a segment, queues one message per segment customer. */
     @Transactional
     public void launch(Campaign campaign) {
         assertReadyToSend(campaign);
@@ -90,8 +90,13 @@ public class CampaignDeliveryService {
                 r.setCustomer(customer);
                 r.setTrackingToken(newToken());
                 r.setAddress(email ? emailOf(customer) : phoneOf(customer));
+                // NOT-7: the customer's consent for the channel.
                 if (customer.isMarketingOptOut()) {
                     skip(r, "Unsubscribed from marketing");
+                } else if (campaign.getChannel() == CampaignChannel.SMS && customer.isSmsOptOut()) {
+                    skip(r, "Opted out of SMS");
+                } else if (campaign.getChannel() == CampaignChannel.WHATSAPP && !customer.isWhatsappOptIn()) {
+                    skip(r, "Hasn't opted in to WhatsApp");
                 } else if (r.getAddress() == null) {
                     skip(r, email ? "No email address on record" : "No phone number on record");
                 }
@@ -135,6 +140,9 @@ public class CampaignDeliveryService {
             String unsubscribe = publicUrl("u", r.getTrackingToken());
             result = communicationService.sendMarketingEmail(c.getTenant(), r.getCustomer(), r.getAddress(), c.getMessageSubject(),
                     plainText(c, unsubscribe), html(c, r), unsubscribe);
+        } else if (c.getChannel() == CampaignChannel.WHATSAPP) {
+            result = communicationService.sendAutomatedWhatsApp(c.getTenant(), r.getCustomer(), r.getAddress(),
+                    c.getMessageBody().trim() + "\nReply STOP to stop these messages.");
         } else {
             result = communicationService.sendAutomatedSms(c.getTenant(), r.getCustomer(), r.getAddress(),
                     c.getMessageBody().trim() + "\nReply STOP to opt out.");

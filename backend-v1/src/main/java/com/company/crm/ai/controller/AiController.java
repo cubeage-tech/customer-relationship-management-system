@@ -1,5 +1,8 @@
 package com.company.crm.ai.controller;
 
+import jakarta.validation.constraints.Pattern;
+import com.company.crm.ai.service.AiQuotationDraftService;
+import com.company.crm.ai.privacy.AiPrivacyService;
 import com.company.crm.ai.dto.AiDtos.*;
 import com.company.crm.ai.llm.LlmGateway;
 import com.company.crm.ai.service.AiAssistantService;
@@ -39,12 +42,57 @@ public class AiController {
     private final AiAssistantService assistant;
     private final AiWritingService writing;
     private final LlmGateway llm;
+    private final AiPrivacyService privacy;
+    private final AiQuotationDraftService quotationDrafts;
 
     @GetMapping("/status")
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
-    @Operation(summary = "API-G11: whether the language-model features are configured")
-    public Response<Map<String, Boolean>> status() {
-        return Response.ok(Map.of("llmConfigured", llm.isConfigured()));
+    @Operation(summary = "API-G11 / SEC-6: whether the language-model features are configured and switched on for the tenant")
+    public Response<Map<String, Object>> status(@AuthenticationPrincipal User currentUser) {
+        AiPrivacyService.AiSettings settings = privacy.settings(currentUser);
+        return Response.ok(Map.of("llmConfigured", llm.isConfigured() && settings.aiEnabled(), "providerConfigured", llm.isConfigured(),
+                "aiEnabled", settings.aiEnabled(), "messageContent", settings.messageContent(), "policy", AiPrivacyService.POLICY));
+    }
+
+    @GetMapping("/settings")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "SEC-5/SEC-6: the tenant's AI switches (AI on/off, message text allowed) and what each feature sends")
+    public Response<Map<String, Object>> settings(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(Map.of("settings", privacy.settings(currentUser), "policy", AiPrivacyService.POLICY));
+    }
+
+    @PutMapping("/settings")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "SEC-5/SEC-6: switch AI off, or keep message text away from the AI provider (audited)")
+    public Response<AiPrivacyService.AiSettings> updateSettings(@AuthenticationPrincipal User currentUser,
+                                                                @RequestBody AiPrivacyService.AiSettings req) {
+        return Response.ok("AI settings saved", privacy.updateSettings(currentUser, req));
+    }
+
+    @GetMapping("/exclusions/{recordType}/{recordId}")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "SEC-6: whether a customer or lead is excluded from AI features")
+    public Response<AiPrivacyService.Exclusion> exclusion(@AuthenticationPrincipal User currentUser,
+                                                          @PathVariable @Pattern(regexp = "customer|lead") String recordType,
+                                                          @PathVariable Long recordId) {
+        return Response.ok(privacy.exclusion(currentUser, recordType, recordId));
+    }
+
+    @PutMapping("/exclusions/{recordType}/{recordId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "SEC-6: exclude a customer or lead from AI features (or include it again); audited")
+    public Response<AiPrivacyService.Exclusion> setExclusion(@AuthenticationPrincipal User currentUser,
+                                                             @PathVariable @Pattern(regexp = "customer|lead") String recordType,
+                                                             @PathVariable Long recordId, @RequestBody Map<String, Boolean> body) {
+        return Response.ok(privacy.setExcluded(currentUser, recordType, recordId, Boolean.TRUE.equals(body.get("excluded"))));
+    }
+
+    @PostMapping("/quotation-draft")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "NAV-2: a first draft of a quotation (line items from your products, cover note) to edit before saving")
+    public Response<AiQuotationDraftService.QuotationDraft> quotationDraft(@AuthenticationPrincipal User currentUser,
+                                                                           @Valid @RequestBody AiQuotationDraftService.DraftReq req) {
+        return Response.ok(quotationDrafts.draft(currentUser, req));
     }
 
     @GetMapping("/lead-score")

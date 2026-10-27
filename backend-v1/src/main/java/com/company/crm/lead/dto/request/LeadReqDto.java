@@ -1,5 +1,6 @@
 package com.company.crm.lead.dto.request;
 
+import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -20,6 +21,7 @@ public class LeadReqDto {
     @Email
     private String contactEmail;
 
+    @ValidPhone // VAL-2
     private String contactPhone;
 
     /** One of the IndustryType db values, e.g. "manufacturing", "real_estate". */

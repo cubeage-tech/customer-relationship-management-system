@@ -1,5 +1,8 @@
 package com.company.crm.ai.llm;
 
+import com.company.crm.ai.privacy.AiRedactor;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.core.JsonValue;
@@ -32,6 +35,10 @@ public class ClaudeGateway implements LlmGateway {
     private final String model;
     private volatile AnthropicClient client;
 
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
+
     public ClaudeGateway(@Value("${app.ai.anthropic.api-key:}") String apiKey,
                          @Value("${app.ai.model:claude-opus-5-5}") String model) {
         this.apiKey = apiKey;
@@ -52,7 +59,8 @@ public class ClaudeGateway implements LlmGateway {
                 .model(model)
                 .maxTokens(16000L)
                 .system(system)
-                .addUserMessage(prompt)
+                // SEC-5: contact, identity and account details never leave the CRM, whatever the caller built.
+                .addUserMessage(AiRedactor.redact(prompt))
                 // Server-side fallback: a request the model declines is re-routed by refusal category.
                 .putAdditionalHeader("anthropic-beta", "server-side-fallback-2026-07-01")
                 .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
@@ -60,6 +68,9 @@ public class ClaudeGateway implements LlmGateway {
                 .build();
         try {
             StructuredMessage<T> response = client().messages().create(params);
+            if (integrationHealth != null) {
+                integrationHealth.ok(IntegrationHealthService.ANTHROPIC);
+            }
             if (response.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) {
                 log.info("AI request declined by the model");
                 return Optional.empty();
@@ -69,6 +80,9 @@ public class ClaudeGateway implements LlmGateway {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "The AI service is busy — try again in a moment", "AI_RATE_LIMITED");
         } catch (AnthropicServiceException e) {
             log.warn("AI request failed ({}): {}", e.statusCode(), e.getMessage());
+            if ((e.statusCode() == 401 || e.statusCode() == 403) && integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.ANTHROPIC, "Anthropic answered HTTP " + e.statusCode());
+            }
             throw new ApiException(HttpStatus.BAD_GATEWAY, "The AI service could not answer — try again", "AI_UNAVAILABLE");
         } catch (AnthropicException e) {
             log.warn("AI request error: {}", e.getMessage());

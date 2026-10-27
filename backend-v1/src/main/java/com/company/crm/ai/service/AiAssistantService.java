@@ -1,5 +1,6 @@
 package com.company.crm.ai.service;
 
+import com.company.crm.ai.privacy.AiPrivacyService;
 import com.company.crm.ai.dto.AiDtos.ChatPlan;
 import com.company.crm.ai.dto.AiDtos.ChatRes;
 import com.company.crm.ai.dto.AiDtos.ChatRow;
@@ -66,6 +67,7 @@ public class AiAssistantService {
             next step a salesperson or manager could take. Never invent records that are not in the result.""";
 
     private final LlmGateway llm;
+    private final AiPrivacyService privacy;
     private final CustomerService customerService;
     private final LeadService leadService;
     private final OpportunityService opportunityService;
@@ -80,6 +82,7 @@ public class AiAssistantService {
 
     @Transactional(readOnly = true)
     public ChatRes ask(User user, String question) {
+        privacy.requireEnabled(user); // SEC-6
         ChatPlan plan = llm.structured(PLAN_SYSTEM, "Question: " + question, ChatPlan.class)
                 .orElse(new ChatPlan("unsupported", null, null, null, null, null, null, null));
         String intent = plan.intent() == null ? "unsupported" : plan.intent();
@@ -104,9 +107,16 @@ public class AiAssistantService {
         }
 
         ChatWording wording = llm.structured(WORDING_SYSTEM, "Question: " + question + "\nQuery: " + intent
-                        + "\nResult: " + result.summary() + "\nMatches: " + result.count() + "\nItems: " + json(result.rows()), ChatWording.class)
+                        + "\nResult: " + result.summary() + "\nMatches: " + result.count() + "\nItems: " + json(forAi(result.rows())), ChatWording.class)
                 .orElse(new ChatWording("Found " + result.count() + " matching record(s).", null));
         return new ChatRes(question, intent, wording.answer(), wording.recommendedAction(), result.count(), result.rows());
+    }
+
+    /** SEC-6: records excluded from AI are shown to the user but not named to the AI provider. */
+    private List<ChatRow> forAi(List<ChatRow> rows) {
+        return rows.stream().map(r -> ("customer".equals(r.type()) && privacy.customerExcluded(r.id()))
+                || ("lead".equals(r.type()) && privacy.leadExcluded(r.id()))
+                ? new ChatRow(null, r.type(), "(a record excluded from AI)", "") : r).toList();
     }
 
     private Result allowed(RoleType role, Set<RoleType> roles, String what, java.util.function.Supplier<Result> query) {

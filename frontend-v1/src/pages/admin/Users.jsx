@@ -4,7 +4,9 @@ import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
-import { ROLE_LABELS, ROLE_OPTIONS, TEAM_ROLES } from '../../core/constants/app.constant';
+import { ROLE_LABELS, ROLE_OPTIONS, TEAM_ROLES, USER_ROLES } from '../../core/constants/app.constant';
+import { useAuth } from '../../core/hooks/useAuth';
+import { resetUserMfa } from '../../core/services/mfa.service';
 import { listUsers, createUser } from '../../core/services/user.service';
 import { apiErrorMessage } from '../../core/utils/apiError';
 
@@ -13,8 +15,11 @@ const TEAM_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => TEAM_ROLES.includes(op
 const INITIAL_FORM = { fullName: '', email: '', password: '', role: TEAM_ROLES[0] };
 
 const Users = () => {
-  const { can } = usePermissions();
+  const { can, is } = usePermissions();
   const canManage = can(PERMISSIONS.USERS_MANAGE);
+  const { user: me } = useAuth();
+  // SEC-1c: the tenant admin resets two-step sign-in for someone who lost their phone.
+  const canResetMfa = is([USER_ROLES.ADMIN]);
 
   const [roleFilter, setRoleFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -24,6 +29,16 @@ const Users = () => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
   const [loadError, setLoadError] = useState('');
+
+  const resetMfa = async (u) => {
+    if (!window.confirm(`Reset two-step sign-in for ${u.fullName}? They will set it up again at their next sign-in if their role requires it.`)) return;
+    try {
+      await resetUserMfa(u.id);
+      setToast({ type: 'success', message: `Two-step sign-in reset for ${u.fullName}.` });
+    } catch (err) {
+      setToast({ type: 'error', message: apiErrorMessage(err, 'Could not reset two-step sign-in.') });
+    }
+  };
 
   const refresh = () => {
     listUsers()
@@ -164,7 +179,7 @@ const Users = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-5 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Email</th><th className="px-4 py-3 font-semibold">Role</th><th className="px-4 py-3 font-semibold">Status</th></tr></thead>
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-5 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Email</th><th className="px-4 py-3 font-semibold">Role</th><th className="px-4 py-3 font-semibold">Status</th>{canResetMfa && <th className="px-4 py-3" aria-label="Actions" />}</tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {visibleUsers.map((u) => (
                   <tr key={u.id} className="transition-colors hover:bg-slate-50/70">
@@ -172,6 +187,15 @@ const Users = () => {
                     <td className="px-4 py-3.5 text-slate-600">{u.email}</td>
                     <td className="px-4 py-3.5"><span className="inline-flex rounded-full bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">{ROLE_LABELS[u.role] || u.role}</span></td>
                     <td className="px-4 py-3.5"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${u.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}><span className={`size-1.5 rounded-full ${u.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />{u.status}</span></td>
+                    {canResetMfa && (
+                      <td className="px-4 py-3.5 text-right">
+                        {u.id !== me?.id && (
+                          <button type="button" onClick={() => resetMfa(u)} className="rounded-md px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                            Reset two-step sign-in
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

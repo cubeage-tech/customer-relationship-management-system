@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Search,
   Sparkles,
-  Bell,
   MessageSquare,
   ChevronDown,
   LogOut,
@@ -16,6 +15,7 @@ import { APP_SHORT_NAME } from "../../core/constants/app.constant";
 import { getRoleLabel, hasPermission, isSuperAdmin } from "../../core/utils/permission";
 import { PERMISSIONS } from "../../core/constants/permission.constant";
 import RoutePath from "../../core/constants/routes.constant";
+import NotificationBell from "../notification/NotificationBell";
 
 /** onOpenMenu: opens the navigation drawer on tablets and phones (NFR-7.9). */
 const UserNavbar = ({ onOpenMenu }) => {
@@ -25,8 +25,7 @@ const UserNavbar = ({ onOpenMenu }) => {
   const [profileOpen, setProfileOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // No notifications/messages API yet — keep the badges hidden rather than show made-up counts.
-  const notificationCount = 0;
+  // No messages API yet — keep the badge hidden rather than show a made-up count.
   const messageCount = 0;
 
   const initials = user?.name
@@ -114,18 +113,8 @@ const UserNavbar = ({ onOpenMenu }) => {
           AI Assistant
         </button>
 
-        {/* Notifications */}
-        <button
-          type="button"
-          className="relative w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 transition"
-        >
-          <Bell size={20} />
-          {notificationCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
-              {notificationCount}
-            </span>
-          )}
-        </button>
+        {/* NOT-5: notifications */}
+        <NotificationBell />
 
         {/* Messages */}
         <button

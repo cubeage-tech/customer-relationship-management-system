@@ -1,5 +1,6 @@
 package com.company.crm.quotation.service;
 
+import com.company.crm.quotation.event.QuotationRespondedEvent;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.quotation.dto.response.QuotationSummaryDto;
@@ -28,6 +29,7 @@ import com.company.crm.tenant.service.TenantSettingsService;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.quotation.event.DiscountApprovalRequestedEvent;
 import com.company.crm.quotation.event.QuotationSentEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -104,6 +106,7 @@ public class QuotationService {
         applyFields(currentUser, quotation, dto);
         Quotation created = quotationRepository.save(quotation);
         auditService.record(currentUser, AuditAction.QUOTATION_CREATED, AUDIT_ENTITY, created.getId(), summary(created));
+        announceIfApprovalNeeded(currentUser, created, null);
         return quotationMapper.toDto(created);
     }
 
@@ -112,10 +115,19 @@ public class QuotationService {
         Quotation quotation = findQuotation(currentUser, quotationId);
         assertAccess(currentUser, quotation);
         quotation.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
+        DiscountApprovalStatus before = quotation.getDiscountApprovalStatus();
         applyFields(currentUser, quotation, dto);
         Quotation updated = quotationRepository.save(quotation);
         auditService.record(currentUser, AuditAction.QUOTATION_UPDATED, AUDIT_ENTITY, updated.getId(), summary(updated));
+        announceIfApprovalNeeded(currentUser, updated, before);
         return quotationMapper.toDto(updated);
+    }
+
+    /** NOT-5: approvers hear about a discount that newly needs approval (not again while it is still pending). */
+    private void announceIfApprovalNeeded(User currentUser, Quotation q, DiscountApprovalStatus before) {
+        if (q.getDiscountApprovalStatus() == DiscountApprovalStatus.PENDING && before != DiscountApprovalStatus.PENDING) {
+            eventPublisher.publishEvent(new DiscountApprovalRequestedEvent(q.getTenant().getId(), q.getId(), currentUser.getId()));
+        }
     }
 
     /** NFR-7.2d audit detail: number, customer, total and discount state — no line-item personal data. */
@@ -168,7 +180,29 @@ public class QuotationService {
         return new PublicQuotationDto(quotation.getTenant().getCompanyName(), quotation.getQuotationNumber(),
                 quotation.getCustomer().getCompanyName(), quotation.getStatus().getDbValue(), quotation.getValidUntil(),
                 quotation.getLineItems().stream().map(quotationMapper::toPublicLineItem).toList(),
-                quotation.getSubtotal(), quotation.getGrandTotal());
+                quotation.getSubtotal(), quotation.getGrandTotal(), OPEN_FOR_RESPONSE.contains(quotation.getStatus()));
+    }
+
+    /**
+     * NAV-2: the customer accepts or declines a sent quotation from its view link (with an optional
+     * comment). Only while it is open (sent or viewed, not expired); the owner is told afterwards.
+     */
+    @Transactional
+    public PublicQuotationDto respondAsCustomer(String token, boolean accept, String comment) {
+        Quotation quotation = openViewLink(token, true);
+        if (!OPEN_FOR_RESPONSE.contains(quotation.getStatus())) {
+            throw ApiException.conflict("This quotation can no longer be answered (it is " + quotation.getStatus().getDbValue() + ")");
+        }
+        QuotationStatus target = accept ? QuotationStatus.APPROVED : QuotationStatus.REJECTED;
+        quotation.setStatus(target);
+        quotation.setCustomerApprovedAt(accept ? LocalDateTime.now() : null);
+        quotation.setCustomerRespondedAt(LocalDateTime.now());
+        quotation.setCustomerResponseComment(comment == null || comment.isBlank() ? null : comment.trim());
+        quotationRepository.save(quotation);
+        auditService.recordSystem(quotation.getTenant().getId(), AuditAction.QUOTATION_STATUS_RECORDED, AUDIT_ENTITY, quotation.getId(),
+                "number=" + quotation.getQuotationNumber() + ", " + target.getDbValue() + " by the customer from the view link");
+        eventPublisher.publishEvent(new QuotationRespondedEvent(quotation.getTenant().getId(), quotation.getId(), accept));
+        return viewAsCustomer(token, false);
     }
 
     /** A quotation PDF and the name to download it under. */

@@ -1,5 +1,11 @@
 package com.company.crm.quotation.controller;
 
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PostMapping;
 import com.company.crm.common.response.Response;
 import com.company.crm.quotation.dto.response.PublicQuotationDto;
 import com.company.crm.quotation.service.QuotationService;
@@ -32,6 +38,20 @@ public class PublicQuotationController {
     @Operation(summary = "FR-4.5: customer views a sent quotation (marks it viewed)")
     public Response<PublicQuotationDto> view(@AuthenticationPrincipal User currentUser, @PathVariable String token) {
         return Response.ok(quotationService.viewAsCustomer(token, currentUser == null));
+    }
+
+    /** NAV-2: the customer accepts or declines (decision = accept | decline), optionally with a comment. */
+    @PostMapping("/{token}/respond")
+    @Operation(summary = "NAV-2: customer accepts or declines the quotation from its view link")
+    public Response<PublicQuotationDto> respond(@PathVariable String token, @Valid @RequestBody RespondRequest request) {
+        return Response.ok(request.accept() ? "Thank you — the quotation is accepted" : "Thank you — we've let them know",
+                quotationService.respondAsCustomer(token, request.accept(), request.comment()));
+    }
+
+    public record RespondRequest(@NotBlank @Pattern(regexp = "accept|decline") String decision, @Size(max = 1000) String comment) {
+        boolean accept() {
+            return "accept".equals(decision);
+        }
     }
 
     @GetMapping("/{token}/pdf")

@@ -1,5 +1,6 @@
 package com.company.crm.user.dto.request;
 
+import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -21,6 +22,7 @@ public class CreateUserReqDto {
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
+    @ValidPhone // VAL-2
     private String phone;
 
     /** One of: sales_manager | sales_executive | marketing_executive | service_agent | finance_approver | executive_owner */

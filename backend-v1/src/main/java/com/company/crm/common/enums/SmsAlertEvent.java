@@ -5,7 +5,9 @@ public enum SmsAlertEvent {
     QUOTATION_SENT("quotation_sent"),
     TICKET_STATUS_CHANGED("ticket_status_changed"),
     /** FR-2.5: a lead's follow-up is due — internal recipient (the lead owner) only. */
-    FOLLOW_UP_DUE("follow_up_due");
+    FOLLOW_UP_DUE("follow_up_due"),
+    /** NOT-3: a service ticket's SLA is at risk or breached — internal recipients (admins, technician) only. */
+    TICKET_ESCALATED("ticket_escalated");
 
     private final String dbValue;
 

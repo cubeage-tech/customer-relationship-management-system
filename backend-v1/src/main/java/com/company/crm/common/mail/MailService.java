@@ -1,5 +1,7 @@
 package com.company.crm.common.mail;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
@@ -25,6 +27,10 @@ public class MailService {
 
     private final JavaMailSender mailSender;
     private final MailOutboxService mailOutbox;
+
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -168,6 +174,9 @@ public class MailService {
     private void deliver(MimeMessage message) throws MessagingException {
         try {
             mailSender.send(message);
+            if (integrationHealth != null) {
+                integrationHealth.ok(IntegrationHealthService.SMTP);
+            }
         } catch (MailSendException e) {
             if (!retryable(e)) {
                 throw e;
@@ -175,6 +184,9 @@ public class MailService {
             mailOutbox.enqueue(message, e);
             throw new MailQueuedException("Mail server unavailable; the email was queued and will be retried automatically", e);
         } catch (MailAuthenticationException e) {
+            if (integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.SMTP, "The mail server refused the CRM's login");
+            }
             // Usually a temporary credentials/server issue; retried with backoff, then given up on.
             mailOutbox.enqueue(message, e);
             throw new MailQueuedException("Mail server refused the login; the email was queued and will be retried automatically", e);

@@ -81,7 +81,10 @@ class _HomeShellState extends State<HomeShell> {
         repository: repo,
         reloadSignal: widget.pushTick,
         onUnread: (n) => setState(() => _unread = n),
-        onOpenRecord: (type) => setState(() => _tab = type == 'opportunity' ? 2 : 1),
+        // Leads and deals have their own tabs; other records (tickets, quotations…) open in the web app.
+        onOpenRecord: (type) {
+          if (type == 'lead' || type == 'opportunity') setState(() => _tab = type == 'opportunity' ? 2 : 1);
+        },
       ),
     ];
     return Scaffold(

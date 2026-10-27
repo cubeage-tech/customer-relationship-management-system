@@ -1,28 +1,27 @@
 package com.company.crm.support.service;
 
+import java.util.ArrayList;
+import com.company.crm.communication.service.SmsAlertService;
+import com.company.crm.notification.settings.NotificationEvent;
+import com.company.crm.notification.service.StaffNotifier;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
-import com.company.crm.common.mail.MailService;
 import com.company.crm.support.entity.ServiceTicket;
 import com.company.crm.support.repository.ServiceTicketRepository;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
-import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * FR-6.4c: escalates open tickets that are at risk of (last 25% of the window), or past, their SLA —
@@ -40,7 +39,8 @@ public class TicketEscalationService {
 
     private final ServiceTicketRepository ticketRepository;
     private final UserRepository userRepository;
-    private final MailService mailService;
+    private final StaffNotifier staffNotifier;
+    private final SmsAlertService smsAlertService;
     private final AuditService auditService;
 
     @Value("${app.frontend.url}")
@@ -70,13 +70,11 @@ public class TicketEscalationService {
         if (ticket == null) {
             return;
         }
-        Set<String> recipients = new LinkedHashSet<>();
-        userRepository.findByTenantId(ticket.getTenant().getId()).stream()
+        List<User> recipients = new ArrayList<>(userRepository.findByTenantId(ticket.getTenant().getId()).stream()
                 .filter(u -> u.getRole().getName() == RoleType.ADMIN && u.getStatus() == AccountStatus.ACTIVE)
-                .map(User::getEmail)
-                .forEach(recipients::add);
+                .toList());
         if (ticket.getAssignedTechnician() != null) {
-            recipients.add(ticket.getAssignedTechnician().getEmail());
+            recipients.add(ticket.getAssignedTechnician());
         }
 
         boolean breached = level == Level.BREACHED;
@@ -87,15 +85,11 @@ public class TicketEscalationService {
                 + "Priority: " + ticket.getPriority().getDbValue() + "\n"
                 + "Status: " + ticket.getStatus().getDbValue().replace('_', ' ') + "\n"
                 + "SLA due: " + DUE.format(ticket.getSlaDueAt()) + "\n"
-                + "Assigned to: " + (ticket.getAssignedTechnician() != null ? ticket.getAssignedTechnician().getFullName() : "nobody (unassigned)") + "\n\n"
-                + "Open the ticket: " + frontendUrl + "/service-tickets/" + ticket.getId() + "\n";
-        for (String to : recipients) {
-            try {
-                mailService.sendCalendarEmail(to, subject, body, null);
-            } catch (MailException | MessagingException e) {
-                log.warn("SLA escalation email for ticket {} failed: {}", ticketId, e.getMessage());
-            }
-        }
+                + "Assigned to: " + (ticket.getAssignedTechnician() != null ? ticket.getAssignedTechnician().getFullName() : "nobody (unassigned)");
+        // NOT-5/NOT-6: in-app (and pushed) and email as the tenant chose; NOT-3: SMS if enabled.
+        staffNotifier.notify(ticket.getTenant().getId(), NotificationEvent.TICKET_SLA_ESCALATED, recipients, subject, body,
+                "service_ticket", ticket.getId(), null, "/service-tickets/" + ticket.getId());
+        smsAlertService.onTicketEscalated(ticket, subject, recipients);
         auditService.recordSystem(ticket.getTenant().getId(), AuditAction.TICKET_SLA_ESCALATED, "service_ticket", ticket.getId(),
                 "level=" + level.name().toLowerCase());
     }

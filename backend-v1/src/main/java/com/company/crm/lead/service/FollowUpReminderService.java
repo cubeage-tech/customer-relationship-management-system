@@ -1,5 +1,11 @@
 package com.company.crm.lead.service;
 
+import com.company.crm.notification.settings.NotificationSettingsService;
+import com.company.crm.notification.settings.NotificationEvent;
+import com.company.crm.notification.settings.NotificationChannel;
+import com.company.crm.notification.delivery.NotificationDeliveryLog.Recipient;
+import com.company.crm.notification.delivery.NotificationDeliveryLog;
+import com.company.crm.common.mail.MailQueuedException;
 import com.company.crm.common.enums.LeadStage;
 import com.company.crm.common.mail.MailService;
 import com.company.crm.communication.service.SmsAlertService;
@@ -36,6 +42,8 @@ public class FollowUpReminderService {
     private final MailService mailService;
     private final SmsAlertService smsAlertService;
     private final NotificationService notificationService;
+    private final NotificationSettingsService settings;
+    private final NotificationDeliveryLog deliveryLog;
 
     @Transactional(readOnly = true)
     public List<Long> findDue() {
@@ -56,17 +64,27 @@ public class FollowUpReminderService {
         if (recipient == null) {
             return;
         }
-        try {
-            mailService.sendFollowUpReminderEmail(recipient.getEmail(), recipient.getFullName(), lead.getLeadName(),
-                    lead.getCompanyName(), DUE.format(lead.getFollowUpDate()), lead.getId());
-        } catch (MailException | MessagingException e) {
-            log.warn("Follow-up reminder email for lead {} failed: {}", leadId, e.getMessage());
+        Long tenantId = lead.getTenant().getId();
+        // NOT-6: each channel as the tenant chose (email and in-app on by default); NOT-8: logged.
+        if (settings.isEnabled(tenantId, NotificationEvent.FOLLOW_UP_DUE, NotificationChannel.EMAIL)) {
+            try {
+                mailService.sendFollowUpReminderEmail(recipient.getEmail(), recipient.getFullName(), lead.getLeadName(),
+                        lead.getCompanyName(), DUE.format(lead.getFollowUpDate()), lead.getId());
+                deliveryLog.log(tenantId, NotificationEvent.FOLLOW_UP_DUE, "email", Recipient.user(recipient), null, null,
+                        NotificationDeliveryLog.SENT, null);
+            } catch (MailException | MessagingException e) {
+                log.warn("Follow-up reminder email for lead {} failed: {}", leadId, e.getMessage());
+                deliveryLog.log(tenantId, NotificationEvent.FOLLOW_UP_DUE, "email", Recipient.user(recipient), null, null,
+                        e instanceof MailQueuedException ? NotificationDeliveryLog.QUEUED : NotificationDeliveryLog.FAILED, e.getMessage());
+            }
         }
         smsAlertService.onFollowUpDue(lead, recipient);
         // FR-M.4: also in the app's inbox, pushed to the phone.
-        notificationService.notify(lead.getTenant().getId(), recipient.getId(), Notification.FOLLOW_UP,
-                "Follow-up due: " + lead.getLeadName(),
-                (lead.getCompanyName() != null ? lead.getCompanyName() + " · " : "") + "due " + DUE.format(lead.getFollowUpDate()),
-                "lead", lead.getId(), null);
+        if (settings.isEnabled(tenantId, NotificationEvent.FOLLOW_UP_DUE, NotificationChannel.IN_APP)) {
+            notificationService.notify(tenantId, recipient.getId(), Notification.FOLLOW_UP,
+                    "Follow-up due: " + lead.getLeadName(),
+                    (lead.getCompanyName() != null ? lead.getCompanyName() + " · " : "") + "due " + DUE.format(lead.getFollowUpDate()),
+                    "lead", lead.getId(), null);
+        }
     }
 }

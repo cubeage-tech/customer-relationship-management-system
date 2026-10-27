@@ -1,6 +1,7 @@
 package com.company.crm.quotation.service;
 
-import com.company.crm.communication.service.CommunicationService;
+import com.company.crm.notification.settings.NotificationEvent;
+import com.company.crm.notification.service.CustomerNotifier;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.entity.CustomerContact;
 import com.company.crm.quotation.entity.Quotation;
@@ -28,7 +29,7 @@ public class QuotationLinkEmailer {
 
     private final QuotationRepository quotationRepository;
     private final QuotationMapper quotationMapper;
-    private final CommunicationService communicationService;
+    private final CustomerNotifier customerNotifier;
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -46,8 +47,9 @@ public class QuotationLinkEmailer {
                 + "View or download it here:\n" + quotationMapper.viewUrl(quotation) + "\n\n"
                 + "Reply to this email with any questions.\n\n"
                 + "Regards,\n" + (quotation.getOwner() != null ? quotation.getOwner().getFullName() + "\n" : "") + company;
-        communicationService.sendAutomatedEmail(quotation.getTenant(), quotation.getCustomer(),
-                customerEmail(quotation.getCustomer()), subject, body);
+        // NOT-6: unless the tenant switched this email off; NOT-8: logged.
+        customerNotifier.email(NotificationEvent.QUOTATION_SENT, quotation.getTenant(), quotation.getCustomer(),
+                customerEmail(quotation.getCustomer()), subject, body, false);
     }
 
     /** The customer's own address, else the first contact person with one. */

@@ -42,6 +42,9 @@ class ApiClient {
   /// Called when the server rejects the session (expired token), so the app can sign out.
   void Function()? onUnauthorized;
 
+  /// API-G01: renews the session (refresh token) after a 401; the request is then sent once more.
+  Future<bool> Function()? refreshSession;
+
   static const _timeout = Duration(seconds: 20);
 
   Future<dynamic> get(String path, [Map<String, String>? query]) => send('GET', path, query: query);
@@ -52,7 +55,7 @@ class ApiClient {
 
   Future<dynamic> patch(String path, [Object? body]) => send('PATCH', path, body: body);
 
-  Future<dynamic> send(String method, String path, {Object? body, Map<String, String>? query}) async {
+  Future<dynamic> send(String method, String path, {Object? body, Map<String, String>? query, bool retried = false}) async {
     var uri = Uri.parse('$baseUrl$path');
     if (query != null && query.isNotEmpty) {
       uri = uri.replace(queryParameters: query);
@@ -82,6 +85,9 @@ class ApiClient {
     final decoded = _decode(utf8.decode(response.bodyBytes, allowMalformed: true));
     if (response.statusCode >= 300) {
       if (response.statusCode == 401) {
+        if (bearer != null && !retried && !path.startsWith('/auth/') && refreshSession != null && await refreshSession!()) {
+          return send(method, path, body: body, query: query, retried: true);
+        }
         onUnauthorized?.call();
       }
       final message = decoded is Map && decoded['message'] is String

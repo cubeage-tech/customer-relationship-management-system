@@ -55,6 +55,10 @@ class _InboxScreenState extends State<InboxScreen> {
   static IconData _icon(String? type) => switch (type) {
         'assignment' => Icons.assignment_ind_outlined,
         'follow_up' => Icons.alarm,
+        // NOT-5
+        'sla_escalation' => Icons.report_gmailerrorred_outlined,
+        'discount_approval' => Icons.percent,
+        'ai_alert' => Icons.sentiment_dissatisfied_outlined,
         _ => Icons.campaign_outlined,
       };
 

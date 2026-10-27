@@ -1,5 +1,6 @@
 package com.company.crm.communication.dto.request;
 
+import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -18,6 +19,7 @@ public class WhatsAppSendReqDto {
     /** Phone number; a 10-digit number gets the default country code. */
     @NotBlank
     @Size(max = 30)
+    @ValidPhone // VAL-2
     private String to;
 
     @NotBlank

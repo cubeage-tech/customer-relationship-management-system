@@ -37,4 +37,8 @@ public class AdminSignupRequest {
     private String website;
 
     private String address;
+
+    /** BIZ-2: the industry edition to start with (standard when left out). */
+    @Pattern(regexp = "standard|manufacturing|real_estate|healthcare|industrial_sales", message = "Unknown edition")
+    private String edition;
 }

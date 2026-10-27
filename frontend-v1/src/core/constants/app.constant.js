@@ -1,6 +1,8 @@
 export const APPLICATION_CONSTANTS = {
   STORAGE: {
     TOKEN: "token",
+    // API-G01: trades for a new access token at /auth/refresh
+    REFRESH_TOKEN: "refreshToken",
     USER_DETAILS: "user",
     LANGUAGE: "lang",
     ROUTE_STEP_1: "routeStep1",
@@ -293,6 +295,8 @@ export const CAMPAIGN_CHANNELS = {
   EMAIL: 'email',
   SOCIAL_MEDIA: 'social_media',
   SMS: 'sms',
+  // NOT-2: promotions to customers who opted in to WhatsApp
+  WHATSAPP: 'whatsapp',
   EVENT: 'event',
   WEBINAR: 'webinar',
   PAID_ADS: 'paid_ads',
@@ -303,6 +307,7 @@ export const CAMPAIGN_CHANNEL_LABELS = {
   [CAMPAIGN_CHANNELS.EMAIL]: 'Email',
   [CAMPAIGN_CHANNELS.SOCIAL_MEDIA]: 'Social Media',
   [CAMPAIGN_CHANNELS.SMS]: 'SMS',
+  [CAMPAIGN_CHANNELS.WHATSAPP]: 'WhatsApp',
   [CAMPAIGN_CHANNELS.EVENT]: 'Event',
   [CAMPAIGN_CHANNELS.WEBINAR]: 'Webinar',
   [CAMPAIGN_CHANNELS.PAID_ADS]: 'Paid Ads',

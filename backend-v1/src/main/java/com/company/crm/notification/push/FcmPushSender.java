@@ -1,5 +1,7 @@
 package com.company.crm.notification.push;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
@@ -42,6 +44,10 @@ public class FcmPushSender implements PushSender {
 
     private final ObjectMapper objectMapper;
 
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
+
     @Value("${app.push.fcm.credentials-file:}")
     private String credentialsFile;
 
@@ -77,6 +83,9 @@ public class FcmPushSender implements PushSender {
                     .build();
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 300) {
+                if (integrationHealth != null) {
+                    integrationHealth.ok(IntegrationHealthService.FCM);
+                }
                 return Result.SENT;
             }
             String error = response.body();
@@ -87,6 +96,9 @@ public class FcmPushSender implements PushSender {
             }
             if (response.statusCode() == 401) {
                 accessTokenExpiry = Instant.EPOCH; // refresh next time
+            }
+            if (response.statusCode() == 403 && integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.FCM, "FCM refused the service account (HTTP 403)");
             }
             log.warn("FCM push failed ({}): {}", response.statusCode(), error.length() > 300 ? error.substring(0, 300) : error);
             return Result.FAILED;
@@ -136,6 +148,10 @@ public class FcmPushSender implements PushSender {
                 .build();
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() >= 300) {
+            // 400 invalid_grant / 401: the service-account key was revoked or deleted.
+            if ((response.statusCode() == 400 || response.statusCode() == 401) && integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.FCM, "Google rejected the service-account key (HTTP " + response.statusCode() + ")");
+            }
             throw new IllegalStateException("Google OAuth token request failed with HTTP " + response.statusCode());
         }
         JsonNode json = objectMapper.readTree(response.body());

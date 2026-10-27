@@ -1,5 +1,6 @@
 package com.company.crm.communication.dto.request;
 
+import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -34,6 +35,7 @@ public class CallLogReqDto {
 
     /** Phone number called / calling (optional). */
     @Size(max = 30)
+    @ValidPhone // VAL-2
     private String phone;
 
     /** When the call happened; defaults to now. */

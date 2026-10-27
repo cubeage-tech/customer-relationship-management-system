@@ -39,4 +39,9 @@ public class QuotationResDto {
     private BigDecimal estimatedMarginPercent;
     /** FR-4.8: how many line items still need a cost. */
     private long linesWithoutCost;
+
+    /** NAV-2: the customer's comment when they accepted or declined from the view link, and when. */
+    private String customerResponseComment;
+
+    private LocalDateTime customerRespondedAt;
 }

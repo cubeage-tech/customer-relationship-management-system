@@ -1,5 +1,6 @@
 package com.company.crm.branding.dto;
 
+import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -15,6 +16,7 @@ public class BrandingReqDto {
     private String address;
 
     @Size(max = 30)
+    @ValidPhone // VAL-2
     private String phone;
 
     @Email

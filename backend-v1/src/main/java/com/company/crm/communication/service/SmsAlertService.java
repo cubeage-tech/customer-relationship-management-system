@@ -1,5 +1,10 @@
 package com.company.crm.communication.service;
 
+import com.company.crm.tenant.entity.Tenant;
+import com.company.crm.notification.settings.NotificationEvent;
+import com.company.crm.notification.delivery.NotificationDeliveryLog.Recipient;
+import com.company.crm.notification.delivery.NotificationDeliveryLog;
+import com.company.crm.communication.entity.Communication;
 import com.company.crm.common.enums.SmsAlertEvent;
 import com.company.crm.common.enums.SmsAlertRecipient;
 import com.company.crm.common.enums.TicketStatus;
@@ -43,6 +48,7 @@ public class SmsAlertService {
     private final QuotationRepository quotationRepository;
     private final ServiceTicketRepository ticketRepository;
     private final CommunicationService communicationService;
+    private final NotificationDeliveryLog deliveryLog;
 
     @Transactional(readOnly = true)
     public List<SmsAlertRuleResDto> listRules(User currentUser) {
@@ -63,6 +69,9 @@ public class SmsAlertService {
             SmsAlertRecipient recipient = parse(() -> SmsAlertRecipient.fromDbValue(dto.getRecipient()), "Unknown recipient: " + dto.getRecipient());
             if (event == SmsAlertEvent.FOLLOW_UP_DUE && recipient != SmsAlertRecipient.INTERNAL) {
                 throw ApiException.badRequest("Follow-up reminders can only be sent to the lead owner");
+            }
+            if (event == SmsAlertEvent.TICKET_ESCALATED && recipient != SmsAlertRecipient.INTERNAL) {
+                throw ApiException.badRequest("SLA escalations can only be sent to the admins and the technician");
             }
             SmsAlertRule rule = ruleRepository.findById(new SmsAlertRule.Key(tenantId, event)).orElseGet(() -> {
                 SmsAlertRule created = new SmsAlertRule();
@@ -85,13 +94,10 @@ public class SmsAlertService {
             if (quotation == null) {
                 return;
             }
-            String phone = rule.getRecipient() == SmsAlertRecipient.CUSTOMER
-                    ? customerPhone(quotation.getCustomer())
-                    : phoneOf(quotation.getOwner());
             String body = String.format("%s: quotation %s for Rs %,.2f has been sent to %s.",
                     quotation.getTenant().getCompanyName(), quotation.getQuotationNumber(),
                     quotation.getGrandTotal(), quotation.getCustomer().getCompanyName());
-            communicationService.sendAutomatedSms(quotation.getTenant(), quotation.getCustomer(), phone, body);
+            send(rule, NotificationEvent.QUOTATION_SENT, quotation.getTenant(), quotation.getCustomer(), quotation.getOwner(), body);
         });
     }
 
@@ -103,12 +109,9 @@ public class SmsAlertService {
             if (ticket == null) {
                 return;
             }
-            String phone = rule.getRecipient() == SmsAlertRecipient.CUSTOMER
-                    ? customerPhone(ticket.getCustomer())
-                    : phoneOf(ticket.getAssignedTechnician());
             String body = String.format("%s: service ticket \"%s\" is now %s.",
                     ticket.getTenant().getCompanyName(), ticket.getSubject(), label(event.status()));
-            communicationService.sendAutomatedSms(ticket.getTenant(), ticket.getCustomer(), phone, body);
+            send(rule, NotificationEvent.TICKET_STATUS_CHANGED, ticket.getTenant(), ticket.getCustomer(), ticket.getAssignedTechnician(), body);
         });
     }
 
@@ -121,12 +124,52 @@ public class SmsAlertService {
         activeRule(lead.getTenant().getId(), SmsAlertEvent.FOLLOW_UP_DUE).ifPresent(rule -> {
             String body = String.format("%s: follow-up with %s (%s) is due.",
                     lead.getTenant().getCompanyName(), lead.getLeadName(), lead.getCompanyName());
-            communicationService.sendAutomatedLeadSms(lead.getTenant(), lead, phoneOf(recipient), body);
+            Communication sms = communicationService.sendAutomatedLeadSms(lead.getTenant(), lead, phoneOf(recipient), body);
+            deliveryLog.logMessage(lead.getTenant().getId(), NotificationEvent.FOLLOW_UP_DUE, "sms", Recipient.user(recipient), sms);
         });
     }
 
+    /** NOT-3: texts the admins and the technician that a ticket's SLA is at risk or breached (if the tenant enabled it). */
+    @Transactional
+    public void onTicketEscalated(ServiceTicket ticket, String text, java.util.Collection<User> recipients) {
+        activeRule(ticket.getTenant().getId(), SmsAlertEvent.TICKET_ESCALATED).ifPresent(rule -> {
+            for (User user : recipients) {
+                Communication sms = communicationService.sendAutomatedSms(ticket.getTenant(), ticket.getCustomer(), phoneOf(user),
+                        ticket.getTenant().getCompanyName() + ": " + text);
+                deliveryLog.logMessage(ticket.getTenant().getId(), NotificationEvent.TICKET_SLA_ESCALATED, "sms", Recipient.user(user), sms);
+            }
+        });
+    }
+
+    /** NOT-6: whether the tenant has the event's SMS switched on. */
+    @Transactional(readOnly = true)
+    public boolean isEnabled(Long tenantId, SmsAlertEvent event) {
+        return event != null && activeRule(tenantId, event).isPresent();
+    }
+
+    /**
+     * One customer-event SMS: to the customer (unless they opted out of SMS, NOT-7) or to the
+     * internal owner, logged on the customer's timeline and in the delivery log (NOT-8).
+     */
+    private void send(SmsAlertRule rule, NotificationEvent event, Tenant tenant, Customer customer, User internal, String body) {
+        if (rule.getRecipient() == SmsAlertRecipient.CUSTOMER) {
+            if (customer.isSmsOptOut()) {
+                deliveryLog.skipped(tenant.getId(), event, "sms", Recipient.customer(customer), "The customer opted out of SMS");
+                return;
+            }
+            Communication sms = communicationService.sendAutomatedSms(tenant, customer, customerPhone(customer), body);
+            deliveryLog.logMessage(tenant.getId(), event, "sms", Recipient.customer(customer), sms);
+        } else {
+            Communication sms = communicationService.sendAutomatedSms(tenant, customer, phoneOf(internal), body);
+            if (internal != null) {
+                deliveryLog.logMessage(tenant.getId(), event, "sms", Recipient.user(internal), sms);
+            }
+        }
+    }
+
     private static SmsAlertRecipient defaultRecipient(SmsAlertEvent event) {
-        return event == SmsAlertEvent.FOLLOW_UP_DUE ? SmsAlertRecipient.INTERNAL : SmsAlertRecipient.CUSTOMER;
+        return event == SmsAlertEvent.FOLLOW_UP_DUE || event == SmsAlertEvent.TICKET_ESCALATED
+                ? SmsAlertRecipient.INTERNAL : SmsAlertRecipient.CUSTOMER;
     }
 
     private Optional<SmsAlertRule> activeRule(Long tenantId, SmsAlertEvent event) {

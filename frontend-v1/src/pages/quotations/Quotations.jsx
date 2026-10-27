@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { draftQuotation } from '../../core/services/ai.service';
 import { Link } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, CircleAlert, FileText, Package, Plus, Search, Trash2, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
@@ -102,6 +103,34 @@ const Quotations = () => {
   };
 
   const addLineItem = () => setLineItems((prev) => [...prev, { ...EMPTY_LINE_ITEM }]);
+
+  // NAV-2: the AI's first draft of the line items (from your products) and a cover note, to edit before saving.
+  const [drafting, setDrafting] = useState(false);
+  const draftWithAi = async () => {
+    if (!form.customerId) {
+      setToast({ type: 'error', message: 'Choose the customer first.' });
+      return;
+    }
+    setDrafting(true);
+    try {
+      const draft = await draftQuotation({ customerId: Number(form.customerId), opportunityId: form.opportunityId ? Number(form.opportunityId) : null,
+        notes: form.notes || null });
+      if (draft.lineItems.length > 0) {
+        setLineItems(draft.lineItems.map((l) => {
+          const product = products.find((p) => p.name === l.productName);
+          return { productName: l.productName, quantity: l.quantity, unitPrice: l.unitPrice, discountPercent: l.discountPercent,
+            unitCost: product?.costPrice ?? '' };
+        }));
+      }
+      if (draft.coverNote && !form.notes) setForm((prev) => ({ ...prev, notes: draft.coverNote }));
+      setToast({ type: draft.checks.length ? 'error' : 'success',
+        message: draft.checks.length ? `Draft ready — check: ${draft.checks.join('; ')}` : 'Draft ready — review it before saving.' });
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.message || 'The AI could not draft this quotation.' });
+    } finally {
+      setDrafting(false);
+    }
+  };
   const removeLineItem = (index) => setLineItems((prev) => prev.filter((_, i) => i !== index));
 
   const handleAddQuotation = async (e) => {
@@ -277,7 +306,10 @@ const Quotations = () => {
                       <h3 id="quotation-items-title" className="text-sm font-bold text-slate-900">Line items</h3>
                       <p className="mt-1 text-xs text-slate-500">Add products, quantities, pricing, and any discount.</p>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={addLineItem} icon={Plus}>Add line item</Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={draftWithAi} disabled={drafting}>{drafting ? 'Drafting…' : 'Draft with AI'}</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={addLineItem} icon={Plus}>Add line item</Button>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     {lineItems.map((item, index) => (

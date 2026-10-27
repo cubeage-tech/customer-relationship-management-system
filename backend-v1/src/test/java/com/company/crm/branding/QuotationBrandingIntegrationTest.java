@@ -69,7 +69,7 @@ class QuotationBrandingIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void brandingIsValidatedAdminOnlyAndPerTenant() throws Exception {
-        send(put("/api/branding"), tenant.token(SALES_MANAGER), "{\"phone\":\"1\"}").andExpect(status().isForbidden());
+        send(put("/api/branding"), tenant.token(SALES_MANAGER), "{\"phone\":\"+919811100011\"}").andExpect(status().isForbidden());
         send(put("/api/branding"), adminToken, "{\"color\":\"blue\"}").andExpect(status().isBadRequest());
         send(put("/api/branding"), adminToken, "{\"email\":\"not-an-email\"}").andExpect(status().isBadRequest());
 

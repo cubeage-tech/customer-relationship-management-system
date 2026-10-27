@@ -146,7 +146,7 @@ class CommunicationIntegrationTest extends PostgresIntegrationTest {
     @Test
     void smsAlertsFollowTheTenantRules() throws Exception {
         send(get("/api/communications/sms-alerts"), adminToken, null)
-                .andExpect(jsonPath("$.data.length()").value(3)) // + follow_up_due (FR-2.5)
+                .andExpect(jsonPath("$.data.length()").value(4)) // + follow_up_due (FR-2.5), ticket_escalated (NOT-3)
                 .andExpect(jsonPath("$.data[0].enabled").value(false));
         send(put("/api/communications/sms-alerts"), tenant.token(SALES_MANAGER), "[]").andExpect(status().isForbidden());
 

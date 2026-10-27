@@ -1,5 +1,8 @@
                                                                                                                                                                                                                                                                                                                                                                         package com.company.crm.auth.controller;
 
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotBlank;
+import com.company.crm.auth.mfa.MfaService;
 import com.company.crm.auth.dto.request.*;
 import com.company.crm.auth.dto.response.AuthResponse;
 import com.company.crm.auth.dto.response.UserSummaryResDto;
@@ -24,6 +27,28 @@ public class AuthController {
         return Response.ok(authService.login(request));
     }
 
+    /** SEC-1c: the authenticator code (or a recovery code) after the password. */
+    @PostMapping("/mfa/verify")
+    public Response<AuthResponse> verifyMfa(@Valid @RequestBody MfaCodeRequest request) {
+        return Response.ok("Signed in", authService.verifyMfa(request.mfaToken(), request.code()));
+    }
+
+    /** SEC-1c: first sign-in of a role that requires two-step sign-in — the secret to add to the app. */
+    @PostMapping("/mfa/setup")
+    public Response<MfaService.Setup> startMfaSetup(@Valid @RequestBody MfaTokenRequest request) {
+        return Response.ok(authService.startMfaSetup(request.mfaToken()));
+    }
+
+    /** SEC-1c: confirm the app with a code; signs in and returns the recovery codes (shown once). */
+    @PostMapping("/mfa/setup/confirm")
+    public Response<AuthResponse> confirmMfaSetup(@Valid @RequestBody MfaCodeRequest request) {
+        return Response.ok("Two-step sign-in is on", authService.confirmMfaSetup(request.mfaToken(), request.code()));
+    }
+
+    public record MfaTokenRequest(@NotBlank String mfaToken) {}
+
+    public record MfaCodeRequest(@NotBlank String mfaToken, @NotBlank @Size(max = 20) String code) {}
+
     @PostMapping("/signup")
     public Response<UserSummaryResDto> signup(@Valid @RequestBody AdminSignupRequest request) {
         return Response.ok(
@@ -31,11 +56,20 @@ public class AuthController {
                 authService.signupAdmin(request));
     }
 
+    /** API-G01: ends this device's session (its refresh token); the short-lived access token expires on its own. */
     @PostMapping("/logout")
-    public Response<Void> logout() {
-        // Stateless JWT — nothing to invalidate server-side yet (no refresh-token rotation in this cut).
+    public Response<Void> logout(@RequestBody(required = false) RefreshRequest request) {
+        authService.logout(request != null ? request.refreshToken() : null);
         return Response.ok("Logged out", null);
     }
+
+    /** API-G01: a new access token for a refresh token (which is replaced by a new one). */
+    @PostMapping("/refresh")
+    public Response<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return Response.ok(authService.refresh(request.refreshToken()));
+    }
+
+    public record RefreshRequest(@NotBlank String refreshToken) {}
 
     @PostMapping("/verify-email")
     public Response<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {

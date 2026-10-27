@@ -5,6 +5,8 @@ public enum CampaignChannel {
     EMAIL("email"),
     SOCIAL_MEDIA("social_media"),
     SMS("sms"),
+    /** NOT-2: promotions to customers who opted in to WhatsApp. */
+    WHATSAPP("whatsapp"),
     EVENT("event"),
     WEBINAR("webinar"),
     PAID_ADS("paid_ads"),

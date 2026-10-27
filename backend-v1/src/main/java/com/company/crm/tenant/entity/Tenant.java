@@ -67,6 +67,18 @@ public class Tenant {
     @Column(nullable = false)
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    /** SEC-6: the tenant can switch AI features off entirely. */
+    @Column(name = "ai_enabled", nullable = false)
+    private boolean aiEnabled = true;
+
+    /** SEC-5: whether message text (emails, WhatsApp, SMS) may be sent to the AI provider (sentiment, AI alerts). */
+    @Column(name = "ai_message_content", nullable = false)
+    private boolean aiMessageContent = true;
+
+    /** BIZ-2: the industry edition (standard, manufacturing, real_estate, healthcare, industrial_sales). */
+    @Column(nullable = false, length = 30)
+    private String edition = "standard";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

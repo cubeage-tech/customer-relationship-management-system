@@ -86,12 +86,12 @@ class CustomerIndustryAndAuditIntegrationTest extends PostgresIntegrationTest {
     @Test
     void customerChangesAreAudited() throws Exception {
         long customerId = idOf(send(post("/api/customers"), adminToken,
-                "{\"companyName\":\"ABC Engineering\",\"industry\":\"automobile\",\"phone\":\"111\"}"));
+                "{\"companyName\":\"ABC Engineering\",\"industry\":\"automobile\",\"phone\":\"+919811100011\"}"));
         send(put("/api/customers/" + customerId), adminToken,
-                "{\"companyName\":\"ABC Engineering\",\"industry\":\"automobile\",\"phone\":\"222\",\"notes\":\"Key account\"}").andExpect(status().isOk());
+                "{\"companyName\":\"ABC Engineering\",\"industry\":\"automobile\",\"phone\":\"+919822200022\",\"notes\":\"Key account\"}").andExpect(status().isOk());
         // Saving without changes adds no entry.
         send(put("/api/customers/" + customerId), adminToken,
-                "{\"companyName\":\"ABC Engineering\",\"industry\":\"automobile\",\"phone\":\"222\",\"notes\":\"Key account\"}").andExpect(status().isOk());
+                "{\"companyName\":\"ABC Engineering\",\"industry\":\"automobile\",\"phone\":\"+919822200022\",\"notes\":\"Key account\"}").andExpect(status().isOk());
         send(post("/api/customers/" + customerId + "/contacts"), adminToken, "{\"name\":\"Priya\",\"designation\":\"Purchase Manager\"}")
                 .andExpect(status().isOk());
         send(patch("/api/customers/" + customerId + "/archive"), adminToken, null).andExpect(status().isOk());

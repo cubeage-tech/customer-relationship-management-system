@@ -1,5 +1,7 @@
 package com.company.crm.auth;
 
+import com.company.crm.auth.service.RefreshTokenService;
+import com.company.crm.auth.mfa.MfaService;
 import com.company.crm.auth.dto.request.LoginRequest;
 import com.company.crm.auth.entity.LoginAttempt;
 import com.company.crm.auth.mapper.AuthMapper;
@@ -59,6 +61,9 @@ class AuthServiceTest {
     @Mock private EmailVerificationTokenService emailVerificationTokenService;
     @Mock private SubscriptionService subscriptionService;
 
+    @Mock private MfaService mfaService; // SEC-1c: no second step unless a test sets one up
+    @Mock private RefreshTokenService refreshTokenService;
+    @Mock private com.company.crm.edition.EditionService editionService;
     @InjectMocks private AuthService authService;
 
     @Captor private ArgumentCaptor<Map<String, Object>> claimsCaptor;
@@ -146,7 +151,7 @@ class AuthServiceTest {
                 .containsEntry("role", "admin")
                 .containsEntry("plan", "business")
                 .containsEntry("subscriptionStatus", "trial");
-        verify(authMapper).toAuthResponse("jwt", user);
+        verify(authMapper).toAuthResponse(eq("jwt"), any(), eq(user));
     }
 
     @Test

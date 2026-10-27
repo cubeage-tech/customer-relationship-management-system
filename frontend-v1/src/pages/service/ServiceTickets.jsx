@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, CircleAlert, Plus, Search, Ticket, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
+import ServiceNav from '../../components/service/ServiceNav';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
@@ -144,6 +145,8 @@ const ServiceTickets = () => {
           </Button>
         )}
       />
+      {/* NAV-M07 */}
+      <ServiceNav />
 
       {/* FR-6.4: open tickets by SLA status */}
       {summary && (
