@@ -19,6 +19,7 @@ import { apiErrorMessage } from '../../core/utils/apiError';
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
 import MeetingsPanel from '../../components/meeting/MeetingsPanel';
+import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
 
 const toProfileForm = (lead) => ({
   leadName: lead.leadName || '',
@@ -131,7 +132,7 @@ const LeadDetail = () => {
       <EmptyState
         title="Lead not found"
         message="This lead may have been removed, or you may not have access to it."
-        action={<Link to={RoutePath.LEADS} className="text-indigo-600 hover:underline">Back to leads</Link>}
+        action={<Link to={RoutePath.LEADS} className="text-primary hover:underline">Back to leads</Link>}
       />
     );
   }
@@ -160,8 +161,8 @@ const LeadDetail = () => {
               onClick={() => handleStageChange(option.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                 lead.stage === option.value
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-300 hover:border-primary/50'
               } ${!canEdit ? 'cursor-not-allowed opacity-60' : ''}`}
             >
               {option.label}
@@ -231,7 +232,7 @@ const LeadDetail = () => {
             <button
               type="button"
               onClick={() => setEditingProfile(true)}
-              className="text-sm text-indigo-600 hover:underline"
+              className="text-sm text-primary hover:underline"
             >
               Edit
             </button>
@@ -346,6 +347,9 @@ const LeadDetail = () => {
           </dl>
         )}
       </div>
+
+      {/* ARC-9: industry-specific fields */}
+      <div className="mb-6"><CustomFieldsPanel entityType="lead" recordId={lead.id} canEdit={canEdit} reloadKey={lead.industry} /></div>
 
       {/* FR-5.1/5.2/5.4: communications logged against the lead; after conversion they also show on the customer. */}
       <MeetingsPanel leadId={lead.id} />

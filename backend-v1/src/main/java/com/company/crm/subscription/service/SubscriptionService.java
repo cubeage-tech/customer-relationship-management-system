@@ -1,5 +1,7 @@
 package com.company.crm.subscription.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.enums.BillingCycle;
 import com.company.crm.common.enums.SubscriptionPlan;
 import com.company.crm.common.enums.SubscriptionStatus;
@@ -50,6 +52,7 @@ public class SubscriptionService {
     );
 
     private final SubscriptionRepository subscriptionRepository;
+    private final AuditService auditService;
     private final PlanRepository planRepository;
     private final TenantRepository tenantRepository;
 
@@ -122,6 +125,8 @@ public class SubscriptionService {
                 : periodStart.plusMonths(1));
 
         Subscription saved = subscriptionRepository.save(subscription);
+        auditService.recordSystem(tenant.getId(), AuditAction.SUBSCRIPTION_ACTIVATED, "subscription", saved.getId(),
+                "plan=" + plan.getCode() + ", cycle=" + billingCycle.getDbValue() + ", until " + saved.getExpiresAt());
         syncTenantPlan(tenant, plan);
         return saved;
     }
@@ -140,6 +145,8 @@ public class SubscriptionService {
 
         subscription.setStatus(SubscriptionStatus.CANCELLED);
         subscription.setCancelledAt(LocalDateTime.now());
+        auditService.recordSystem(tenant.getId(), AuditAction.SUBSCRIPTION_CANCELLED, "subscription", subscription.getId(),
+                "access until " + subscription.getExpiresAt());
         return subscriptionRepository.save(subscription);
     }
 

@@ -91,7 +91,7 @@ const Approvals = () => {
               {pending.map((q) => (
                 <tr key={q.id}>
                   <td className="px-5 py-3.5">
-                    <Link to={RoutePath.EDIT_QUOTATION.replace(':id', q.id)} className="font-semibold text-slate-800 hover:text-violet-700 hover:underline">
+                    <Link to={RoutePath.EDIT_QUOTATION.replace(':id', q.id)} className="font-semibold text-slate-800 hover:text-primary/80 hover:underline">
                       {q.quotationNumber}
                     </Link>
                   </td>

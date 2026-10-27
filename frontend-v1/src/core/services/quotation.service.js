@@ -29,6 +29,12 @@ const saveBlob = (data, fileName) => {
   window.URL.revokeObjectURL(url);
 };
 
+/** NAV-M05: the quotation PDF as a Blob, for the in-app preview. */
+export const fetchQuotationPdf = async (id) => {
+  const response = await ApiService.downloadQuotationPdf(id);
+  return new Blob([response.data], { type: 'application/pdf' });
+};
+
 /** Triggers a browser download of the quotation PDF (FR-4.4). */
 export const downloadQuotationPdf = async (id, quotationNumber) => {
   const response = await ApiService.downloadQuotationPdf(id);

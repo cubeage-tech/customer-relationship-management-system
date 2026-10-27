@@ -110,7 +110,7 @@ const Login = () => {
             </div>
             <div>
               <h1 className="font-bold text-lg leading-tight">SmartCRM AI</h1>
-              <p className="text-xs text-indigo-200">Enterprise Suite</p>
+              <p className="text-xs text-primary-foreground/80">Enterprise Suite</p>
             </div>
           </div>
 
@@ -118,7 +118,7 @@ const Login = () => {
             <h2 className="text-4xl font-bold mb-6 leading-tight pr-8">
               The revenue workspace your whole company can trust.
             </h2>
-            <p className="text-base text-indigo-100 mb-12 pr-12">
+            <p className="text-base text-primary-foreground/80 mb-12 pr-12">
               One secure workspace for sales, marketing, service and finance — with permissions that match how your teams actually operate.
             </p>
 
@@ -129,7 +129,7 @@ const Login = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">AI copilot built in</h3>
-                  <p className="text-sm text-indigo-100/80">Lead scoring, next-best action and auto summaries.</p>
+                  <p className="text-sm text-primary-foreground/80">Lead scoring, next-best action and auto summaries.</p>
                 </div>
               </div>
 
@@ -139,7 +139,7 @@ const Login = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Role-based access</h3>
-                  <p className="text-sm text-indigo-100/80">Seven granular roles with SOC 2 aligned audit trails.</p>
+                  <p className="text-sm text-primary-foreground/80">Seven granular roles with SOC 2 aligned audit trails.</p>
                 </div>
               </div>
 
@@ -149,13 +149,13 @@ const Login = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Live revenue clarity</h3>
-                  <p className="text-sm text-indigo-100/80">Pipeline, forecast and campaign ROI in one workspace.</p>
+                  <p className="text-sm text-primary-foreground/80">Pipeline, forecast and campaign ROI in one workspace.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-between items-center text-xs text-indigo-200/80 font-medium">
+          <div className="flex justify-between items-center text-xs text-primary-foreground/80 font-medium">
             <p>Trusted by 4,200+ revenue teams · 99.99% uptime</p>
           </div>
         </div>
@@ -165,7 +165,7 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 xl:p-20 relative bg-[#FAFAFA]">
         <div className="w-full max-w-[420px]">
           <div className="mb-8">
-            <p className="text-indigo-600 font-bold text-xs tracking-[0.15em] uppercase mb-3">Welcome back</p>
+            <p className="text-primary font-bold text-xs tracking-[0.15em] uppercase mb-3">Welcome back</p>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign in to SmartCRM AI</h2>
             <p className="text-gray-500 text-sm">Use your work account. Your role decides what you see next.</p>
           </div>
@@ -178,12 +178,12 @@ const Login = () => {
           )}
 
           {justSignedUp && (
-            <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-sm text-indigo-700">
+            <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
               <p className="font-medium">
                 Account created. We've sent a verification link to {signupEmail || 'your email'} — open it to activate your account, then sign in.
               </p>
               {signupEmail && (
-                <button type="button" onClick={() => handleResendVerification(signupEmail)} className="mt-2 font-semibold underline hover:text-indigo-500">
+                <button type="button" onClick={() => handleResendVerification(signupEmail)} className="mt-2 font-semibold underline hover:text-primary/80">
                   Resend verification email
                 </button>
               )}
@@ -205,7 +205,7 @@ const Login = () => {
                   type="email"
                   name="email"
                   className={`block w-full pl-10 pr-3 py-3 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="john.doe@company.com"
                   value={form.email}
@@ -229,7 +229,7 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   className={`block w-full pl-10 pr-10 py-3 border rounded-xl focus:ring-2 text-sm bg-white shadow-sm transition-shadow hover:border-gray-300 ${
-                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500'
+                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-200 focus:ring-primary/40 focus:border-primary'
                   }`}
                   placeholder="••••••••"
                   value={form.password}
@@ -255,7 +255,7 @@ const Login = () => {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                  className="h-4 w-4 text-primary focus:ring-primary/40 border-gray-300 rounded cursor-pointer"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-600 cursor-pointer select-none">
                   Keep me signed in
@@ -263,7 +263,7 @@ const Login = () => {
               </div>
 
               <div className="text-sm">
-                <Link to={RoutePath.FORGOT_PASSWORD} className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+                <Link to={RoutePath.FORGOT_PASSWORD} className="font-semibold text-primary hover:text-primary/80 transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -271,7 +271,7 @@ const Login = () => {
 
             {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
             {needsVerification && (
-              <button type="button" onClick={() => handleResendVerification(form.email)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+              <button type="button" onClick={() => handleResendVerification(form.email)} className="text-sm font-semibold text-primary hover:text-primary/80">
                 Resend verification email
               </button>
             )}
@@ -280,7 +280,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] text-sm font-semibold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/40 transition-all hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? 'Signing in…' : 'Sign in'}
             </button>
@@ -294,7 +294,7 @@ const Login = () => {
           </div>
           
           <div className="mt-8 text-center text-sm text-gray-600">
-            New to SmartCRM AI? <Link to={RoutePath.SIGNUP} className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">Create an account</Link>
+            New to SmartCRM AI? <Link to={RoutePath.SIGNUP} className="font-semibold text-primary hover:text-primary/80 transition-colors">Create an account</Link>
           </div>
 
           {SHOW_DEV_CREDENTIALS && (

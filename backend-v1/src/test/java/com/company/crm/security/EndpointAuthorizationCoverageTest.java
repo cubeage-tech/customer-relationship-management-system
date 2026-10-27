@@ -48,7 +48,14 @@ class EndpointAuthorizationCoverageTest extends PostgresIntegrationTest {
             "GET /api/public/campaigns/u/{token}",               // FR-7.1c unsubscribe
             "POST /api/public/campaigns/u/{token}",
             "GET /api/public/quotations/{token}",                // FR-4.5 customer view link; token is the credential
-            "GET /api/public/quotations/{token}/pdf"
+            "GET /api/public/quotations/{token}/pdf",
+            "POST /api/integrations/payment",                    // API-G12 payment webhook; signature
+            "POST /api/integrations/whatsapp-webhook",           // API-G12 Twilio inbound; X-Twilio-Signature
+            "GET /api/integrations/erp/customers",               // API-G12 ERP sync; X-Api-Key is the credential
+            "GET /api/integrations/erp/won-deals",
+            "GET /api/integrations/erp/quotations",
+            "PUT /api/integrations/erp/customers/{customerId}/erp-code",
+            "PUT /api/integrations/erp/products"
     );
 
     @Autowired

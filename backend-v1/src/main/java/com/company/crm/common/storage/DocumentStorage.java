@@ -16,4 +16,9 @@ public interface DocumentStorage {
 
     /** Removes the object; a missing object is not an error. */
     void delete(String key) throws IOException;
+
+    /** DB-E16: the name recorded with each file, so files in different backends can coexist. */
+    default String provider() {
+        return "local";
+    }
 }

@@ -6,6 +6,7 @@ import {
   FileText,
   LifeBuoy,
   Megaphone,
+  Tag,
   BadgeCheck,
   BarChart3,
   Settings,
@@ -13,7 +14,10 @@ import {
   Building2,
   CreditCard,
   ScrollText,
+  CalendarCheck,
   UsersRound,
+  MessagesSquare,
+  Bot,
 } from "lucide-react";
 import RoutePath, { getRoleHomeRoute } from "../../core/constants/routes.constant";
 import { USER_ROLES } from "../../core/constants/app.constant";
@@ -58,6 +62,13 @@ export const SIDEBAR_ITEMS = [
     permissions: [PERMISSIONS.QUOTATIONS_VIEW],
   },
   {
+    // UI-1: unified inbox of emails, WhatsApp, SMS and calls.
+    label: "Communications",
+    icon: MessagesSquare,
+    path: RoutePath.COMMUNICATIONS,
+    permissions: [PERMISSIONS.CUSTOMERS_VIEW],
+  },
+  {
     label: "Service Tickets",
     icon: LifeBuoy,
     path: RoutePath.SERVICE_TICKETS,
@@ -70,6 +81,36 @@ export const SIDEBAR_ITEMS = [
     permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
   },
   {
+    label: "Segments",
+    icon: UsersRound,
+    path: RoutePath.SEGMENTS,
+    permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    label: "Promotions",
+    icon: Tag,
+    path: RoutePath.PROMOTIONS,
+    permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    // Module 8: attendance for everyone; targets, activity and commission by role (see the page).
+    label: "Sales Team",
+    icon: CalendarCheck,
+    path: RoutePath.SALES_FORCE,
+  },
+  {
+    label: "Reports",
+    icon: BarChart3,
+    path: RoutePath.REPORTS,
+    permissions: [PERMISSIONS.REPORTS_VIEW],
+  },
+  {
+    // UI-1 / API-G11: chat with the CRM, lead scores, forecast, sentiment — every tenant role.
+    label: "AI Assistant",
+    icon: Bot,
+    path: RoutePath.AI_ASSISTANT,
+  },
+  {
     label: "Approvals",
     icon: BadgeCheck,
     path: RoutePath.APPROVALS,
@@ -77,12 +118,6 @@ export const SIDEBAR_ITEMS = [
       PERMISSIONS.QUOTATIONS_APPROVE,
       PERMISSIONS.QUOTATIONS_APPROVE_DISCOUNT,
     ],
-  },
-  {
-    label: "Reports",
-    icon: BarChart3,
-    path: RoutePath.REPORTS,
-    permissions: [PERMISSIONS.REPORTS_VIEW],
   },
   {
     label: "Users",
@@ -107,6 +142,12 @@ export const SIDEBAR_ITEMS = [
     icon: Settings,
     path: RoutePath.ADMIN_SETTINGS,
     permissions: [PERMISSIONS.SETTINGS_VIEW],
+  },
+  {
+    label: "Audit Log",
+    icon: ScrollText,
+    path: RoutePath.ADMIN_AUDIT_LOG,
+    permissions: [PERMISSIONS.AUDIT_VIEW],
   },
 ];
 

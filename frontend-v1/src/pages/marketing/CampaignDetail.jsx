@@ -11,7 +11,8 @@ import {
   CAMPAIGN_STATUS_OPTIONS,
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
-import CampaignExecution, { campaignPayload } from '../../components/campaign/CampaignExecution';
+import CampaignExecution from '../../components/campaign/CampaignExecution';
+import { campaignPayload } from '../../core/utils/campaignPayload';
 import {
   getCampaign,
   getCampaignLeads,
@@ -89,7 +90,7 @@ const CampaignDetail = () => {
       <EmptyState
         title="Campaign not found"
         message="This campaign may have been removed, or you may not have access to it."
-        action={<Link to={RoutePath.CAMPAIGNS} className="text-indigo-600 hover:underline">Back to campaigns</Link>}
+        action={<Link to={RoutePath.CAMPAIGNS} className="text-primary hover:underline">Back to campaigns</Link>}
       />
     );
   }
@@ -125,8 +126,8 @@ const CampaignDetail = () => {
               onClick={() => handleStatusChange(option.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                 campaign.status === option.value
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-300 hover:border-primary/50'
               } ${!canManage ? 'cursor-not-allowed opacity-60' : ''}`}
             >
               {option.label}
@@ -266,7 +267,7 @@ const CampaignDetail = () => {
                     <td className="py-2 pr-4">
                       <Link
                         to={RoutePath.EDIT_LEAD.replace(':id', lead.id)}
-                        className="text-indigo-600 hover:underline font-medium"
+                        className="text-primary hover:underline font-medium"
                       >
                         {lead.leadName}
                       </Link>

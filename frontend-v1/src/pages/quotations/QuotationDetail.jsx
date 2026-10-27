@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
+import AttachmentsPanel from '../../components/common/AttachmentsPanel';
+import QuotationPdfPreview from '../../components/quotation/QuotationPdfPreview';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import {
@@ -36,6 +38,7 @@ const QuotationDetail = () => {
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const refresh = () => {
     getQuotation(id)
@@ -102,7 +105,7 @@ const QuotationDetail = () => {
       <EmptyState
         title="Quotation not found"
         message="This quotation may have been removed, or you may not have access to it."
-        action={<Link to={RoutePath.QUOTATIONS} className="text-indigo-600 hover:underline">Back to quotations</Link>}
+        action={<Link to={RoutePath.QUOTATIONS} className="text-primary hover:underline">Back to quotations</Link>}
       />
     );
   }
@@ -119,12 +122,24 @@ const QuotationDetail = () => {
             <Link to={RoutePath.QUOTATIONS} className="text-sm text-slate-500 hover:underline">
               Back to quotations
             </Link>
+            <Button variant="outline" onClick={() => setPreviewing(true)}>
+              Preview PDF
+            </Button>
             <Button variant="secondary" onClick={() => downloadQuotationPdf(id, quotation.quotationNumber)}>
               Download PDF
             </Button>
           </div>
         }
       />
+
+      {previewing && (
+        <QuotationPdfPreview
+          quotationId={id}
+          quotationNumber={quotation.quotationNumber}
+          onClose={() => setPreviewing(false)}
+          onDownload={() => downloadQuotationPdf(id, quotation.quotationNumber)}
+        />
+      )}
 
       {/* ---------------- Status & actions ---------------- */}
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
@@ -192,6 +207,7 @@ const QuotationDetail = () => {
       {/* ---------------- Line items ---------------- */}
       <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
         <h2 className="font-semibold text-slate-900 mb-3">Line items</h2>
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="border-b border-slate-300">
@@ -216,6 +232,7 @@ const QuotationDetail = () => {
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="mt-4 flex flex-col items-end text-sm gap-1">
           <p>Subtotal: {formatCurrency(quotation.subtotal)}</p>
@@ -249,7 +266,7 @@ const QuotationDetail = () => {
             <div>
               <dt className="text-slate-500">Linked opportunity</dt>
               <dd>
-                <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', quotation.opportunityId)} className="text-indigo-600 underline">
+                <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', quotation.opportunityId)} className="text-primary underline">
                   View opportunity
                 </Link>
               </dd>
@@ -258,6 +275,9 @@ const QuotationDetail = () => {
           <div className="sm:col-span-2"><dt className="text-slate-500">Notes</dt><dd>{quotation.notes || '—'}</dd></div>
         </dl>
       </div>
+
+      {/* ---------------- Attachments (DB-E16) ---------------- */}
+      <AttachmentsPanel kind="quotation" recordId={quotation.id} canEdit={canEdit} hint="Attach specifications, drawings or signed copies" />
     </section>
   );
 };

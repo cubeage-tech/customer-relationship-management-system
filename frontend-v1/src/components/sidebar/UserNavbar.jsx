@@ -9,6 +9,7 @@ import {
   LogOut,
   User,
   Settings,
+  Menu,
 } from "lucide-react";
 import { useAuth } from "../../core/hooks/useAuth";
 import { APP_SHORT_NAME } from "../../core/constants/app.constant";
@@ -16,7 +17,8 @@ import { getRoleLabel, hasPermission, isSuperAdmin } from "../../core/utils/perm
 import { PERMISSIONS } from "../../core/constants/permission.constant";
 import RoutePath from "../../core/constants/routes.constant";
 
-const UserNavbar = () => {
+/** onOpenMenu: opens the navigation drawer on tablets and phones (NFR-7.9). */
+const UserNavbar = ({ onOpenMenu }) => {
   const { user, logoutUser } = useAuth();
   const navigate = useNavigate();
 
@@ -59,14 +61,22 @@ const UserNavbar = () => {
   }, []);
 
   return (
-    <header className="h-20 w-full flex items-center justify-between px-6 bg-white border-b border-slate-200 shrink-0">
+    <header className="h-16 sm:h-20 w-full flex items-center justify-between gap-2 px-3 sm:px-6 bg-white border-b border-slate-200 shrink-0">
 
       {/* Logo / Brand */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={onOpenMenu}
+          aria-label="Open menu"
+          className="lg:hidden w-10 h-10 -ml-1 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 shrink-0"
+        >
+          <Menu size={22} />
+        </button>
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0">
           <Sparkles size={20} className="text-white" />
         </div>
-        <div>
+        <div className="hidden sm:block">
           <h1 className="text-base font-semibold text-slate-900 leading-tight">
             {APP_SHORT_NAME || "SmartCRM AI"}
           </h1>
@@ -75,7 +85,7 @@ const UserNavbar = () => {
       </div>
 
       {/* Search */}
-      <div className="flex-1 max-w-xl mx-8">
+      <div className="hidden md:block flex-1 max-w-xl mx-4 lg:mx-8">
         <div className="relative">
           <Search
             size={18}
@@ -84,7 +94,7 @@ const UserNavbar = () => {
           <input
             type="text"
             placeholder="Search leads, deals, companies or ask AI..."
-            className="w-full h-11 pl-10 pr-14 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition"
+            className="w-full h-11 pl-10 pr-14 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
             ⌘K
@@ -93,12 +103,12 @@ const UserNavbar = () => {
       </div>
 
       {/* Right side actions */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-1 sm:gap-4 shrink-0">
 
         {/* AI Assistant */}
         <button
           type="button"
-          className="flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition"
+          className="hidden sm:flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition"
         >
           <Sparkles size={16} />
           AI Assistant
@@ -120,7 +130,7 @@ const UserNavbar = () => {
         {/* Messages */}
         <button
           type="button"
-          className="relative w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 transition"
+          className="relative w-10 h-10 rounded-full hidden sm:flex items-center justify-center text-slate-500 hover:bg-slate-100 transition"
         >
           <MessageSquare size={20} />
           {messageCount > 0 && (
@@ -137,7 +147,7 @@ const UserNavbar = () => {
             onClick={() => setProfileOpen((prev) => !prev)}
             className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-xl hover:bg-slate-100 transition"
           >
-            <div className="w-9 h-9 rounded-full bg-indigo-600 text-white text-sm font-semibold flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-full bg-primary text-white text-sm font-semibold flex items-center justify-center shrink-0">
               {initials}
             </div>
             <div className="text-left leading-tight hidden sm:block">

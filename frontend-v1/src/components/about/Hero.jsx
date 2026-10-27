@@ -28,7 +28,7 @@ const Hero = () => {
     <section className="bg-transparent px-4 py-10 sm:px-6 sm:py-16 lg:py-[5.25rem]">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-[760px]">
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
             <Compass size={14} strokeWidth={2.5} />
             About us
           </div>

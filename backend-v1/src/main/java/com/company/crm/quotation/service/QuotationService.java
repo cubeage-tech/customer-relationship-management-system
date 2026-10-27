@@ -1,5 +1,7 @@
 package com.company.crm.quotation.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.quotation.dto.response.QuotationSummaryDto;
 import com.company.crm.quotation.repository.QuotationSummaryQuery;
 import com.company.crm.common.enums.DiscountApprovalStatus;
@@ -22,11 +24,11 @@ import com.company.crm.quotation.pdf.QuotationPdf;
 import com.company.crm.quotation.repository.QuotationRepository;
 import com.company.crm.sales.entity.Opportunity;
 import com.company.crm.sales.repository.OpportunityRepository;
+import com.company.crm.tenant.service.TenantSettingsService;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.company.crm.quotation.event.QuotationSentEvent;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +51,8 @@ public class QuotationService {
     private static final SecureRandom TOKEN_RANDOM = new SecureRandom();
 
     private final QuotationRepository quotationRepository;
+    private final AuditService auditService;
+    private final TenantSettingsService tenantSettingsService;
     private final DataScopeResolver dataScopeResolver;
     private final QuotationSummaryQuery quotationSummaryQuery;
     private final CustomerRepository customerRepository;
@@ -58,8 +62,6 @@ public class QuotationService {
     private final QuotationPdf quotationPdf;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Value("${app.quotation.discount-approval-threshold-percent}")
-    private BigDecimal discountApprovalThreshold;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (customer, opportunity, owner, lineItems, tenant), so the session
@@ -100,7 +102,9 @@ public class QuotationService {
         quotation.setQuotationNumber(nextQuotationNumber(currentUser));
         quotation.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
         applyFields(currentUser, quotation, dto);
-        return quotationMapper.toDto(quotationRepository.save(quotation));
+        Quotation created = quotationRepository.save(quotation);
+        auditService.record(currentUser, AuditAction.QUOTATION_CREATED, AUDIT_ENTITY, created.getId(), summary(created));
+        return quotationMapper.toDto(created);
     }
 
     @Transactional
@@ -109,8 +113,19 @@ public class QuotationService {
         assertAccess(currentUser, quotation);
         quotation.setCustomer(resolveCustomer(currentUser, dto.getCustomerId()));
         applyFields(currentUser, quotation, dto);
-        return quotationMapper.toDto(quotationRepository.save(quotation));
+        Quotation updated = quotationRepository.save(quotation);
+        auditService.record(currentUser, AuditAction.QUOTATION_UPDATED, AUDIT_ENTITY, updated.getId(), summary(updated));
+        return quotationMapper.toDto(updated);
     }
+
+    /** NFR-7.2d audit detail: number, customer, total and discount state — no line-item personal data. */
+    private static String summary(Quotation q) {
+        return "number=" + q.getQuotationNumber() + ", customer=" + q.getCustomer().getCompanyName()
+                + ", grandTotal=" + q.getGrandTotal() + ", maxDiscount=" + q.getMaxDiscountPercent() + "%"
+                + ", discountApproval=" + q.getDiscountApprovalStatus().name().toLowerCase();
+    }
+
+    private static final String AUDIT_ENTITY = "quotation";
 
     /** FR-4.3/BR-3 acceptance criterion: sending is blocked until a pending discount is approved. */
     @Transactional
@@ -129,10 +144,13 @@ public class QuotationService {
         }
 
         quotation.setStatus(QuotationStatus.PENDING);
+        quotation.setSentAt(LocalDateTime.now());
         if (quotation.getViewToken() == null) {
             quotation.setViewToken(newViewToken());
         }
         QuotationResDto saved = quotationMapper.toDto(quotationRepository.save(quotation));
+        auditService.record(currentUser, AuditAction.QUOTATION_SENT, AUDIT_ENTITY, quotation.getId(),
+                "number=" + quotation.getQuotationNumber() + ", grandTotal=" + quotation.getGrandTotal());
         // After this transaction commits: FR-4.5 emails the customer their view link, and the
         // FR-5.3 SMS alert goes out if enabled for the tenant.
         eventPublisher.publishEvent(new QuotationSentEvent(quotation.getTenant().getId(), quotation.getId()));
@@ -166,7 +184,11 @@ public class QuotationService {
     /** FR-4.5: scheduled — pending/viewed quotations past their valid-until date become EXPIRED. */
     @Transactional
     public int expireOverdue() {
-        return quotationRepository.expireOverdue(QuotationStatus.EXPIRED, OPEN_FOR_RESPONSE, LocalDate.now(), LocalDateTime.now());
+        int expired = quotationRepository.expireOverdue(QuotationStatus.EXPIRED, OPEN_FOR_RESPONSE, LocalDate.now(), LocalDateTime.now());
+        if (expired > 0) {
+            auditService.recordSystem(null, AuditAction.QUOTATIONS_EXPIRED, AUDIT_ENTITY, null, "count=" + expired);
+        }
+        return expired;
     }
 
     private Quotation openViewLink(String token, boolean byCustomer) {
@@ -198,6 +220,7 @@ public class QuotationService {
         assertAccess(currentUser, quotation);
 
         QuotationStatus target = parseStatus(dto.getStatus());
+        QuotationStatus before = quotation.getStatus();
         if (target == QuotationStatus.DRAFT) {
             throw ApiException.badRequest("A quotation cannot be reset to draft this way");
         }
@@ -208,6 +231,8 @@ public class QuotationService {
             quotation.setCustomerApprovedAt(null);
         }
         quotation.setStatus(target);
+        auditService.record(currentUser, AuditAction.QUOTATION_STATUS_RECORDED, AUDIT_ENTITY, quotation.getId(),
+                "number=" + quotation.getQuotationNumber() + ", status " + before.getDbValue() + " → " + target.getDbValue());
         return quotationMapper.toDto(quotationRepository.save(quotation));
     }
 
@@ -219,6 +244,8 @@ public class QuotationService {
         }
         quotation.setDiscountApprovalStatus(DiscountApprovalStatus.APPROVED);
         quotation.setDiscountReviewNote(null);
+        auditService.record(currentUser, AuditAction.DISCOUNT_APPROVED, AUDIT_ENTITY, quotation.getId(),
+                "number=" + quotation.getQuotationNumber() + ", maxDiscount=" + quotation.getMaxDiscountPercent() + "%");
         return quotationMapper.toDto(quotationRepository.save(quotation));
     }
 
@@ -230,6 +257,9 @@ public class QuotationService {
         }
         quotation.setDiscountApprovalStatus(DiscountApprovalStatus.REJECTED);
         quotation.setDiscountReviewNote(reason);
+        auditService.record(currentUser, AuditAction.DISCOUNT_REJECTED, AUDIT_ENTITY, quotation.getId(),
+                "number=" + quotation.getQuotationNumber() + ", maxDiscount=" + quotation.getMaxDiscountPercent() + "%"
+                        + (reason != null ? ", reason=" + reason : ""));
         return quotationMapper.toDto(quotationRepository.save(quotation));
     }
 
@@ -260,7 +290,9 @@ public class QuotationService {
 
         // BR-3: any create/edit that leaves a line item's discount above the threshold
         // needs a fresh approval, even if a prior version of this quotation was already approved.
-        boolean needsApproval = quotation.getMaxDiscountPercent().compareTo(discountApprovalThreshold) > 0;
+        // NFR-7.6b: the tenant's own threshold, or the deployment default.
+        BigDecimal threshold = tenantSettingsService.discountApprovalThreshold(quotation.getTenant().getId());
+        boolean needsApproval = quotation.getMaxDiscountPercent().compareTo(threshold) > 0;
         quotation.setDiscountApprovalStatus(needsApproval ? DiscountApprovalStatus.PENDING : DiscountApprovalStatus.NOT_REQUIRED);
         quotation.setDiscountReviewNote(null);
     }
@@ -297,6 +329,14 @@ public class QuotationService {
         } catch (IllegalArgumentException ex) {
             throw ApiException.badRequest("Unknown quotation status: " + rawStatus);
         }
+    }
+
+    /** DB-E16: the quotation if the caller may access it (its files follow the same data scope). */
+    @Transactional(readOnly = true)
+    public Quotation requireAccessible(User currentUser, Long quotationId) {
+        Quotation quotation = findQuotation(currentUser, quotationId);
+        assertAccess(currentUser, quotation);
+        return quotation;
     }
 
     private Quotation findQuotation(User currentUser, Long quotationId) {

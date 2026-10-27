@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, RotateCcw, Search, Users, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
@@ -25,7 +25,9 @@ const Customers = () => {
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [industryFilter, setIndustryFilter] = useState('');
+  const [searchParams] = useSearchParams();
+  // UI-8: drill-downs from reports and dashboard charts arrive with ?industry=
+  const [industryFilter, setIndustryFilter] = useState(() => searchParams.get('industry') ?? '');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -148,7 +150,7 @@ const Customers = () => {
           >
             <form onSubmit={handleAddCustomer}>
               <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
-                <span className="grid size-10 place-items-center rounded-lg bg-violet-100 text-violet-700"><Building2 size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><Building2 size={19} /></span>
                 <div className="min-w-0 flex-1">
                   <h2 id="new-customer-title" className="text-base font-bold text-slate-900">New customer account</h2>
                   <p className="mt-0.5 text-xs text-slate-500">Add company details to your tenant directory.</p>
@@ -172,7 +174,7 @@ const Customers = () => {
                     placeholder="e.g. Acme Industries"
                     value={form.companyName}
                     onChange={handleChange}
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     required
                   />
                 </label>
@@ -182,7 +184,7 @@ const Customers = () => {
                     name="industry"
                     value={formIndustry}
                     onChange={handleChange}
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   >
                     {industryOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -199,7 +201,7 @@ const Customers = () => {
                       placeholder="company@example.com"
                       value={form.email}
                       onChange={handleChange}
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     />
                   </span>
                 </label>
@@ -213,7 +215,7 @@ const Customers = () => {
                       placeholder="+1 555 0100"
                       value={form.phone}
                       onChange={handleChange}
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     />
                   </span>
                 </label>
@@ -242,7 +244,7 @@ const Customers = () => {
                 placeholder="Search companies"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <label className="sr-only" htmlFor="customer-industry-filter">Filter by industry</label>
@@ -250,7 +252,7 @@ const Customers = () => {
             id="customer-industry-filter"
             value={industryFilter}
             onChange={(e) => setIndustryFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           >
             <option value="">All industries</option>
             {industryOptions.map((option) => (
@@ -264,7 +266,7 @@ const Customers = () => {
             id="customer-status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           >
             <option value="">All statuses</option>
             <option value="active">Active</option>
@@ -279,7 +281,7 @@ const Customers = () => {
           </div>
         ) : customers.length === 0 ? (
           <div className="px-5 py-14 text-center">
-            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Users size={22} /></span>
+            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-primary/5 text-primary"><Users size={22} /></span>
             <h3 className="mt-4 text-base font-bold text-slate-900">{search || industryFilter || statusFilter ? 'No matching customers' : 'No customers yet'}</h3>
             <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
               {search || industryFilter || statusFilter
@@ -310,12 +312,12 @@ const Customers = () => {
                   <tr key={c.id} className="transition-colors hover:bg-slate-50/70">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-sm font-bold text-violet-700">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/5 text-sm font-bold text-primary">
                           {c.companyName?.trim()?.charAt(0)?.toUpperCase() || <Building2 size={17} />}
                         </span>
                         <Link
                           to={RoutePath.EDIT_CUSTOMER.replace(':id', c.id)}
-                          className="font-semibold text-slate-800 hover:text-violet-700 hover:underline"
+                          className="font-semibold text-slate-800 hover:text-primary/80 hover:underline"
                         >
                           {c.companyName}
                         </Link>

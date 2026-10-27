@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, Search, Target, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
@@ -16,6 +16,7 @@ import {
 import RoutePath from '../../core/constants/routes.constant';
 import { listLeads, createLead, deleteLead, changeLeadStage } from '../../core/services/lead.service';
 import { listUsers } from '../../core/services/user.service';
+import LeadBoard from '../../components/lead/LeadBoard';
 
 const INITIAL_FORM = {
   leadName: '',
@@ -24,6 +25,15 @@ const INITIAL_FORM = {
   source: LEAD_SOURCE_OPTIONS[0].value,
   contactEmail: '',
   contactPhone: '',
+};
+
+const VIEW_KEY = 'leads.view';
+const readView = () => {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === 'board' ? 'board' : 'table';
+  } catch {
+    return 'table';
+  }
 };
 
 const isOverdue = (lead) =>
@@ -39,8 +49,10 @@ const Leads = () => {
 
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stageFilter, setStageFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('');
+  const [searchParams] = useSearchParams();
+  // UI-8: drill-downs from reports and dashboard charts arrive with ?stage=
+  const [stageFilter, setStageFilter] = useState(() => searchParams.get('stage') ?? '');
+  const [sourceFilter, setSourceFilter] = useState(() => searchParams.get('source') ?? '');
   const [ownerFilter, setOwnerFilter] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
   const [owners, setOwners] = useState([]);
@@ -48,6 +60,17 @@ const Leads = () => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [toast, setToast] = useState(null);
+  // NAV-M03: pipeline (kanban) or table, remembered per browser.
+  const [view, setView] = useState(readView);
+  const changeView = (next) => {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // view preference is a convenience only
+    }
+  };
+  const canSeeSourceReport = can(PERMISSIONS.REPORTS_SALES) || can(PERMISSIONS.REPORTS_CAMPAIGN);
 
   const refresh = () => {
     listLeads({ stage: stageFilter, source: sourceFilter, industry: industryFilter, search, ownerId: ownerFilter || undefined })
@@ -171,7 +194,7 @@ const Leads = () => {
           >
             <form onSubmit={handleAddLead}>
               <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
-                <span className="grid size-10 place-items-center rounded-lg bg-violet-100 text-violet-700"><Target size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><Target size={19} /></span>
                 <div className="min-w-0 flex-1">
                   <h2 id="new-lead-title" className="text-base font-bold text-slate-900">Create a new lead</h2>
                   <p className="mt-0.5 text-xs text-slate-500">Add a contact and company to your sales pipeline.</p>
@@ -195,7 +218,7 @@ const Leads = () => {
                     placeholder="e.g. Jordan Lee"
                     value={form.leadName}
                     onChange={handleChange}
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     required
                   />
                 </label>
@@ -209,7 +232,7 @@ const Leads = () => {
                       placeholder="e.g. Acme Industries"
                       value={form.companyName}
                       onChange={handleChange}
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                       required
                     />
                   </span>
@@ -220,7 +243,7 @@ const Leads = () => {
                     name="industry"
                     value={form.industry}
                     onChange={handleChange}
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   >
                     {INDUSTRY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -233,7 +256,7 @@ const Leads = () => {
                     name="source"
                     value={form.source}
                     onChange={handleChange}
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   >
                     {LEAD_SOURCE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -250,7 +273,7 @@ const Leads = () => {
                       placeholder="jordan@example.com"
                       value={form.contactEmail}
                       onChange={handleChange}
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     />
                   </span>
                 </label>
@@ -264,7 +287,7 @@ const Leads = () => {
                       placeholder="+1 555 0100"
                       value={form.contactPhone}
                       onChange={handleChange}
-                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     />
                   </span>
                 </label>
@@ -282,9 +305,27 @@ const Leads = () => {
         <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900">Lead pipeline</h2>
-            <p className="mt-1 text-xs text-slate-500">Find and track prospects through each stage.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Find and track prospects through each stage.
+              {canSeeSourceReport && (
+                <> <Link to="/reports?tab=lead-sources" className="text-primary hover:underline">Lead source report</Link></>
+              )}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-md border border-slate-200 p-0.5" role="group" aria-label="View">
+              {[['board', 'Pipeline'], ['table', 'Table']].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => changeView(value)}
+                  aria-pressed={view === value}
+                  className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="relative min-w-48 flex-1 sm:flex-none">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Search by lead or company name</span>
@@ -293,7 +334,7 @@ const Leads = () => {
                 placeholder="Search leads"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
             </label>
             <label className="sr-only" htmlFor="lead-stage-filter">Filter by stage</label>
@@ -301,7 +342,7 @@ const Leads = () => {
             id="lead-stage-filter"
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           >
             <option value="">All stages</option>
             {LEAD_STAGE_OPTIONS.map((option) => (
@@ -315,7 +356,7 @@ const Leads = () => {
             id="lead-source-filter"
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           >
             <option value="">All sources</option>
             {LEAD_SOURCE_OPTIONS.map((option) => (
@@ -329,7 +370,7 @@ const Leads = () => {
             id="lead-industry-filter"
             value={industryFilter}
             onChange={(e) => setIndustryFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           >
             <option value="">All industries</option>
             {INDUSTRY_OPTIONS.map((option) => (
@@ -345,7 +386,7 @@ const Leads = () => {
                 id="lead-owner-filter"
                 value={ownerFilter}
                 onChange={(e) => setOwnerFilter(e.target.value)}
-                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">All owners</option>
                 {owners.map((owner) => (
@@ -365,7 +406,7 @@ const Leads = () => {
           </div>
         ) : leads.length === 0 ? (
           <div className="px-5 py-14 text-center">
-            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Target size={22} /></span>
+            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-primary/5 text-primary"><Target size={22} /></span>
             <h3 className="mt-4 text-base font-bold text-slate-900">{search || stageFilter || sourceFilter || industryFilter || ownerFilter ? 'No matching leads' : 'No leads yet'}</h3>
             <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
               {search || stageFilter || sourceFilter || industryFilter || ownerFilter
@@ -378,6 +419,14 @@ const Leads = () => {
               <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Add first lead</Button>
             )}
           </div>
+        ) : view === 'board' ? (
+          <LeadBoard
+            leads={leads}
+            stages={stageFilter ? LEAD_STAGE_OPTIONS.filter((o) => o.value === stageFilter) : LEAD_STAGE_OPTIONS}
+            canEdit={canEdit}
+            onStageChange={handleStageChange}
+            isOverdue={isOverdue}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-left text-sm">
@@ -397,10 +446,10 @@ const Leads = () => {
                   <tr key={lead.id} className="transition-colors hover:bg-slate-50/70">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><UserRound size={17} /></span>
+                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/5 text-primary"><UserRound size={17} /></span>
                         <Link
                           to={RoutePath.EDIT_LEAD.replace(':id', lead.id)}
-                          className="font-semibold text-slate-800 hover:text-violet-700 hover:underline"
+                          className="font-semibold text-slate-800 hover:text-primary/80 hover:underline"
                         >
                           {lead.leadName}
                         </Link>
@@ -413,14 +462,14 @@ const Leads = () => {
                         <select
                           value={lead.stage}
                           onChange={(e) => handleStageChange(lead, e.target.value)}
-                          className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                          className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                         >
                           {LEAD_STAGE_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
                         </select>
                       ) : (
-                        <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                        <span className="inline-flex rounded-full bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">
                           {LEAD_STAGE_LABELS[lead.stage] || lead.stage}
                         </span>
                       )}

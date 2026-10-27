@@ -1,5 +1,6 @@
 package com.company.crm.user.entity;
 
+import com.company.crm.common.crypto.EncryptedString;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.tenant.entity.Tenant;
 import jakarta.persistence.*;
@@ -50,6 +51,8 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String email;
 
+    /** NFR-7.2b: encrypted. (The login email stays plain: it is the account identifier.) */
+    @Convert(converter = EncryptedString.class)
     private String phone;
 
     /** FR-5.5c: secret of this user's subscribable meetings calendar feed; null until first requested. */

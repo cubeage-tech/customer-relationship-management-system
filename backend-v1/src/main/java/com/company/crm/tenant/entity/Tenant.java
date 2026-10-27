@@ -2,6 +2,7 @@ package com.company.crm.tenant.entity;
 
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.SubscriptionPlan;
+import com.company.crm.common.crypto.EncryptedString;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +27,9 @@ public class Tenant {
     @Column(name = "legal_name")
     private String legalName;
 
-    @Column(name = "bank_account_number", length = 18)
+    /** NFR-7.2b: a payment detail, so stored encrypted. */
+    @Column(name = "bank_account_number")
+    @Convert(converter = EncryptedString.class)
     private String bankAccountNumber;
 
     // AC-4.2: branding printed on quotation PDFs (all optional).

@@ -36,7 +36,15 @@ public class TwilioWebhookController {
     public ResponseEntity<String> inbound(
             @RequestParam Map<String, String> params,
             @RequestHeader(value = "X-Twilio-Signature", required = false) String signature) {
-        if (!twilioClient.isValidSignature("/api/communications/webhooks/twilio/inbound", params, signature)) {
+        return receiveInbound("/api/communications/webhooks/twilio/inbound", params, signature);
+    }
+
+    /**
+     * Shared by this endpoint and API-G12's /api/integrations/whatsapp-webhook. Twilio signs the
+     * exact URL it calls, so the signature is checked against the path the request arrived on.
+     */
+    public ResponseEntity<String> receiveInbound(String path, Map<String, String> params, String signature) {
+        if (!twilioClient.isValidSignature(path, params, signature)) {
             log.warn("Rejected Twilio inbound webhook with an invalid signature");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

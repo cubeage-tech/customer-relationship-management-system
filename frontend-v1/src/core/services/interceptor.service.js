@@ -155,6 +155,11 @@ class ApiInterceptor {
           clearAuthAndRedirect();
         }
 
+        // UI-6: field-level validation errors are shown next to their fields (see InlineValidation).
+        if (err.response?.data?.errorCode === "VALIDATION_FAILED" && err.response.data.data) {
+          window.dispatchEvent(new CustomEvent("api:field-errors", { detail: err.response.data.data }));
+        }
+
         // Network error — no response from server
         if (!err.response) {
           console.error("[API] Network error:", err.message);

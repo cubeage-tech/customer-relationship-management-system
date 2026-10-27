@@ -33,7 +33,7 @@ const SLA_CLASS = {
 };
 
 const selectClass =
-  'h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100';
+  'h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20';
 
 /**
  * Service agent's ticket workspace (Decision 4): a Queue of unassigned tickets to claim and their
@@ -112,7 +112,7 @@ const AgentTicketQueue = ({ onClaimed }) => {
                 aria-selected={tab === item.id}
                 aria-controls="agent-ticket-panel"
                 onClick={() => changeTab(item.id)}
-                className={`rounded px-3 py-1.5 text-sm font-medium transition ${tab === item.id ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition ${tab === item.id ? 'bg-white text-primary shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 {item.label}
               </button>
@@ -126,7 +126,7 @@ const AgentTicketQueue = ({ onClaimed }) => {
             <span className="sr-only">Search by subject or customer</span>
             <input type="search" placeholder="Search tickets" value={searchInput}
               onChange={(event) => { setSearchInput(event.target.value); setPage(0); }}
-              className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+              className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" />
           </label>
           <label className="sr-only" htmlFor="agent-status-filter">Filter by status</label>
           <select id="agent-status-filter" value={status} onChange={changeFilter(setStatus)} className={selectClass}>
@@ -153,7 +153,7 @@ const AgentTicketQueue = ({ onClaimed }) => {
           </div>
         ) : tickets.length === 0 ? (
           <div className="px-5 py-14 text-center">
-            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Ticket size={22} aria-hidden="true" /></span>
+            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-primary/5 text-primary"><Ticket size={22} aria-hidden="true" /></span>
             <h3 className="mt-4 text-base font-bold text-slate-900">
               {filtered ? 'No matching tickets' : tab === 'queue' ? 'The queue is empty' : 'Nothing assigned to you'}
             </h3>
@@ -178,7 +178,7 @@ const AgentTicketQueue = ({ onClaimed }) => {
                 {tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-slate-50/70">
                     <td className="px-5 py-3.5">
-                      <Link to={RoutePath.EDIT_SERVICE_TICKET.replace(':id', ticket.id)} className="font-semibold text-slate-800 hover:text-violet-700 hover:underline">{ticket.subject}</Link>
+                      <Link to={RoutePath.EDIT_SERVICE_TICKET.replace(':id', ticket.id)} className="font-semibold text-slate-800 hover:text-primary/80 hover:underline">{ticket.subject}</Link>
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">{ticket.customerName}</td>
                     <td className="px-4 py-3.5">

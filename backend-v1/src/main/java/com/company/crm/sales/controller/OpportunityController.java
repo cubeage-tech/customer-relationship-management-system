@@ -42,8 +42,9 @@ public class OpportunityController {
             @AuthenticationPrincipal User currentUser,
             @RequestParam(required = false) String stage,
             @RequestParam(required = false) Long customerId,
-            @RequestParam(required = false) String search) {
-        return Response.ok(opportunityService.listOpportunities(currentUser, stage, customerId, search));
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long ownerId) {
+        return Response.ok(opportunityService.listOpportunities(currentUser, stage, customerId, search, ownerId));
     }
 
     /** New: the stage summary is a per-stage list for the board; date-window KPIs don't fit its contract. */

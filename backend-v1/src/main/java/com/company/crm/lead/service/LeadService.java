@@ -27,6 +27,8 @@ import com.company.crm.sales.service.OpportunityService;
 import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import com.company.crm.notification.event.RecordAssignedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,7 @@ public class LeadService {
     private final LeadMapper leadMapper;
     private final SalesTeamRepository salesTeamRepository;
     private final LeadAssignmentRuleService assignmentRuleService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (owner, convertedCustomer, tenant), so the session must stay open through mapping.
@@ -88,15 +91,20 @@ public class LeadService {
         if (dto.getOwnerId() == null && currentUser.getRole().getName() != RoleType.SALES_EXECUTIVE) {
             assignmentRuleService.apply(lead);
         }
-        return leadMapper.toDto(leadRepository.save(lead));
+        Lead saved = leadRepository.save(lead);
+        announceAssignment(currentUser, null, saved);
+        return leadMapper.toDto(saved);
     }
 
     @Transactional
     public LeadResDto updateLead(User currentUser, Long leadId, LeadReqDto dto) {
         Lead lead = findLead(currentUser, leadId);
         assertAccess(currentUser, lead);
+        Long previousOwnerId = lead.getOwner() != null ? lead.getOwner().getId() : null;
         applyFields(currentUser, lead, dto);
-        return leadMapper.toDto(leadRepository.save(lead));
+        Lead saved = leadRepository.save(lead);
+        announceAssignment(currentUser, previousOwnerId, saved);
+        return leadMapper.toDto(saved);
     }
 
     @Transactional
@@ -142,8 +150,22 @@ public class LeadService {
     @Transactional
     public LeadResDto assignLead(User currentUser, Long leadId, Long ownerId) {
         Lead lead = findLead(currentUser, leadId);
+        Long previousOwnerId = lead.getOwner() != null ? lead.getOwner().getId() : null;
         lead.setOwner(resolveOwner(currentUser, ownerId));
-        return leadMapper.toDto(leadRepository.save(lead));
+        Lead saved = leadRepository.save(lead);
+        announceAssignment(currentUser, previousOwnerId, saved);
+        return leadMapper.toDto(saved);
+    }
+
+    /** FR-M.4: tell the new owner (unless they assigned it to themselves); sent once the change commits. */
+    private void announceAssignment(User currentUser, Long previousOwnerId, Lead lead) {
+        User owner = lead.getOwner();
+        if (owner == null || owner.getId().equals(previousOwnerId) || owner.getId().equals(currentUser.getId())) {
+            return;
+        }
+        eventPublisher.publishEvent(new RecordAssignedEvent(lead.getTenant().getId(), owner.getId(), currentUser.getId(),
+                currentUser.getFullName(), "lead", lead.getId(), "New lead assigned: " + lead.getLeadName(),
+                lead.getCompanyName() != null ? lead.getCompanyName() : "Lead"));
     }
 
     /**

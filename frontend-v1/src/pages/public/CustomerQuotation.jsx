@@ -57,7 +57,7 @@ const CustomerQuotation = () => {
             <p className="mt-1 text-sm text-slate-600">For {quotation.customerName}</p>
           </div>
           <div className="text-right text-sm">
-            <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+            <span className="inline-flex rounded-full bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">
               {QUOTATION_STATUS_LABELS[quotation.status] || quotation.status}
             </span>
             {quotation.validUntil && (

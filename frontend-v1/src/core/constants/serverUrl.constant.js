@@ -58,6 +58,13 @@ class ServerUrl {
     static COMMUNICATION_CALLS = ServerUrl.COMMUNICATIONS + "/calls";
     static COMMUNICATION_EMAIL = ServerUrl.COMMUNICATIONS + "/email";
     static COMMUNICATION_WHATSAPP = ServerUrl.COMMUNICATIONS + "/whatsapp";
+    static COMMUNICATION_SMS = ServerUrl.COMMUNICATIONS + "/sms";
+    static COMMUNICATION_INBOX = ServerUrl.COMMUNICATIONS + "/inbox";
+    // API-G11 AI services
+    static AI = ServerUrl.API_MODULE_USER + "/ai";
+    // ARC-9
+    static CUSTOM_FIELDS = ServerUrl.API_MODULE_USER + "/custom-fields";
+    static customFieldValues = (entityType, id) => `${ServerUrl.CUSTOM_FIELDS}/values/${entityType}/${id}`;
     static COMMUNICATION_SMS_ALERTS = ServerUrl.COMMUNICATIONS + "/sms-alerts";
     static customerContact = (customerId, contactId) =>
       `${ServerUrl.CUSTOMERS}/${customerId}/contacts/${contactId}`;
@@ -121,6 +128,43 @@ class ServerUrl {
     static campaignSchedule = (id) => `${ServerUrl.CAMPAIGNS}/${id}/schedule`;
     static campaignMetrics = (id) => `${ServerUrl.CAMPAIGNS}/${id}/metrics`;
     static campaignRecipients = (id) => `${ServerUrl.CAMPAIGNS}/${id}/recipients`;
+    // Module 8 sales force (FR-8.1 - FR-8.5)
+    static SALES_TARGETS = ServerUrl.API_MODULE_USER + "/sales-targets";
+    static salesTarget = (id) => `${ServerUrl.SALES_TARGETS}/${id}`;
+    static SALES_VISITS = ServerUrl.API_MODULE_USER + "/sales-activities/visits";
+    static SALES_ACTIVITY_SUMMARY = ServerUrl.API_MODULE_USER + "/sales-activities/summary";
+    static ATTENDANCE = ServerUrl.API_MODULE_USER + "/attendance";
+    static ATTENDANCE_ME = ServerUrl.ATTENDANCE + "/me";
+    static ATTENDANCE_CHECK_IN = ServerUrl.ATTENDANCE + "/check-in";
+    static ATTENDANCE_CHECK_OUT = ServerUrl.ATTENDANCE + "/check-out";
+    static COMMISSIONS = ServerUrl.API_MODULE_USER + "/commissions";
+    static commissionApprove = (id) => `${ServerUrl.COMMISSIONS}/${id}/approve`;
+    static commissionPaid = (id) => `${ServerUrl.COMMISSIONS}/${id}/paid`;
+    static COMMISSION_RULES = ServerUrl.API_MODULE_USER + "/commission-rules";
+    static commissionRule = (id) => `${ServerUrl.COMMISSION_RULES}/${id}`;
+    // Module 9 analytics and reporting (FR-9.1 - FR-9.6)
+    static ANALYTICS = ServerUrl.API_MODULE_USER + "/analytics";
+    static ANALYTICS_HEADLINE = ServerUrl.ANALYTICS + "/headline";
+    static ANALYTICS_SALES = ServerUrl.ANALYTICS + "/sales";
+    static ANALYTICS_CUSTOMERS = ServerUrl.ANALYTICS + "/customers";
+    static ANALYTICS_LEAD_SOURCES = ServerUrl.ANALYTICS + "/lead-sources";
+    static ANALYTICS_REVENUE = ServerUrl.ANALYTICS + "/revenue";
+    static ANALYTICS_TEAM_PERFORMANCE = ServerUrl.ANALYTICS + "/team-performance";
+    static ANALYTICS_FILTER_OPTIONS = ServerUrl.ANALYTICS + "/filter-options";
+    static DASHBOARD_PREFERENCES = ServerUrl.ANALYTICS + "/dashboard-preferences";
+    // NFR-7.2d audit trail, NFR-7.6b tenant thresholds
+    static AUDIT_EVENTS = ServerUrl.API_MODULE_USER + "/audit-events";
+    // DB-E16: files on quotations and service tickets
+    static quotationAttachments = (id) => `${ServerUrl.API_MODULE_USER}/quotations/${id}/attachments`;
+    static ticketAttachments = (id) => `${ServerUrl.API_MODULE_USER}/tickets/${id}/attachments`;
+    static TENANT_SETTINGS = ServerUrl.API_MODULE_USER + "/tenant-settings";
+    static ANALYTICS_SERVICE = ServerUrl.ANALYTICS + "/service";
+    static ANALYTICS_CAMPAIGNS = ServerUrl.ANALYTICS + "/campaigns";
+    static analyticsExport = (report) => `${ServerUrl.ANALYTICS}/export/${report}`;
+    static REPORT_SCHEDULES = ServerUrl.API_MODULE_USER + "/report-schedules";
+    static reportSchedule = (id) => `${ServerUrl.REPORT_SCHEDULES}/${id}`;
+    static reportScheduleSend = (id) => `${ServerUrl.REPORT_SCHEDULES}/${id}/send`;
+
     // FR-7.2 segments, FR-7.3 promotions
     static SEGMENTS = ServerUrl.API_MODULE_USER + "/segments";
     static segment = (id) => `${ServerUrl.SEGMENTS}/${id}`;

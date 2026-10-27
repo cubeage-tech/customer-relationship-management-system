@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Building2, CalendarDays, CheckCircle2, CircleAlert, CircleDollarSign, Plus, Search, Target, Trash2, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
@@ -45,7 +45,9 @@ const Opportunities = () => {
   const [summary, setSummary] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stageFilter, setStageFilter] = useState('');
+  const [searchParams] = useSearchParams();
+  // UI-8: drill-downs from reports and dashboard charts arrive with ?stage=
+  const [stageFilter, setStageFilter] = useState(() => searchParams.get('stage') ?? '');
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
@@ -185,7 +187,7 @@ const Opportunities = () => {
             <div key={s.stage} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase text-slate-500">{s.label || stageLabel(s.stage)}</p>
-                <span className="grid size-8 place-items-center rounded-md bg-violet-50 text-violet-700"><CircleDollarSign size={17} /></span>
+                <span className="grid size-8 place-items-center rounded-md bg-primary/5 text-primary"><CircleDollarSign size={17} /></span>
               </div>
               <p className="mt-2 text-xl font-bold text-slate-900">{formatCurrency(s.totalValue)}</p>
               <p className="mt-1 text-xs text-slate-500">{s.count} deal{s.count === 1 ? '' : 's'}</p>
@@ -202,7 +204,7 @@ const Opportunities = () => {
           <div role="dialog" aria-modal="true" aria-labelledby="new-opportunity-title" className="relative z-10 my-auto w-full max-w-2xl overflow-hidden rounded-lg border border-white/70 bg-white shadow-2xl">
             <form onSubmit={handleAddOpportunity}>
               <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:px-6">
-                <span className="grid size-10 place-items-center rounded-lg bg-violet-100 text-violet-700"><Target size={19} /></span>
+                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><Target size={19} /></span>
                 <div className="min-w-0 flex-1">
                   <h2 id="new-opportunity-title" className="text-base font-bold text-slate-900">Create an opportunity</h2>
                   <p className="mt-0.5 text-xs text-slate-500">Add a deal to your sales pipeline.</p>
@@ -212,7 +214,7 @@ const Opportunities = () => {
               <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">
                   Customer <span className="text-rose-500">*</span>
-                  <select name="customerId" value={form.customerId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required>
+                  <select name="customerId" value={form.customerId} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" required>
                     <option value="">Select customer</option>
                     {customers.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}
                   </select>
@@ -221,21 +223,21 @@ const Opportunities = () => {
                   Product / service
                   <span className="relative block">
                     <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <input type="text" name="productService" placeholder="e.g. Annual software license" value={form.productService} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                    <input type="text" name="productService" placeholder="e.g. Annual software license" value={form.productService} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" />
                   </span>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">
                   Deal value <span className="text-rose-500">*</span>
                   <span className="relative block">
                     <CircleDollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <input type="number" name="dealValue" placeholder="0.00" value={form.dealValue} onChange={handleChange} min="0" step="0.01" className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" required />
+                    <input type="number" name="dealValue" placeholder="0.00" value={form.dealValue} onChange={handleChange} min="0" step="0.01" className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" required />
                   </span>
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">
                   Expected close date
                   <span className="relative block">
                     <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <input type="date" name="expectedClosingDate" value={form.expectedClosingDate} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                    <input type="date" name="expectedClosingDate" value={form.expectedClosingDate} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" />
                   </span>
                 </label>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 sm:col-span-2">
@@ -262,7 +264,7 @@ const Opportunities = () => {
                   type="button"
                   onClick={() => changeView(value)}
                   aria-pressed={view === value}
-                  className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                  className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
                   {label}
                 </button>
@@ -271,14 +273,14 @@ const Opportunities = () => {
             <label className="relative min-w-48 flex-1 sm:flex-none">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <span className="sr-only">Search by customer or product</span>
-              <input type="search" placeholder="Search opportunities" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+              <input type="search" placeholder="Search opportunities" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" />
             </label>
             <label className="sr-only" htmlFor="opportunity-stage-filter">Filter by stage</label>
           <select
             id="opportunity-stage-filter"
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           >
             <option value="">All stages</option>
             {stageFilterOptions.map((option) => (
@@ -294,7 +296,7 @@ const Opportunities = () => {
           <div className="space-y-3 p-5" role="status" aria-label="Loading opportunities">{[0, 1, 2].map((row) => <div key={row} className="h-12 animate-pulse rounded-md bg-slate-100" />)}</div>
         ) : opportunities.length === 0 ? (
           <div className="px-5 py-14 text-center">
-            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-violet-50 text-violet-700"><Target size={22} /></span>
+            <span className="mx-auto grid size-12 place-items-center rounded-xl bg-primary/5 text-primary"><Target size={22} /></span>
             <h3 className="mt-4 text-base font-bold text-slate-900">{search || stageFilter ? 'No matching opportunities' : 'No opportunities yet'}</h3>
             <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{search || stageFilter ? 'Try changing your search or stage filter.' : canCreate ? 'Add your first deal to start tracking it through the sales pipeline.' : 'Opportunities you have access to will be listed here.'}</p>
             {canCreate && !search && !stageFilter && <Button className="mt-5" onClick={() => setShowForm(true)} icon={Plus}>Add first opportunity</Button>}
@@ -316,11 +318,11 @@ const Opportunities = () => {
               <tbody className="divide-y divide-slate-100">
                 {opportunities.map((o) => (
                   <tr key={o.id} className="transition-colors hover:bg-slate-50/70">
-                    <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-50 text-violet-700"><UserRound size={17} /></span><Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', o.id)} className="font-semibold text-slate-800 hover:text-violet-700 hover:underline">{o.customerName}</Link></div></td>
+                    <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/5 text-primary"><UserRound size={17} /></span><Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', o.id)} className="font-semibold text-slate-800 hover:text-primary/80 hover:underline">{o.customerName}</Link></div></td>
                     <td className="px-4 py-3.5 text-slate-600">{o.productService || '—'}</td>
                     <td className="px-4 py-3.5 font-semibold text-slate-800">{formatCurrency(o.dealValue)}</td>
                     <td className="px-4 py-3.5 text-slate-600">{o.expectedClosingDate ? new Date(o.expectedClosingDate).toLocaleDateString() : '—'}</td>
-                    <td className="px-4 py-3.5">{canEdit ? <select value={o.stage} onChange={(e) => handleStageChange(o, e.target.value)} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">{stageOptionsFor(o.stage).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <span className="inline-flex rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">{stageLabel(o.stage)}</span>}</td>
+                    <td className="px-4 py-3.5">{canEdit ? <select value={o.stage} onChange={(e) => handleStageChange(o, e.target.value)} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20">{stageOptionsFor(o.stage).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <span className="inline-flex rounded-full bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">{stageLabel(o.stage)}</span>}</td>
                     <td className="px-4 py-3.5 text-slate-600">{o.ownerName || '—'}</td>
                     {canDelete && <td className="px-4 py-3.5 text-right"><button type="button" onClick={() => handleDelete(o)} className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Trash2 size={14} />Delete</button></td>}
                   </tr>

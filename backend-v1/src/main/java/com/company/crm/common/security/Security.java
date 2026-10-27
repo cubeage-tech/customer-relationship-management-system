@@ -61,6 +61,9 @@ public class Security {
                         .requestMatchers("/api/public/support/*", "/api/public/feedback/*").permitAll()
                         // FR-7.4/7.1c campaign email links (open pixel, tracked links, unsubscribe); the recipient token is the credential.
                         .requestMatchers("/api/public/campaigns/**").permitAll()
+                        // API-G12 integrations: provider webhooks (signature) and the ERP sync (X-Api-Key, checked per request).
+                        .requestMatchers(HttpMethod.POST, "/api/integrations/payment", "/api/integrations/whatsapp-webhook").permitAll()
+                        .requestMatchers("/api/integrations/erp/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )

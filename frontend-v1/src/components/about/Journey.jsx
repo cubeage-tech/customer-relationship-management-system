@@ -34,7 +34,7 @@ const Journey = () => {
           {milestones.map(({ year, description }) => (
             <li key={year} className="relative pb-8 last:pb-0">
               <span className="gradient-primary absolute -left-[28px] top-0 size-3.5 rounded-full ring-4 ring-[#f8f9fc] sm:-left-[35px]" />
-              <p className="text-sm font-bold text-indigo-600">{year}</p>
+              <p className="text-sm font-bold text-primary">{year}</p>
               <p className="mt-2 text-[15px] leading-6 text-slate-500">
                 {description}
               </p>

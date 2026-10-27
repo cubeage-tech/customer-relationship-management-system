@@ -110,7 +110,7 @@ const SubscriptionPlans = () => {
                   type="button"
                   onClick={() => handleSave(plan)}
                   disabled={saving || loading}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving ? 'Saving...' : 'Save'}
                 </button>
@@ -125,7 +125,7 @@ const SubscriptionPlans = () => {
                     step="0.01"
                     value={planForm[plan].monthlyPrice}
                     onChange={(e) => handleInputChange(plan, 'monthlyPrice', e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </label>
 
@@ -137,7 +137,7 @@ const SubscriptionPlans = () => {
                     step="0.01"
                     value={planForm[plan].annualPrice}
                     onChange={(e) => handleInputChange(plan, 'annualPrice', e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </label>
 
@@ -147,7 +147,7 @@ const SubscriptionPlans = () => {
                     type="text"
                     value={planForm[plan].currency}
                     onChange={(e) => handleInputChange(plan, 'currency', e.target.value.toUpperCase())}
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 uppercase outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 uppercase outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                   />
                 </label>
               </div>

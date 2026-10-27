@@ -44,7 +44,7 @@ const SalesPerformance = () => {
               type="button"
               onClick={() => setView(value)}
               aria-pressed={view === value}
-              className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`h-8 rounded px-3 text-xs font-semibold ${view === value ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             >
               {label}
             </button>

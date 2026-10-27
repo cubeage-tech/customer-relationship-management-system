@@ -1,4 +1,5 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
+import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
 import SalesPerformance from '../../components/opportunity/SalesPerformance';
 
 const STATS = [
@@ -15,6 +16,7 @@ const ExecutiveDashboard = () => {
       subtitle="Organisation wide view of sales, marketing and service performance."
       stats={STATS}
     >
+      <HeadlineMetrics />
       <SalesPerformance />
     </DashboardShell>
   );

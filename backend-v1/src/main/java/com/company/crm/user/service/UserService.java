@@ -1,5 +1,7 @@
 package com.company.crm.user.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.auth.service.EmailVerificationTokenService;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
@@ -37,6 +39,7 @@ public class UserService {
     );
 
     private final UserRepository userRepository;
+    private final AuditService auditService;
     private final RoleRepository roleRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -68,6 +71,8 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(AccountStatus.PENDING_VERIFICATION);
         user = userRepository.save(user);
+        auditService.record(creator, AuditAction.USER_CREATED, "user", user.getId(),
+                "name=" + user.getFullName() + ", role=" + requestedRole.getDbValue());
 
         emailVerificationTokenService.issueToken(user);
 

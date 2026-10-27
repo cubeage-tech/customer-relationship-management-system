@@ -1,5 +1,7 @@
 package com.company.crm.payment.service;
 
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.enums.BillingCycle;
 import com.company.crm.common.enums.PaymentStatus;
 import com.company.crm.common.exception.ApiException;
@@ -36,6 +38,7 @@ import java.math.BigDecimal;
 public class PaymentService {
 
     private final PaymentGateway paymentGateway;
+    private final AuditService auditService;
     private final PaymentRepository paymentRepository;
     private final PlanRepository planRepository;
     private final PlanPriceRepository planPriceRepository;
@@ -74,6 +77,8 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.CREATED);
         payment.setGatewayOrderId(order.orderId());
         paymentRepository.save(payment);
+        auditService.record(currentUser, AuditAction.PAYMENT_ORDER_CREATED, "payment", payment.getId(),
+                "plan=" + plan.getCode() + ", cycle=" + billingCycle.getDbValue() + ", amount=" + amount + " " + price.getCurrency());
 
         return new PaymentOrderResponse(
                 order.orderId(),
@@ -111,6 +116,7 @@ public class PaymentService {
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason("Signature verification failed");
             paymentRepository.save(payment);
+            auditService.record(currentUser, AuditAction.PAYMENT_FAILED, "payment", payment.getId(), "signature verification failed");
             log.warn("Payment signature check failed for order {} (tenant {})", payment.getGatewayOrderId(), tenant.getId());
             return false;
         }
@@ -144,6 +150,8 @@ public class PaymentService {
             payment.setGatewayPaymentId(event.paymentId());
             payment.setFailureReason(event.failureReason());
             paymentRepository.save(payment);
+            auditService.recordSystem(payment.getTenant().getId(), AuditAction.PAYMENT_FAILED, "payment", payment.getId(),
+                    "reported by the payment provider" + (event.failureReason() != null ? ": " + event.failureReason() : ""));
         }
     }
 
@@ -157,6 +165,8 @@ public class PaymentService {
         payment.setGatewayPaymentId(gatewayPaymentId);
         payment.setFailureReason(null);
         paymentRepository.save(payment);
+        auditService.recordSystem(payment.getTenant().getId(), AuditAction.PAYMENT_CONFIRMED, "payment", payment.getId(),
+                "plan=" + payment.getPlan().getCode() + ", amount=" + payment.getAmount() + " " + payment.getCurrency());
 
         subscriptionService.activate(payment.getTenant(), payment.getPlan(), payment.getBillingCycle(), payment);
         log.info("Payment {} confirmed — tenant {} now on {} ({})", payment.getGatewayOrderId(),
