@@ -8,6 +8,8 @@ import com.company.crm.analytics.export.ReportRunner.Filters;
 import com.company.crm.analytics.export.ReportRunner.Format;
 import com.company.crm.analytics.export.ReportRunner.Rendered;
 import com.company.crm.analytics.repository.ReportScheduleRepository;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
@@ -47,6 +49,7 @@ public class ReportScheduleService {
     private final SalesForceScope salesForceScope;
     private final UserRepository userRepository;
     private final MailService mailService;
+    private final AuditService auditService;
 
     // ==================== Management ====================
 
@@ -138,10 +141,12 @@ public class ReportScheduleService {
                     "Hello,\n\nAttached is the " + type.getTitle().toLowerCase() + " \"" + s.getName() + "\" for " + period[0]
                             + " to " + period[1] + ", generated for " + owner.getFullName() + ".\n\nThis email was sent automatically by SmartCRM.",
                     file.filename(), file.bytes(), file.contentType());
+            exported(owner, s, type);
             s.setLastStatus("sent");
             s.setLastError(null);
         } catch (MailQueuedException e) {
             // NFR-7.4a: built and handed to the mail outbox, which keeps retrying it.
+            exported(owner(s), s, ReportType.fromCode(s.getReportType()));
             s.setLastStatus("sent");
             s.setLastError("Mail server was unavailable — the email is queued and will be retried automatically");
         } catch (RuntimeException | MessagingException e) { // access lost, bad filter, or mail failure: recorded on the schedule
@@ -150,6 +155,12 @@ public class ReportScheduleService {
             s.setLastError(truncate(e.getMessage()));
         }
         s.setLastRunAt(LocalDateTime.now());
+    }
+
+    /** SEC-7: a scheduled report is a data export too — recorded as its owner's. */
+    private void exported(User owner, ReportSchedule s, ReportType type) {
+        auditService.recordAccess(owner, AuditAction.REPORT_EXPORTED, "report_schedule", s.getId(),
+                type.getCode() + " as " + s.getFormat() + ", emailed to " + recipients(s).size() + " recipient(s)");
     }
 
     // ==================== Rules ====================

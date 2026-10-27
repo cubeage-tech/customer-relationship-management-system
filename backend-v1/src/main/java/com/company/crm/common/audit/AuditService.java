@@ -49,6 +49,15 @@ public class AuditService {
         log.info("audit action={} entity={}#{} tenant={}", action, entityType, entityId, tenantId);
     }
 
+    /**
+     * SEC-7: an action that changes nothing (e.g. a report export), so there is no business
+     * transaction to join — recorded in its own.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordAccess(User actor, AuditAction action, String entityType, Long entityId, String details) {
+        record(actor, action, entityType, entityId, details);
+    }
+
     /** An action taken by a scheduled job rather than a user (no actor). */
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordSystem(Long tenantId, AuditAction action, String entityType, Long entityId, String details) {

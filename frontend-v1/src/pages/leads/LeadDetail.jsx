@@ -16,6 +16,7 @@ import {
 import RoutePath from '../../core/constants/routes.constant';
 import { getLead, updateLead, changeLeadStage, assignLead, assignLeadTeam, listAssignableTeams } from '../../core/services/lead.service';
 import { apiErrorMessage } from '../../core/utils/apiError';
+import { askOverrideReason, isStageSkip } from '../../core/utils/stageOverride';
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
 import MeetingsPanel from '../../components/meeting/MeetingsPanel';
@@ -96,15 +97,17 @@ const LeadDetail = () => {
       const saved = await changeLeadStage(id, nextStage);
       setLead(saved);
     } catch (err) {
-      if (err.response?.status === 400 && window.confirm('This skips pipeline stages. Move the lead anyway?')) {
-        try {
-          const saved = await changeLeadStage(id, nextStage, true);
-          setLead(saved);
-        } catch (retryErr) {
-          setStageError(retryErr.response?.data?.message || 'Could not update the stage.');
-        }
-      } else {
+      if (!isStageSkip(err)) {
         setStageError(err.response?.data?.message || 'Could not update the stage.');
+        return;
+      }
+      const reason = askOverrideReason();
+      if (reason === null) return;
+      try {
+        const saved = await changeLeadStage(id, nextStage, true, reason);
+        setLead(saved);
+      } catch (retryErr) {
+        setStageError(retryErr.response?.data?.message || 'Could not update the stage.');
       }
     }
   };

@@ -79,5 +79,19 @@ public enum AuditAction {
     DATA_EXPORTED,
     DATA_ERASED,
     DATA_REQUEST_REJECTED,
-    EDITION_APPLIED
+    EDITION_APPLIED,
+
+    // SEC-7: sign-ins, exports and (RecordAuditListener) every other record's create/update/delete
+    USER_SIGNED_IN,
+    USER_SIGN_IN_FAILED,
+    USER_SIGNED_OUT,
+    REPORT_EXPORTED,
+    RECORD_CREATED,
+    RECORD_UPDATED,
+    RECORD_DELETED,
+    OPPORTUNITY_DELETED,
+
+    // BR-1 / VAL-7: a stage skipped by explicit override
+    LEAD_STAGE_OVERRIDDEN,
+    OPPORTUNITY_STAGE_OVERRIDDEN
 }

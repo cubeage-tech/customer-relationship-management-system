@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PasswordRules from '../../components/auth/PasswordRules';
 import { CheckCircle2, CircleAlert, Mail, Plus, Search, ShieldCheck, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
@@ -133,6 +134,7 @@ const Users = () => {
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">Temporary password <span className="text-rose-500">*</span>
                   <input type="password" name="password" placeholder="Set a temporary password" value={form.password} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20" required />
+                  <PasswordRules password={form.password} name={form.fullName} email={form.email} />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium text-slate-700">CRM role
                   <select name="role" value={form.role} onChange={handleChange} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20">

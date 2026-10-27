@@ -3,6 +3,7 @@
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 import com.company.crm.auth.mfa.MfaService;
+import com.company.crm.auth.password.PasswordPolicy;
 import com.company.crm.auth.dto.request.*;
 import com.company.crm.auth.dto.response.AuthResponse;
 import com.company.crm.auth.dto.response.UserSummaryResDto;
@@ -10,6 +11,7 @@ import com.company.crm.auth.service.AuthService;
 import com.company.crm.common.response.Response;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordPolicy passwordPolicy;
 
     @PostMapping("/login")
     public Response<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -54,6 +57,12 @@ public class AuthController {
         return Response.ok(
                 "Account created. Please check your email to verify your account before logging in.",
                 authService.signupAdmin(request));
+    }
+
+    /** SEC-1b: the password rules, so sign-up and reset forms can show them as the user types. */
+    @GetMapping("/password-policy")
+    public Response<PasswordPolicy.Rules> passwordPolicy() {
+        return Response.ok(passwordPolicy.rules());
     }
 
     /** API-G01: ends this device's session (its refresh token); the short-lived access token expires on its own. */

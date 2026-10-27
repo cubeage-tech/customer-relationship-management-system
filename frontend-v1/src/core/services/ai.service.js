@@ -30,3 +30,9 @@ export const saveAiSettings = (data) => ApiService.saveAiSettings(data);
 export const getAiExclusion = (recordType, recordId) => ApiService.getAiExclusion(recordType, recordId);
 
 export const setAiExclusion = (recordType, recordId, excluded) => ApiService.setAiExclusion(recordType, recordId, excluded);
+
+/** FR-4.7: { customerId, productNames } → per product the recommended discount, net price, win rate and why. */
+export const getPriceRecommendations = (data) => ApiService.getPriceRecommendations(data);
+
+/** NFR-7.1c: each AI feature's p50/p95 response time against its budget (admins). */
+export const getAiPerformance = () => ApiService.getAiPerformance();

@@ -54,7 +54,7 @@ class CampaignExecutionIntegrationTest extends PostgresIntegrationTest {
         bolt = customer("Bolt", "trading", "bolt" + n + "@buyer.test");
         cogs = customer("Cogs", "manufacturing", null);
         long deal = idOf(send(post("/api/opportunities"), adminToken, "{\"customerId\":" + acme + ",\"dealValue\":5000}"));
-        send(patch("/api/opportunities/" + deal + "/stage"), adminToken, "{\"stage\":\"won\"}").andExpect(status().isOk());
+        send(patch("/api/opportunities/" + deal + "/stage"), adminToken, "{\"stage\":\"won\",\"force\":true}").andExpect(status().isOk());
         send(post("/api/communications/calls"), adminToken, "{\"customerId\":" + bolt + ",\"direction\":\"outbound\",\"outcome\":\"connected\"}")
                 .andExpect(status().isOk());
     }
@@ -114,7 +114,7 @@ class CampaignExecutionIntegrationTest extends PostgresIntegrationTest {
 
         // Converted: Acme wins another deal after receiving it.
         long deal = idOf(send(post("/api/opportunities"), adminToken, "{\"customerId\":" + acme + ",\"dealValue\":800}"));
-        send(patch("/api/opportunities/" + deal + "/stage"), adminToken, "{\"stage\":\"won\"}").andExpect(status().isOk());
+        send(patch("/api/opportunities/" + deal + "/stage"), adminToken, "{\"stage\":\"won\",\"force\":true}").andExpect(status().isOk());
         send(get("/api/campaigns/" + campaign + "/metrics"), tenant.token(EXECUTIVE_OWNER), null)
                 .andExpect(jsonPath("$.data.recipients").value(2))
                 .andExpect(jsonPath("$.data.sent").value(1))

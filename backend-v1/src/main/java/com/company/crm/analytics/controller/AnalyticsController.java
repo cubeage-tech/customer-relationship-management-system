@@ -19,6 +19,8 @@ import com.company.crm.analytics.service.ReportScope;
 import com.company.crm.analytics.service.ReportScopeResolver;
 import com.company.crm.analytics.service.ReportType;
 import com.company.crm.analytics.service.ServiceCampaignReportService;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.response.Response;
 import com.company.crm.common.security.RoleExpressions;
 import com.company.crm.user.entity.User;
@@ -58,6 +60,7 @@ public class AnalyticsController {
     private final ReportScopeResolver scopeResolver;
     private final ServiceCampaignReportService serviceCampaignReports;
     private final ReportRunner reportRunner;
+    private final AuditService auditService;
 
     @GetMapping("/headline")
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
@@ -176,6 +179,10 @@ public class AnalyticsController {
         LocalDate start = from != null ? from : end.withDayOfMonth(1);
         Rendered file = reportRunner.render(currentUser, ReportType.fromCode(report),
                 new Filters(start, end, industry, teamId, userId, priority, technicianId), Format.fromCode(format));
+        // SEC-7: data leaving the CRM as a file.
+        auditService.recordAccess(currentUser, AuditAction.REPORT_EXPORTED, "report", null,
+                report + " as " + format + ", " + start + " to " + end + (teamId != null ? ", team " + teamId : "")
+                        + (userId != null ? ", user " + userId : ""));
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(file.contentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.filename()).build().toString())

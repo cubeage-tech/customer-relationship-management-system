@@ -87,8 +87,8 @@ class RoleAccessIntegrationTest extends PostgresIntegrationTest {
         // Read-only roles can't create customers, leads, campaigns, tickets or users. Bodies are
         // valid on purpose: Spring validates the body before method security, so an invalid body
         // would answer 400 and never exercise the role check.
-        String customer = "{\"companyName\":\"X\",\"industry\":\"trading\"}";
-        String lead = "{\"leadName\":\"L\",\"companyName\":\"X\",\"industry\":\"trading\",\"source\":\"referral\"}";
+        String customer = "{\"companyName\":\"Xeno Corp\",\"industry\":\"trading\"}";
+        String lead = "{\"leadName\":\"L\",\"companyName\":\"Xeno Corp\",\"industry\":\"trading\",\"source\":\"referral\"}";
         String user = "{\"fullName\":\"New Person\",\"email\":\"new.person@test.local\",\"password\":\"Secret123!\",\"role\":\"sales_executive\"}";
         expectForbidden(post("/api/customers"), acme.token(MARKETING_EXECUTIVE), customer);
         expectForbidden(post("/api/customers"), acme.token(EXECUTIVE_OWNER), customer);

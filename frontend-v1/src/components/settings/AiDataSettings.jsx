@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import AiPerformance from './AiPerformance';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getAiSettings, saveAiSettings } from '../../core/services/ai.service';
 
@@ -65,6 +66,8 @@ const AiDataSettings = () => {
           </div>
         </>
       )}
+      {/* NFR-7.1c */}
+      <AiPerformance />
     </div>
   );
 };

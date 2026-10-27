@@ -11,6 +11,7 @@ import RoutePath from '../../core/constants/routes.constant';
 import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
 import { getOpportunity, updateOpportunity, changeOpportunityStage } from '../../core/services/opportunity.service';
 import { listUsers } from '../../core/services/user.service';
+import { askOverrideReason, isStageSkip } from '../../core/utils/stageOverride';
 
 const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
 
@@ -86,7 +87,18 @@ const OpportunityDetail = () => {
       const saved = await changeOpportunityStage(id, nextStage, lossReason);
       setOpportunity(saved);
     } catch (err) {
-      setStageError(err.response?.data?.message || 'Could not update the stage.');
+      if (!isStageSkip(err)) {
+        setStageError(err.response?.data?.message || 'Could not update the stage.');
+        return;
+      }
+      // VAL-7: skipping stages is an explicit, logged override.
+      const reason = askOverrideReason();
+      if (reason === null) return;
+      try {
+        setOpportunity(await changeOpportunityStage(id, nextStage, lossReason, { reason }));
+      } catch (retryErr) {
+        setStageError(retryErr.response?.data?.message || 'Could not update the stage.');
+      }
     }
   };
 

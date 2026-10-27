@@ -33,8 +33,9 @@ class EndpointAuthorizationCoverageTest extends PostgresIntegrationTest {
             "POST /auth/resend-verification",
             "POST /auth/forgot-password",
             "POST /auth/reset-password",
-            "POST /auth/refresh",
-            "POST /api/public/quotations/{token}/respond", // NAV-2: the view-link token is the credential              // API-G01: the refresh token in the body is the credential
+            "POST /auth/refresh",              // API-G01: the refresh token in the body is the credential
+            "GET /auth/password-policy",       // SEC-1b: the password rules for the sign-up and reset forms
+            "POST /api/public/quotations/{token}/respond", // NAV-2: the view-link token is the credential
             "POST /auth/mfa/verify",           // SEC-1c: second sign-in step, authenticated by the one-time challenge token
             "POST /auth/mfa/setup",
             "POST /auth/mfa/setup/confirm",

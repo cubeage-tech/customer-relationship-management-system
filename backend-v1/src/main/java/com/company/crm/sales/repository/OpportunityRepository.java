@@ -1,5 +1,6 @@
 package com.company.crm.sales.repository;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.company.crm.sales.entity.Opportunity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -8,7 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface OpportunityRepository extends JpaRepository<Opportunity, Long> {
+public interface OpportunityRepository extends JpaRepository<Opportunity, Long>, JpaSpecificationExecutor<Opportunity> {
 
     /** Tenant-scoped lookup: a record from another tenant is indistinguishable from a missing one. */
     Optional<Opportunity> findByIdAndTenantId(Long id, Long tenantId);

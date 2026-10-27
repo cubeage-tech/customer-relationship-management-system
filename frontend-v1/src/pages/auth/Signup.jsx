@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PasswordRules from '../../components/auth/PasswordRules';
 import { useNavigate, Link } from 'react-router-dom';
 import { signup as signupRequest } from '../../core/services/auth.service';
 import RoutePath from '../../core/constants/routes.constant';
@@ -341,6 +342,7 @@ const Signup = () => {
                   {strength.label}
                 </span>
               </p>
+              <PasswordRules password={form.password} name={form.name} email={form.email} />
               {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
             </div>
 

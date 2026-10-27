@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import PriceHint from '../../components/quotation/PriceHint';
+import { usePriceRecommendations } from '../../core/hooks/usePriceRecommendations';
 import { draftQuotation } from '../../core/services/ai.service';
 import { Link } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, CircleAlert, FileText, Package, Plus, Search, Trash2, UserRound, X } from 'lucide-react';
@@ -103,6 +105,9 @@ const Quotations = () => {
   };
 
   const addLineItem = () => setLineItems((prev) => [...prev, { ...EMPTY_LINE_ITEM }]);
+
+  // FR-4.7: the discount past quotes for each product were won at, for this customer.
+  const priceRecs = usePriceRecommendations(form.customerId, lineItems.map((l) => l.productName));
 
   // NAV-2: the AI's first draft of the line items (from your products) and a cover note, to edit before saving.
   const [drafting, setDrafting] = useState(false);
@@ -340,6 +345,8 @@ const Quotations = () => {
                           </label>
                           {lineItems.length > 1 && <button type="button" onClick={() => removeLineItem(index)} className="mb-0.5 grid size-9 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`Remove line item ${index + 1}`}><Trash2 size={16} /></button>}
                         </div>
+                        <PriceHint rec={priceRecs[(item.productName || '').trim().toLowerCase()]} currentDiscount={item.discountPercent}
+                          onApply={(discount) => handleLineItemChange(index, 'discountPercent', discount)} />
                       </div>
                     ))}
                   </div>

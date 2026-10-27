@@ -92,7 +92,7 @@ class SalesPerformanceIntegrationTest extends PostgresIntegrationTest {
                 "{\"customerId\":" + customerId + ",\"dealValue\":" + value + ",\"ownerId\":" + owner.getId() + "}"));
         if (stage != null) {
             String reason = "lost".equals(stage) ? ",\"lossReason\":\"Price\"" : "";
-            send(patch("/api/opportunities/" + id + "/stage"), adminToken, "{\"stage\":\"" + stage + "\"" + reason + "}")
+            send(patch("/api/opportunities/" + id + "/stage"), adminToken, "{\"stage\":\"" + stage + "\",\"force\":true" + reason + "}")
                     .andExpect(status().isOk());
         }
     }

@@ -1,6 +1,7 @@
 package com.company.crm.notification;
 
 import com.company.crm.lead.scheduler.FollowUpReminderJob;
+import com.company.crm.notification.push.PushRetryService;
 import com.company.crm.notification.push.PushSender;
 import com.company.crm.support.PostgresIntegrationTest;
 import com.company.crm.support.TestTenants.TestTenant;
@@ -39,6 +40,7 @@ class MobileAppIntegrationTest extends PostgresIntegrationTest {
     @MockitoBean private PushSender pushSender;
     @Autowired private FollowUpReminderJob followUpJob;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PushRetryService pushRetryService;
 
     private TestTenant tenant;
     private String adminToken;
@@ -166,6 +168,38 @@ class MobileAppIntegrationTest extends PostgresIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT user_id FROM user_devices WHERE token = 'exec-phone'", Long.class)).isEqualTo(tenant.user(ADMIN).getId());
         send(post("/api/devices/unregister"), adminToken, "{\"token\":\"exec-phone\",\"platform\":\"android\"}").andExpect(status().isOk());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM user_devices WHERE token = 'exec-phone'", Long.class)).isZero();
+    }
+
+    @Test
+    void aPushThatFailsForATemporaryReasonIsRetriedThenGivenUpOn() throws Exception {
+        // ERR-3: Firebase busy on the first try, through on the retry.
+        send(post("/api/devices"), execToken, "{\"token\":\"flaky-phone\",\"platform\":\"android\"}").andExpect(status().isOk());
+        when(pushSender.send(eq("flaky-phone"), anyString(), any(), anyMap())).thenReturn(PushSender.Result.RETRY_LATER, PushSender.Result.SENT);
+        send(post("/api/leads"), adminToken, "{\"leadName\":\"Retry\",\"companyName\":\"Flaky Co\",\"industry\":\"trading\",\"source\":\"referral\","
+                + "\"ownerId\":" + exec.getId() + "}").andExpect(status().isOk());
+        long retry = jdbc.queryForObject("SELECT r.id FROM push_retries r JOIN user_devices d ON d.id = r.device_id WHERE d.token = 'flaky-phone'", Long.class);
+        long notification = jdbc.queryForObject("SELECT notification_id FROM push_retries WHERE id = ?", Long.class, retry);
+        assertThat(jdbc.queryForObject("SELECT status FROM notification_deliveries WHERE notification_id = ? AND channel = 'push'", String.class, notification))
+                .isEqualTo("queued");
+
+        pushRetryService.retry(retry); // not due yet: nothing happens
+        verify(pushSender, times(1)).send(eq("flaky-phone"), anyString(), any(), anyMap());
+        jdbc.update("UPDATE push_retries SET next_attempt_at = ? WHERE id = ?", LocalDateTime.now().minusMinutes(1), retry);
+        pushRetryService.retry(retry);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM push_retries WHERE id = ?", Long.class, retry)).isZero();
+        assertThat(jdbc.queryForList("SELECT detail FROM notification_deliveries WHERE notification_id = ? AND channel = 'push' AND status = 'sent'", String.class, notification))
+                .containsExactly("Delivered on retry 1");
+
+        // Still failing after the last backoff step: given up on and logged as failed.
+        when(pushSender.send(eq("flaky-phone"), anyString(), any(), anyMap())).thenReturn(PushSender.Result.RETRY_LATER);
+        send(post("/api/leads"), adminToken, "{\"leadName\":\"Retry 2\",\"companyName\":\"Flaky Co\",\"industry\":\"trading\",\"source\":\"referral\","
+                + "\"ownerId\":" + exec.getId() + "}").andExpect(status().isOk());
+        long second = jdbc.queryForObject("SELECT r.id FROM push_retries r JOIN user_devices d ON d.id = r.device_id WHERE d.token = 'flaky-phone'", Long.class);
+        jdbc.update("UPDATE push_retries SET attempts = 4, next_attempt_at = ? WHERE id = ?", LocalDateTime.now().minusMinutes(1), second);
+        pushRetryService.retry(second);
+        assertThat(jdbc.queryForObject("SELECT status FROM push_retries WHERE id = ?", String.class, second)).isEqualTo("dead");
+        assertThat(jdbc.queryForObject("SELECT d.status FROM notification_deliveries d JOIN push_retries r ON r.notification_id = d.notification_id "
+                + "WHERE r.id = ? AND d.channel = 'push' ORDER BY d.id DESC LIMIT 1", String.class, second)).isEqualTo("failed");
     }
 
     @Test

@@ -1,5 +1,16 @@
 package com.company.crm.lead.service;
 
+import com.company.crm.common.pagination.PageRequestFactory;
+import com.company.crm.common.pagination.PageResponse;
+import com.company.crm.common.scope.ScopeSpecifications;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import java.util.Map;
+import com.company.crm.lead.repository.LeadSpecifications;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.audit.AuditService;
+import com.company.crm.common.audit.StageOverrides;
 import com.company.crm.common.period.ReportingPeriods;
 import com.company.crm.lead.dto.response.LeadSummaryDto;
 import com.company.crm.lead.repository.LeadSummaryQuery;
@@ -29,6 +40,7 @@ import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.company.crm.notification.event.RecordAssignedEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,23 +63,16 @@ public class LeadService {
     private final SalesTeamRepository salesTeamRepository;
     private final LeadAssignmentRuleService assignmentRuleService;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditService auditService;
+    private final PageRequestFactory pageRequestFactory;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (owner, convertedCustomer, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
     public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search,
                                       Long ownerId) {
-        List<Lead> leads = findInScope(currentUser);
-
-        return leads.stream()
-                .filter(l -> stage == null || stage.isBlank() || l.getStage().getDbValue().equals(stage))
-                .filter(l -> source == null || source.isBlank() || l.getSource().getDbValue().equals(source))
-                .filter(l -> industry == null || industry.isBlank() || l.getIndustry().getDbValue().equals(industry))
-                .filter(l -> search == null || search.isBlank()
-                        || l.getLeadName().toLowerCase().contains(search.trim().toLowerCase())
-                        || l.getCompanyName().toLowerCase().contains(search.trim().toLowerCase()))
-                // FR-2.7: owner filter, applied within the caller's data scope.
-                .filter(l -> ownerId == null || (l.getOwner() != null && ownerId.equals(l.getOwner().getId())))
+        // NFR-7.1b: filtered in the database rather than in memory.
+        return leadRepository.findAll(filters(currentUser, stage, source, industry, search, ownerId), LIST_ORDER).stream()
                 .map(leadMapper::toDto)
                 .toList();
     }
@@ -130,8 +135,14 @@ public class LeadService {
 
         boolean isForwardSkip = target.getOrder() > current.getOrder() + 1;
         if (isForwardSkip && !dto.isForce()) {
-            throw ApiException.badRequest(
-                    "Leads must move through the pipeline in order. Pass force=true to skip stages.");
+            // STAGE_SKIP: the client may ask the user to confirm the override and resend with force=true.
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Leads must move through the pipeline in order. Pass force=true to skip stages.", "STAGE_SKIP");
+        }
+        if (isForwardSkip) {
+            auditService.record(currentUser, AuditAction.LEAD_STAGE_OVERRIDDEN, "lead", lead.getId(),
+                    StageOverrides.details(current.getDbValue(), target.getDbValue(), target.getOrder() - current.getOrder() - 1,
+                            dto.getOverrideReason()));
         }
 
         lead.setStage(target);
@@ -282,6 +293,32 @@ public class LeadService {
         }
         dataScopeResolver.assertCanAccess(currentUser,
                 lead.getOwner() != null ? lead.getOwner().getId() : null, "lead");
+    }
+
+    /** NFR-7.1b: one page of the same list (opt-in via page/size); newest first unless {@code sort} says otherwise. */
+    @Transactional(readOnly = true)
+    public PageResponse<LeadResDto> listLeadsPage(User currentUser, String stage, String source, String industry, String search,
+                                                  Long ownerId, Integer page, Integer size, String sort) {
+        Pageable pageable = pageRequestFactory.of(page, size, sort, SORTABLE_FIELDS, PAGE_ORDER);
+        return PageResponse.of(leadRepository.findAll(filters(currentUser, stage, source, industry, search, ownerId), pageable),
+                leadMapper::toDto);
+    }
+
+    private static final Sort LIST_ORDER = Sort.by(Sort.Direction.ASC, "id");
+    private static final Sort PAGE_ORDER = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
+    private static final Map<String, String> SORTABLE_FIELDS = Map.of("createdAt", "createdAt", "leadName", "leadName",
+            "companyName", "companyName", "followUpDate", "followUpDate", "stage", "stage");
+
+    /** Tenant, data scope (FR-2.3 incl. managed teams), then the optional filters — FR-2.7 owner within the scope. */
+    private Specification<Lead> filters(User currentUser, String stage, String source, String industry, String search, Long ownerId) {
+        DataScope scope = dataScopeResolver.resolve(currentUser);
+        Specification<Lead> spec = ScopeSpecifications.inTenant(requireTenantId(currentUser));
+        return spec.and(LeadSpecifications.visible(scope, scope.isTenantWide() ? List.of() : dataScopeResolver.managedTeamIds(currentUser)))
+                .and(ScopeSpecifications.hasEnum("stage", stage, LeadStage.class, LeadStage::getDbValue))
+                .and(ScopeSpecifications.hasEnum("source", source, LeadSource.class, LeadSource::getDbValue))
+                .and(ScopeSpecifications.hasEnum("industry", industry, IndustryType.class, IndustryType::getDbValue))
+                .and(LeadSpecifications.matches(search))
+                .and(ScopeSpecifications.ownedBy(ownerId));
     }
 
     /** Dashboard counts, aggregated in the database within the caller's data scope. */

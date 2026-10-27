@@ -27,3 +27,15 @@ export const scheduleCampaign = (id, scheduledAt) => ApiService.scheduleCampaign
 export const getCampaignMetrics = (id) => ApiService.getCampaignMetrics(id);
 
 export const getCampaignRecipients = (id) => ApiService.getCampaignRecipients(id);
+
+/** FR-7.5: segments ranked by how likely they are to respond on a channel. */
+export const getSegmentRecommendations = (channel) => ApiService.getSegmentRecommendations(channel);
+
+/** FR-7.6: predicted performance for a channel + segment (+ budget), before saving. */
+export const predictCampaign = (params) => ApiService.predictCampaign(params);
+
+/** FR-7.6: a saved campaign's prediction; once launched, with the actual results. */
+export const getCampaignPrediction = (id) => ApiService.getCampaignPrediction(id);
+
+/** FR-7.7: current offers ranked for one customer, with reasons. */
+export const getOfferRecommendations = (customerId) => ApiService.getOfferRecommendations(customerId);

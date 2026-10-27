@@ -16,6 +16,7 @@ import {
   changeOpportunityStage,
 } from '../../core/services/opportunity.service';
 import { listCustomers } from '../../core/services/customer.service';
+import { askOverrideReason, isStageSkip } from '../../core/utils/stageOverride';
 import OpportunityBoard from '../../components/opportunity/OpportunityBoard';
 
 const VIEW_KEY = 'opportunities.view';
@@ -139,7 +140,16 @@ const Opportunities = () => {
         await changeOpportunityStage(opportunity.id, nextStage);
       }
     } catch (err) {
-      setToast({ type: 'error', message: err.response?.data?.message || 'Could not move this opportunity. Please try again.' });
+      const failed = (e) => setToast({ type: 'error', message: e.response?.data?.message || 'Could not move this opportunity. Please try again.' });
+      if (!isStageSkip(err)) {
+        failed(err);
+      } else {
+        // VAL-7: skipping stages is an explicit, logged override.
+        const reason = askOverrideReason();
+        if (reason !== null) {
+          await changeOpportunityStage(opportunity.id, nextStage, undefined, { reason }).catch(failed);
+        }
+      }
     }
     refresh();
   };

@@ -1,5 +1,6 @@
 package com.company.crm.customer.controller;
 
+import com.company.crm.common.pagination.PageRequestFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import com.company.crm.customer.dto.response.CustomerSummaryDto;
 import com.company.crm.common.response.Response;
@@ -57,11 +58,18 @@ public class CustomerController {
 
     @GetMapping
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
-    public Response<List<CustomerResDto>> listCustomers(
+    // NFR-7.1b: without page/size the original array; with them a PageResponse (sort=createdAt|companyName|industry|status[,asc|desc]).
+    public Response<?> listCustomers(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(required = false) String industry,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        if (PageRequestFactory.isPaged(page, size)) {
+            return Response.ok(customerService.listCustomersPage(currentUser, industry, status, search, page, size, sort));
+        }
         return Response.ok(customerService.listCustomers(currentUser, industry, status, search));
     }
 

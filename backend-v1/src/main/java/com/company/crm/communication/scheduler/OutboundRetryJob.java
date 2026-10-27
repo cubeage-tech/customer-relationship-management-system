@@ -1,5 +1,6 @@
 package com.company.crm.communication.scheduler;
 
+import com.company.crm.notification.push.PushRetryService;
 import com.company.crm.common.mail.MailOutboxService;
 import com.company.crm.communication.service.CommunicationService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class OutboundRetryJob {
 
     private final MailOutboxService mailOutbox;
     private final CommunicationService communicationService;
+    private final PushRetryService pushRetryService;
 
     @Scheduled(cron = "${app.outbound.retry-cron:30 * * * * *}")
     public void retryDue() {
@@ -40,8 +42,17 @@ public class OutboundRetryJob {
                 log.warn("Message retry {} failed: {}", id, e.getMessage());
             }
         }
-        if (!emails.isEmpty() || !messages.isEmpty()) {
-            log.info("Outbound retries: {} email(s), {} SMS/WhatsApp message(s)", emails.size(), messages.size());
+        // ERR-3: push messages too.
+        List<Long> pushes = pushRetryService.findDue();
+        for (Long id : pushes) {
+            try {
+                pushRetryService.retry(id);
+            } catch (RuntimeException e) {
+                log.warn("Push retry {} failed: {}", id, e.getMessage());
+            }
+        }
+        if (!emails.isEmpty() || !messages.isEmpty() || !pushes.isEmpty()) {
+            log.info("Outbound retries: {} email(s), {} SMS/WhatsApp message(s), {} push(es)", emails.size(), messages.size(), pushes.size());
         }
     }
 }

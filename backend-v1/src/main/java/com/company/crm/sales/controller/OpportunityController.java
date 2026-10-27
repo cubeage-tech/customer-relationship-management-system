@@ -1,5 +1,6 @@
 package com.company.crm.sales.controller;
 
+import com.company.crm.common.pagination.PageRequestFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import com.company.crm.sales.dto.response.OpportunityKpiDto;
 import com.company.crm.common.response.Response;
@@ -38,12 +39,19 @@ public class OpportunityController {
 
     @GetMapping
     @PreAuthorize(VIEW_ROLES)
-    public Response<List<OpportunityResDto>> listOpportunities(
+    // NFR-7.1b: without page/size the original array; with them a PageResponse (sort=createdAt|dealValue|expectedClosingDate|stage[,asc|desc]).
+    public Response<?> listOpportunities(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(required = false) String stage,
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long ownerId) {
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        if (PageRequestFactory.isPaged(page, size)) {
+            return Response.ok(opportunityService.listOpportunitiesPage(currentUser, stage, customerId, search, ownerId, page, size, sort));
+        }
         return Response.ok(opportunityService.listOpportunities(currentUser, stage, customerId, search, ownerId));
     }
 

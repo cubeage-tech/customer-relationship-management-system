@@ -73,6 +73,10 @@ class ServerUrl {
     static INTEGRATION_KEYS = ServerUrl.API_MODULE_USER + "/integration-keys";
     static DATA_REQUESTS = ServerUrl.API_MODULE_USER + "/data-requests";
     static EDITIONS = ServerUrl.API_MODULE_USER + "/editions";
+    // SEC-1b, VAL-1/VAL-3, INT-9
+    static AUTH_PASSWORD_POLICY = ServerUrl.API_MODULE_AUTH + "/password-policy";
+    static DUPLICATE_CHECK = ServerUrl.API_MODULE_USER + "/duplicates/check";
+    static INTEGRATION_CALLS = ServerUrl.API_MODULE_USER + "/integration-calls";
     // NOT-5..NOT-8, INT-8, SEC-1c
     static NOTIFICATIONS = ServerUrl.API_MODULE_USER + "/notifications";
     static NOTIFICATION_SETTINGS = ServerUrl.API_MODULE_USER + "/notification-settings";

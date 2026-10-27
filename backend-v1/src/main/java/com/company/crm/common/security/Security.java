@@ -44,6 +44,8 @@ public class Security {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
+                        // SEC-1b: the password rules, shown on the sign-up and reset forms.
+                        .requestMatchers(HttpMethod.GET, "/auth/password-policy").permitAll()
                         // Only the public pricing list — any other /api/plans endpoint needs a login.
                         .requestMatchers(HttpMethod.GET, "/api/plans/prices").permitAll()
                         // Server-to-server from the payment provider; authenticated by its signature.

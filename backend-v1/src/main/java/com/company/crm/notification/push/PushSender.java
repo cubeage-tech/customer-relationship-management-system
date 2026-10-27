@@ -5,7 +5,8 @@ import java.util.Map;
 /** FR-M.4: delivers one push message to one device. */
 public interface PushSender {
 
-    enum Result { SENT, INVALID_TOKEN, FAILED }
+    /** RETRY_LATER (ERR-3): a temporary failure — the push is resent with backoff. FAILED: refused, not retried. */
+    enum Result { SENT, INVALID_TOKEN, RETRY_LATER, FAILED }
 
     /** False when no push provider is configured — notifications then stay in the in-app inbox only. */
     boolean isEnabled();

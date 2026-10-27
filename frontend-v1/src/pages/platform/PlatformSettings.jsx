@@ -1,6 +1,7 @@
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import IntegrationHealth from '../../components/platform/IntegrationHealth';
+import IntegrationCallLog from '../../components/platform/IntegrationCallLog';
 
 const PlatformSettings = () => {
   return (
@@ -12,6 +13,9 @@ const PlatformSettings = () => {
 
       {/* INT-8: integrations that need re-authorising */}
       <IntegrationHealth />
+
+      {/* INT-9: every outbound call, without payloads */}
+      <IntegrationCallLog />
 
       <EmptyState
         title="No other platform settings yet"

@@ -15,6 +15,9 @@ import {
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
 import { listLeads, createLead, deleteLead, changeLeadStage } from '../../core/services/lead.service';
+import { askOverrideReason, isStageSkip } from '../../core/utils/stageOverride';
+import DuplicateWarning from '../../components/common/DuplicateWarning';
+import { duplicateConfirmText, useDuplicateCheck } from '../../core/hooks/useDuplicateCheck';
 import { listUsers } from '../../core/services/user.service';
 import LeadBoard from '../../components/lead/LeadBoard';
 
@@ -38,6 +41,9 @@ const readView = () => {
 
 const isOverdue = (lead) =>
   lead.stage !== LEAD_STAGES.CONVERTED && lead.followUpDate && new Date(lead.followUpDate) < new Date();
+
+/** NFR-7.1b: leads per page. */
+const PAGE_SIZE = 100;
 
 const Leads = () => {
   const { can, scopeFor } = usePermissions();
@@ -72,12 +78,21 @@ const Leads = () => {
   };
   const canSeeSourceReport = can(PERMISSIONS.REPORTS_SALES) || can(PERMISSIONS.REPORTS_CAMPAIGN);
 
+  // NFR-7.1b: a page at a time, filtered on the server; "Show more" appends the next page.
+  const [total, setTotal] = useState(0);
+  const loadPage = (pageNo) =>
+    listLeads({ stage: stageFilter, source: sourceFilter, industry: industryFilter, search, ownerId: ownerFilter || undefined,
+      page: pageNo, size: PAGE_SIZE })
+      .then((data) => {
+        setLeads((prev) => (pageNo === 0 ? data?.items ?? [] : [...prev, ...(data?.items ?? [])]));
+        setTotal(data?.totalElements ?? 0);
+      });
   const refresh = () => {
-    listLeads({ stage: stageFilter, source: sourceFilter, industry: industryFilter, search, ownerId: ownerFilter || undefined })
-      .then((data) => setLeads(data ?? []))
+    loadPage(0)
       .catch(() => setLeads([]))
       .finally(() => setLoading(false));
   };
+  const showMore = () => loadPage(Math.ceil(leads.length / PAGE_SIZE)).catch(() => {});
 
   useEffect(() => {
     refresh();
@@ -99,8 +114,11 @@ const Leads = () => {
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const duplicates = useDuplicateCheck('lead', { companyName: form.companyName, email: form.contactEmail });
+
   const handleAddLead = async (e) => {
     e.preventDefault();
+    if (duplicates.length > 0 && !window.confirm(duplicateConfirmText(duplicates))) return;
     try {
       await createLead(form);
       setForm(INITIAL_FORM);
@@ -121,10 +139,15 @@ const Leads = () => {
       await changeLeadStage(lead.id, nextStage);
       refresh();
     } catch (err) {
-      // A forward skip without confirmation is rejected by the backend (BR-1) —
-      // offer the override rather than silently failing.
-      if (err.response?.status === 400 && window.confirm('This skips pipeline stages. Move the lead anyway?')) {
-        changeLeadStage(lead.id, nextStage, true).then(refresh).catch(() => {});
+      // A forward skip is refused by the backend (BR-1) — offer the logged override instead.
+      if (!isStageSkip(err)) {
+        setToast({ type: 'error', message: err.response?.data?.message || 'Could not move this lead.' });
+        return;
+      }
+      const reason = askOverrideReason();
+      if (reason !== null) {
+        changeLeadStage(lead.id, nextStage, true, reason).then(refresh)
+          .catch((retryErr) => setToast({ type: 'error', message: retryErr.response?.data?.message || 'Could not move this lead.' }));
       }
     }
   };
@@ -231,6 +254,7 @@ const Leads = () => {
                       name="companyName"
                       placeholder="e.g. Acme Industries"
                       value={form.companyName}
+                      minLength={2}
                       onChange={handleChange}
                       className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                       required
@@ -291,6 +315,7 @@ const Leads = () => {
                     />
                   </span>
                 </label>
+                <div className="sm:col-span-2"><DuplicateWarning matches={duplicates} /></div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 sm:col-span-2">
                   <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
                   <Button type="submit" icon={Plus}>Add lead</Button>
@@ -498,7 +523,10 @@ const Leads = () => {
         )}
         {!loading && leads.length > 0 && (
           <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-            Showing {leads.length} {leads.length === 1 ? 'lead' : 'leads'}
+            Showing {leads.length} of {total} {total === 1 ? 'lead' : 'leads'}
+            {leads.length < total && (
+              <button type="button" onClick={showMore} className="ml-3 font-medium text-primary hover:underline">Show more</button>
+            )}
           </div>
         )}
       </section>

@@ -4,6 +4,21 @@ import '../data/repository.dart';
 import '../sync/sync_service.dart';
 import 'common.dart';
 
+/// BR-1/VAL-7: confirm moving a record past the stages in between (the server logs the override).
+Future<bool> confirmSkip(BuildContext context, String stageLabel) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Skip stages?'),
+        content: Text('Move straight to $stageLabel, skipping the stages in between? This is recorded in the audit log.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Move')),
+        ],
+      ),
+    ) ??
+    false;
+
 /// FR-M.2: the leads assigned to me, and moving them through the pipeline.
 class LeadsScreen extends StatelessWidget {
   const LeadsScreen({super.key, required this.repository, required this.sync});
@@ -25,18 +40,7 @@ class LeadsScreen extends StatelessWidget {
     var force = false;
     // BR-1: skipping stages forward is an explicit override.
     if (leadStages.indexOf(stage) > current + 1) {
-      force = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Skip stages?'),
-              content: Text('Move straight to ${label(stage)}, skipping the stages in between?'),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Move')),
-              ],
-            ),
-          ) ??
-          false;
+      force = await confirmSkip(context, label(stage));
       if (!force) return;
     }
     await repository.changeLeadStage(lead, stage, force: force);
@@ -85,7 +89,18 @@ class OpportunitiesScreen extends StatelessWidget {
       lossReason = await _askReason(context);
       if (lossReason == null) return;
     }
-    await repository.changeOpportunityStage(deal, stage, lossReason: lossReason);
+    // VAL-7: the configured order — the next stage, any earlier one or Lost; jumping ahead is an override.
+    final order = [for (final s in stages) if (s['code'] != 'lost') s['code'] as String];
+    final from = order.indexOf(deal['stage'] as String? ?? '');
+    final skips = stage != 'lost' && (from < 0 ? stage == 'won' : order.indexOf(stage) > from + 1);
+    var force = false;
+    if (skips) {
+      final label = stages.firstWhere((s) => s['code'] == stage)['label'] as String? ?? stage;
+      if (!context.mounted) return;
+      force = await confirmSkip(context, label);
+      if (!force) return;
+    }
+    await repository.changeOpportunityStage(deal, stage, lossReason: lossReason, force: force);
     reload();
   }
 

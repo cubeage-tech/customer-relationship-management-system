@@ -52,7 +52,7 @@ class CustomerIndustryAndAuditIntegrationTest extends PostgresIntegrationTest {
         send(post("/api/industries"), tenant.token(SALES_MANAGER), "{\"label\":\"Mining\"}").andExpect(status().isForbidden());
 
         long customerId = idOf(send(post("/api/customers"), adminToken, "{\"companyName\":\"Agro Foods\",\"industry\":\"food_processing\"}"));
-        send(post("/api/customers"), adminToken, "{\"companyName\":\"X\",\"industry\":\"space_mining\"}").andExpect(status().isBadRequest());
+        send(post("/api/customers"), adminToken, "{\"companyName\":\"Xeno Mining\",\"industry\":\"space_mining\"}").andExpect(status().isBadRequest());
 
         // Rename keeps the code; customers follow automatically.
         send(put("/api/industries/food_processing"), adminToken, "{\"label\":\"Food & Beverage\"}")
@@ -72,7 +72,7 @@ class CustomerIndustryAndAuditIntegrationTest extends PostgresIntegrationTest {
 
         // Another tenant has its own list — the custom code doesn't exist there.
         TestTenant other = testTenants.tenantWithAllRoles("Other Industry " + System.nanoTime());
-        send(post("/api/customers"), other.token(ADMIN), "{\"companyName\":\"Y\",\"industry\":\"food_processing\"}").andExpect(status().isBadRequest());
+        send(post("/api/customers"), other.token(ADMIN), "{\"companyName\":\"Yarn Foods\",\"industry\":\"food_processing\"}").andExpect(status().isBadRequest());
 
         // Lead conversion still produces a customer with the lead's (standard) industry.
         long leadId = idOf(send(post("/api/leads"), adminToken,

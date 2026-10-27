@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { resetPassword } from '../../core/services/auth.service';
+import PasswordRules from '../../components/auth/PasswordRules';
 import RoutePath from '../../core/constants/routes.constant';
 import { VALIDATION_PATTERNS, VALIDATION_MESSAGES } from '../../core/constants/validation.constant';
 import { CheckCircle2, XCircle } from 'lucide-react';
@@ -89,6 +90,7 @@ const ResetPassword = () => {
                   onChange={handleChange}
                   required
                 />
+                <PasswordRules password={form.newPassword} />
               </div>
 
               <div>

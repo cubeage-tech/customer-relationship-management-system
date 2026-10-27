@@ -3,6 +3,7 @@ package com.company.crm.auth.service;
 import com.company.crm.edition.EditionService;
 import java.util.List;
 import com.company.crm.auth.mfa.MfaService;
+import com.company.crm.auth.password.PasswordPolicy;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.crypto.DataEncryption;
@@ -69,6 +70,7 @@ public class AuthService {
     private final MfaService mfaService;
     private final RefreshTokenService refreshTokenService;
     private final EditionService editionService;
+    private final PasswordPolicy passwordPolicy;
 
     // noRollbackFor: failed attempts must still be recorded even though we then throw.
     @Transactional(noRollbackFor = ApiException.class)
@@ -211,6 +213,7 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw ApiException.conflict("A user with this email already exists");
         }
+        passwordPolicy.check(request.getPassword(), request.getEmail(), request.getName(), null); // SEC-1b
 
         Tenant tenant = new Tenant();
         tenant.setCompanyName(request.getOrganizationName());
@@ -230,6 +233,7 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setStatus(AccountStatus.PENDING_VERIFICATION);
         user = userRepository.save(user);
+        passwordPolicy.remember(user.getId(), user.getPasswordHash());
         auditService.recordSystem(tenant.getId(), AuditAction.TENANT_SIGNED_UP, "user", user.getId(),
                 "organization=" + tenant.getCompanyName() + ", admin=" + user.getFullName());
 
@@ -309,12 +313,16 @@ public class AuthService {
             throw new TokenExpiredException("This reset link has expired");
         }
 
+        User user = token.getUser();
+        // SEC-1b: checked first, so a refused password leaves the link usable.
+        passwordPolicy.check(newPassword, user.getEmail(), user.getFullName(), user.getId());
+
         token.setUsedAt(LocalDateTime.now());
         passwordResetTokenRepository.save(token);
 
-        User user = token.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        passwordPolicy.remember(user.getId(), user.getPasswordHash());
         // API-G01: a new password ends every signed-in session.
         refreshTokenService.revokeAll(user.getId(), "password_reset");
         auditService.recordSystem(user.getTenant() != null ? user.getTenant().getId() : null, AuditAction.PASSWORD_RESET, "user", user.getId(),
@@ -328,6 +336,13 @@ public class AuthService {
         attempt.setSuccessful(successful);
         attempt.setFailureReason(failureReason);
         loginAttemptRepository.save(attempt);
+        // SEC-7: in the audit trail too (login_attempts also drives the lockout). Never the email typed.
+        AuditAction action = successful ? AuditAction.USER_SIGNED_IN : AuditAction.USER_SIGN_IN_FAILED;
+        if (user != null) {
+            auditService.record(user, action, "user", user.getId(), failureReason);
+        } else {
+            auditService.recordSystem(null, action, "user", null, failureReason);
+        }
     }
 
     private String statusMessage(AccountStatus status) {

@@ -32,6 +32,7 @@ public class PushDispatcher {
     private final NotificationRepository notificationRepository;
     private final UserDeviceRepository deviceRepository;
     private final NotificationDeliveryLog deliveryLog;
+    private final PushRetryService retryService;
 
     /** Its own transaction: after the commit, the original one can no longer write (stale-token removal). */
     @TransactionalEventListener(fallbackExecution = true)
@@ -44,15 +45,10 @@ public class PushDispatcher {
         if (n == null) {
             return;
         }
-        Map<String, String> data = new HashMap<>();
-        data.put("notificationId", String.valueOf(n.getId()));
-        data.put("type", n.getType());
-        if (n.getEntityType() != null) {
-            data.put("entityType", n.getEntityType());
-            data.put("entityId", String.valueOf(n.getEntityId()));
-        }
+        Map<String, String> data = data(n);
         int devices = 0;
         int sent = 0;
+        int queued = 0;
         for (UserDevice device : deviceRepository.findByUserId(n.getUserId())) {
             devices++;
             PushSender.Result result = pushSender.send(device.getToken(), n.getTitle(), n.getBody(), data);
@@ -61,13 +57,32 @@ public class PushDispatcher {
             } else if (result == PushSender.Result.INVALID_TOKEN) {
                 log.info("Removing stale push token for user {}", n.getUserId());
                 deviceRepository.delete(device);
+            } else if (result == PushSender.Result.RETRY_LATER) {
+                retryService.enqueue(n.getId(), device.getId()); // ERR-3
+                queued++;
             }
         }
         // NOT-8: the push, for users with the app on a phone.
         if (devices > 0) {
+            String status = sent > 0 ? NotificationDeliveryLog.SENT : queued > 0 ? NotificationDeliveryLog.QUEUED : NotificationDeliveryLog.FAILED;
+            String detail = sent > 0 ? sent + " of " + devices + " phone(s)" : "Push failed on " + devices + " phone(s)";
+            if (queued > 0) {
+                detail += "; retrying on " + queued;
+            }
             deliveryLog.log(n.getTenantId(), NotificationEvent.fromInAppType(n.getType()), "push", new Recipient("user", n.getUserId(), null),
-                    n.getId(), null, sent > 0 ? NotificationDeliveryLog.SENT : NotificationDeliveryLog.FAILED,
-                    sent > 0 ? sent + " of " + devices + " phone(s)" : "Push failed on " + devices + " phone(s)");
+                    n.getId(), null, status, detail);
         }
+    }
+
+    /** What the app needs to open the record from the push. */
+    static Map<String, String> data(Notification n) {
+        Map<String, String> data = new HashMap<>();
+        data.put("notificationId", String.valueOf(n.getId()));
+        data.put("type", n.getType());
+        if (n.getEntityType() != null) {
+            data.put("entityType", n.getEntityType());
+            data.put("entityId", String.valueOf(n.getEntityId()));
+        }
+        return data;
     }
 }

@@ -18,6 +18,7 @@ import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -81,8 +82,11 @@ public class RefreshTokenService {
     @Transactional
     public void revoke(String rawToken) {
         if (rawToken != null && !rawToken.isBlank()) {
-            jdbc.update("UPDATE refresh_tokens SET revoked_at = now(), revoked_reason = 'logout' WHERE token = ? AND revoked_at IS NULL",
-                    DataEncryption.sha256(rawToken));
+            List<Long> owners = jdbc.queryForList("UPDATE refresh_tokens SET revoked_at = now(), revoked_reason = 'logout' "
+                    + "WHERE token = ? AND revoked_at IS NULL RETURNING user_id", Long.class, DataEncryption.sha256(rawToken));
+            // SEC-7
+            owners.stream().findFirst().flatMap(userRepository::findById)
+                    .ifPresent(u -> auditService.record(u, AuditAction.USER_SIGNED_OUT, "user", u.getId(), null));
         }
     }
 

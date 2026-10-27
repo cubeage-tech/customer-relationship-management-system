@@ -15,5 +15,6 @@ export const updateOpportunity = (id, data) => ApiService.updateOpportunity(id, 
 
 export const deleteOpportunity = (id) => ApiService.deleteOpportunity(id);
 
-export const changeOpportunityStage = (id, stage, lossReason) =>
-  ApiService.changeOpportunityStage(id, { stage, lossReason });
+/** VAL-7: pass `override` ({ reason }) to skip stages; the reason goes to the audit log. */
+export const changeOpportunityStage = (id, stage, lossReason, override) =>
+  ApiService.changeOpportunityStage(id, { stage, lossReason, force: Boolean(override), overrideReason: override?.reason });

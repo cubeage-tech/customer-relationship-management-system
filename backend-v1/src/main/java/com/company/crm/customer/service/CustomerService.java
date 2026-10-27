@@ -1,5 +1,12 @@
 package com.company.crm.customer.service;
 
+import com.company.crm.common.pagination.PageRequestFactory;
+import com.company.crm.common.pagination.PageResponse;
+import com.company.crm.common.scope.ScopeSpecifications;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import java.util.Map;
 import com.company.crm.common.period.ReportingPeriods;
 import com.company.crm.customer.dto.response.CustomerSummaryDto;
 import com.company.crm.customer.repository.CustomerSummaryQuery;
@@ -44,6 +51,7 @@ public class CustomerService {
 
     private static final String AUDIT_ENTITY = "customer";
 
+    private final PageRequestFactory pageRequestFactory;
     private final CustomerRepository customerRepository;
     private final DataScopeResolver dataScopeResolver;
     private final CustomerSummaryQuery customerSummaryQuery;
@@ -60,15 +68,31 @@ public class CustomerService {
     // associations (contacts, owner, tenant), so the session must stay open through mapping.
     @Transactional(readOnly = true)
     public List<CustomerResDto> listCustomers(User currentUser, String industry, String status, String search) {
-        List<Customer> customers = findInScope(currentUser);
-
-        return customers.stream()
-                .filter(c -> industry == null || industry.isBlank() || c.getIndustry().equals(industry))
-                .filter(c -> status == null || status.isBlank() || c.getStatus().getDbValue().equals(status))
-                .filter(c -> search == null || search.isBlank()
-                        || c.getCompanyName().toLowerCase().contains(search.trim().toLowerCase()))
+        // NFR-7.1b: filtered in the database rather than in memory.
+        return customerRepository.findAll(filters(currentUser, industry, status, search), LIST_ORDER).stream()
                 .map(customerMapper::toDto)
                 .toList();
+    }
+
+    /** NFR-7.1b: one page of the same list (opt-in via page/size); newest first unless {@code sort} says otherwise. */
+    @Transactional(readOnly = true)
+    public PageResponse<CustomerResDto> listCustomersPage(User currentUser, String industry, String status, String search,
+                                                          Integer page, Integer size, String sort) {
+        Pageable pageable = pageRequestFactory.of(page, size, sort, SORTABLE_FIELDS, PAGE_ORDER);
+        return PageResponse.of(customerRepository.findAll(filters(currentUser, industry, status, search), pageable), customerMapper::toDto);
+    }
+
+    private static final Sort LIST_ORDER = Sort.by(Sort.Direction.ASC, "id");
+    private static final Sort PAGE_ORDER = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
+    private static final Map<String, String> SORTABLE_FIELDS = Map.of("createdAt", "createdAt", "companyName", "companyName",
+            "industry", "industry", "status", "status");
+
+    private Specification<Customer> filters(User currentUser, String industry, String status, String search) {
+        Specification<Customer> spec = ScopeSpecifications.inTenant(requireTenantId(currentUser));
+        return spec.and(ScopeSpecifications.ownedWithin(dataScopeResolver.resolve(currentUser)))
+                .and(ScopeSpecifications.hasValue("industry", industry))
+                .and(ScopeSpecifications.hasEnum("status", status, CustomerStatus.class, CustomerStatus::getDbValue))
+                .and(ScopeSpecifications.contains("companyName", search));
     }
 
     @Transactional(readOnly = true)

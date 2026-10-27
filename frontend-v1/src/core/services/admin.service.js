@@ -42,3 +42,12 @@ export const downloadDataExport = async (id, name) => {
 export const getEditions = () => ApiService.getEditions();
 
 export const applyEdition = (edition) => ApiService.applyEdition(edition);
+
+/** SEC-1b: { minLength, maxLength, minCharacterKinds, breachCheck, history }. */
+export const getPasswordPolicy = () => ApiService.getPasswordPolicy();
+
+/** VAL-1/VAL-3: { type: customer|lead|contact, companyName, email, excludeId } → matches. */
+export const checkDuplicates = (data) => ApiService.checkDuplicates(data);
+
+/** INT-9: { lastDay, calls, total, page, size } — filter by provider, outcome, tenantId. */
+export const getIntegrationCalls = (params) => ApiService.getIntegrationCalls(params);

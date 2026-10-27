@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import SegmentSuggestions from './SegmentSuggestions';
+import CampaignForecast from './CampaignForecast';
 import Button from '../common/Button';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getCampaignMetrics, getCampaignRecipients, launchCampaign, scheduleCampaign, updateCampaign } from '../../core/services/campaign.service';
@@ -78,6 +80,8 @@ const CampaignExecution = ({ campaign, canManage, onChange }) => {
               <p>Sent to segment <span className="font-medium">{campaign.segmentName || '—'}</span> on {new Date(campaign.launchedAt).toLocaleString()}.</p>
               {campaign.messageSubject && <p className="font-medium">{campaign.messageSubject}</p>}
               <p className="whitespace-pre-wrap text-slate-600">{campaign.messageBody}</p>
+              {/* FR-7.6: what was predicted, next to what happened */}
+              <div className="pt-2"><CampaignForecast campaign={campaign} /></div>
             </div>
           ) : canManage && editableStatus ? (
             <form onSubmit={saveMessage} className="mt-3 grid gap-3 text-sm">
@@ -87,6 +91,11 @@ const CampaignExecution = ({ campaign, canManage, onChange }) => {
                   {segments.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.customerCount} customers)</option>)}
                 </select>
               </label>
+              {/* FR-7.5 */}
+              <SegmentSuggestions channel={campaign.channel} value={message.segmentId}
+                onPick={(id) => setMessage((prev) => ({ ...prev, segmentId: String(id) }))} />
+              {/* FR-7.6 */}
+              <CampaignForecast campaign={campaign} segmentId={message.segmentId} />
               {campaign.channel === 'email' && (
                 <label>Subject<input name="messageSubject" value={message.messageSubject} onChange={change} maxLength={200} className={inputClass} /></label>
               )}

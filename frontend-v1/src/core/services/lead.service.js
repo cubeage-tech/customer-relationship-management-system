@@ -10,8 +10,9 @@ export const updateLead = (id, data) => ApiService.updateLead(id, data);
 
 export const deleteLead = (id) => ApiService.deleteLead(id);
 
-export const changeLeadStage = (id, stage, force = false) =>
-  ApiService.changeLeadStage(id, { stage, force });
+/** BR-1: skipping stages needs force (an override), with an optional reason for the audit log. */
+export const changeLeadStage = (id, stage, force = false, overrideReason) =>
+  ApiService.changeLeadStage(id, { stage, force, overrideReason });
 
 export const assignLead = (id, ownerId) => ApiService.assignLead(id, { ownerId });
 

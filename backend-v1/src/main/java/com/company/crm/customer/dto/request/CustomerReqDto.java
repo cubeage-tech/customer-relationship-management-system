@@ -3,6 +3,7 @@ package com.company.crm.customer.dto.request;
 import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,6 +12,7 @@ import lombok.Setter;
 public class CustomerReqDto {
 
     @NotBlank
+    @Size(min = 2, max = 255, message = "Company name must be 2 to 255 characters") // VAL-3
     private String companyName;
 
     /** FR-1.6: an active code from the tenant's industry list (GET /api/industries), e.g. "manufacturing". */

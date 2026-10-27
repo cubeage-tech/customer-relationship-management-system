@@ -9,6 +9,7 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.search.FlagTerm;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.company.crm.integration.calllog.IntegrationCallLog;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +29,7 @@ import java.util.Properties;
 public class InboundEmailPoller {
 
     private final InboundEmailProcessor processor;
+    private final IntegrationCallLog callLog;
 
     @Value("${app.communication.email.imap.host}")
     private String host;
@@ -50,6 +52,7 @@ public class InboundEmailPoller {
         props.put("mail.store.protocol", "imaps");
         props.put("mail.imaps.connectiontimeout", "10000");
         props.put("mail.imaps.timeout", "20000");
+        IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "imap", "inbox.poll");
         try (Store store = Session.getInstance(props).getStore("imaps")) {
             store.connect(host, port, username, password);
             Folder folder = store.getFolder(folderName);
@@ -72,8 +75,10 @@ public class InboundEmailPoller {
             } finally {
                 folder.close(false);
             }
+            call.ok(null);
         } catch (Exception e) {
             log.error("Inbound email poll failed: {}", e.getMessage());
+            call.failed(null, e.getMessage());
         }
     }
 }

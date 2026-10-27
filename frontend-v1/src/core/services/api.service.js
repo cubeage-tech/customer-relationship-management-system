@@ -461,6 +461,32 @@ class ApiService {
     return this.apipost(`${ServerUrl.AI}/quotation-draft`, data);
   }
 
+  // FR-4.7: price recommendations; NFR-7.1c: AI response times
+  static getPriceRecommendations(data) {
+    return this.apipost(`${ServerUrl.AI}/price-recommendations`, data);
+  }
+
+  static getAiPerformance() {
+    return this.apiget(`${ServerUrl.AI}/performance`);
+  }
+
+  // FR-7.5 / FR-7.6 / FR-7.7
+  static getSegmentRecommendations(channel) {
+    return this.apiget(`${ServerUrl.CAMPAIGNS}/segment-recommendations`, { channel });
+  }
+
+  static predictCampaign(params) {
+    return this.apiget(`${ServerUrl.CAMPAIGNS}/prediction`, params);
+  }
+
+  static getCampaignPrediction(id) {
+    return this.apiget(`${ServerUrl.CAMPAIGNS}/${id}/prediction`);
+  }
+
+  static getOfferRecommendations(customerId) {
+    return this.apiget(`${ServerUrl.CUSTOMERS}/${customerId}/offer-recommendations`);
+  }
+
   static respondToQuotation(token, decision, comment) {
     return this.apipost(`${ServerUrl.publicQuotation(token)}/respond`, { decision, comment });
   }
@@ -527,6 +553,21 @@ class ApiService {
 
   static applyEdition(edition) {
     return this.apiput(`${ServerUrl.EDITIONS}/current`, { edition });
+  }
+
+  // SEC-1b: the password rules (public)
+  static getPasswordPolicy() {
+    return this.apiget(ServerUrl.AUTH_PASSWORD_POLICY);
+  }
+
+  // VAL-1/VAL-3: possible duplicates of what is being entered
+  static checkDuplicates(data) {
+    return this.apipost(ServerUrl.DUPLICATE_CHECK, data);
+  }
+
+  // INT-9: outbound integration call log (platform admin)
+  static getIntegrationCalls(params) {
+    return this.apiget(ServerUrl.INTEGRATION_CALLS, params);
   }
 
   // SEC-1c: second sign-in step

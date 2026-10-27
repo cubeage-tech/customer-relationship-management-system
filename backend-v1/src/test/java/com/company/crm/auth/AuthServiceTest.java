@@ -64,6 +64,8 @@ class AuthServiceTest {
     @Mock private MfaService mfaService; // SEC-1c: no second step unless a test sets one up
     @Mock private RefreshTokenService refreshTokenService;
     @Mock private com.company.crm.edition.EditionService editionService;
+    @Mock private com.company.crm.common.audit.AuditService auditService; // SEC-7: sign-ins are audited
+    @Mock private com.company.crm.auth.password.PasswordPolicy passwordPolicy;
     @InjectMocks private AuthService authService;
 
     @Captor private ArgumentCaptor<Map<String, Object>> claimsCaptor;

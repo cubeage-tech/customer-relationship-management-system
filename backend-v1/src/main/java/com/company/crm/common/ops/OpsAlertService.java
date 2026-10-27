@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.company.crm.integration.calllog.IntegrationCallLog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +41,10 @@ public class OpsAlertService {
 
     private final MailService mailService;
     private final ObjectMapper objectMapper;
+
+    /** INT-9 (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationCallLog callLog;
 
     @Value("${app.ops.alert-emails:}")
     private String alertEmails;
@@ -116,6 +122,7 @@ public class OpsAlertService {
             }
         }
         if (!webhookUrl.isBlank()) {
+            IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "ops_webhook", "alert.post");
             try {
                 HttpRequest request = HttpRequest.newBuilder(URI.create(webhookUrl))
                         .timeout(Duration.ofSeconds(10))
@@ -125,11 +132,16 @@ public class OpsAlertService {
                 HttpResponse<Void> response = http.send(request, HttpResponse.BodyHandlers.discarding());
                 if (response.statusCode() >= 300) {
                     log.warn("Ops alert webhook answered {}", response.statusCode());
+                    call.failed(response.statusCode(), "webhook refused the alert");
+                } else {
+                    call.ok(response.statusCode());
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                call.failed(null, "interrupted");
             } catch (Exception e) {
                 log.warn("Ops alert webhook failed: {}", e.getMessage());
+                call.failed(null, e.getMessage());
             }
         }
     }

@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, RotateCcw, Search, Users, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/common/Button';
+import DuplicateWarning from '../../components/common/DuplicateWarning';
+import { duplicateConfirmText, useDuplicateCheck } from '../../core/hooks/useDuplicateCheck';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { MODULES, PERMISSIONS, SCOPE_LABELS } from '../../core/constants/permission.constant';
 import { useIndustries } from '../../core/hooks/useIndustries';
@@ -16,6 +18,9 @@ import {
 
 // industry '' = the first active industry of the tenant's list (FR-1.6).
 const INITIAL_FORM = { companyName: '', industry: '', email: '', phone: '' };
+
+/** NFR-7.1b: accounts per page. */
+const PAGE_SIZE = 100;
 
 const Customers = () => {
   const { can, scopeFor } = usePermissions();
@@ -35,12 +40,20 @@ const Customers = () => {
   const formIndustry = form.industry || industryOptions[0]?.value || '';
   const [toast, setToast] = useState(null);
 
+  // NFR-7.1b: a page at a time, filtered on the server; "Show more" appends the next page.
+  const [total, setTotal] = useState(0);
+  const loadPage = (pageNo) =>
+    listCustomers({ industry: industryFilter, status: statusFilter, search, page: pageNo, size: PAGE_SIZE })
+      .then((data) => {
+        setCustomers((prev) => (pageNo === 0 ? data?.items ?? [] : [...prev, ...(data?.items ?? [])]));
+        setTotal(data?.totalElements ?? 0);
+      });
   const refresh = () => {
-    listCustomers({ industry: industryFilter, status: statusFilter, search })
-      .then((data) => setCustomers(data ?? []))
+    loadPage(0)
       .catch(() => setCustomers([]))
       .finally(() => setLoading(false));
   };
+  const showMore = () => loadPage(Math.ceil(customers.length / PAGE_SIZE)).catch(() => {});
 
   useEffect(() => {
     refresh();
@@ -55,8 +68,11 @@ const Customers = () => {
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
+  const duplicates = useDuplicateCheck('customer', form);
+
   const handleAddCustomer = async (e) => {
     e.preventDefault();
+    if (duplicates.length > 0 && !window.confirm(duplicateConfirmText(duplicates))) return;
     try {
       await createCustomer({ ...form, industry: formIndustry });
       setForm(INITIAL_FORM);
@@ -173,6 +189,7 @@ const Customers = () => {
                     name="companyName"
                     placeholder="e.g. Acme Industries"
                     value={form.companyName}
+                    minLength={2}
                     onChange={handleChange}
                     className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                     required
@@ -219,6 +236,7 @@ const Customers = () => {
                     />
                   </span>
                 </label>
+                <div className="sm:col-span-2"><DuplicateWarning matches={duplicates} /></div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 sm:col-span-2">
                   <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
                   <Button type="submit" icon={Plus}>Add customer</Button>
@@ -352,7 +370,10 @@ const Customers = () => {
         )}
         {!loading && customers.length > 0 && (
           <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
-            Showing {customers.length} {customers.length === 1 ? 'account' : 'accounts'}
+            Showing {customers.length} of {total} {total === 1 ? 'account' : 'accounts'}
+            {customers.length < total && (
+              <button type="button" onClick={showMore} className="ml-3 font-medium text-primary hover:underline">Show more</button>
+            )}
           </div>
         )}
       </section>

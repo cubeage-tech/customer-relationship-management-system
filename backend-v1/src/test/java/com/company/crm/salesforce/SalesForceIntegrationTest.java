@@ -105,7 +105,7 @@ class SalesForceIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.data.amount").value(50.0));
 
         // Re-opening a won deal voids its pending commission and lowers attainment; winning again recalculates.
-        send(patch("/api/opportunities/" + dealA + "/stage"), adminToken, "{\"stage\":\"negotiation\"}").andExpect(status().isOk());
+        send(patch("/api/opportunities/" + dealA + "/stage"), adminToken, "{\"stage\":\"negotiation\",\"force\":true}").andExpect(status().isOk());
         send(get("/api/commissions").param("status", "void"), adminToken, null)
                 .andExpect(jsonPath("$.data[*].opportunityId").value(contains((int) dealA)));
         send(get("/api/sales-targets"), adminToken, null).andExpect(jsonPath("$.data[?(@.id == " + revenueTarget + ")].actual").value(contains(0.0)));
