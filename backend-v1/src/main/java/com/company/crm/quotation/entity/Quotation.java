@@ -61,6 +61,13 @@ public class Quotation {
     @Column(name = "customer_approved_at")
     private LocalDateTime customerApprovedAt;
 
+    /** NAV-2: the customer's own answer from the view link — accepted or declined, with an optional comment. */
+    @Column(name = "customer_response_comment", length = 1000)
+    private String customerResponseComment;
+
+    @Column(name = "customer_responded_at")
+    private LocalDateTime customerRespondedAt;
+
     /** FR-4.5: secret for the customer's view link, set when the quotation is first sent. */
     @Column(name = "view_token", length = 64)
     private String viewToken;

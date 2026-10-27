@@ -131,9 +131,11 @@ class TicketQueueIntegrationTest extends PostgresIntegrationTest {
 
                 Long holder = ticketRepository.findById(ticket).orElseThrow().getAssignedTechnician().getId();
                 assertThat(holder).isIn(agent.getId(), otherAgent.getId());
+                // Exactly one claim recorded (SEC-7 also records the ticket's creation and status change).
                 assertThat(auditEventRepository.findByTenantIdAndEntityTypeAndEntityIdOrderByCreatedAtAsc(
                         tenant.tenant().getId(), "service_ticket", ticket))
                         .extracting(event -> event.getAction())
+                        .filteredOn(action -> action != AuditAction.RECORD_CREATED && action != AuditAction.RECORD_UPDATED)
                         .containsExactly(AuditAction.TICKET_CLAIMED);
             }
         } finally {

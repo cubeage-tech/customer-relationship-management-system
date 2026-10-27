@@ -1,5 +1,10 @@
 package com.company.crm.campaign.controller;
 
+import com.company.crm.ai.perf.AiLatency;
+import com.company.crm.campaign.service.CampaignInsightService;
+import java.math.BigDecimal;
+import io.swagger.v3.oas.annotations.Operation;
+import com.company.crm.campaign.dto.response.CampaignPerformanceDto;
 import com.company.crm.campaign.dto.request.CampaignReqDto;
 import com.company.crm.campaign.dto.request.CampaignStatusReqDto;
 import com.company.crm.campaign.dto.response.CampaignMetricsDto;
@@ -32,6 +37,8 @@ import java.util.Map;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final CampaignInsightService insights;
+    private final AiLatency latency;
 
     private static final String VIEW_ROLES = "hasAnyRole('ADMIN', 'MARKETING_EXECUTIVE', 'EXECUTIVE_OWNER')";
     private static final String MANAGE_ROLES = "hasAnyRole('ADMIN', 'MARKETING_EXECUTIVE')";
@@ -116,6 +123,38 @@ public class CampaignController {
     public Response<CampaignResDto> schedule(@AuthenticationPrincipal User currentUser, @PathVariable Long campaignId,
                                              @RequestBody Map<String, LocalDateTime> body) {
         return Response.ok("Campaign scheduled", campaignService.schedule(currentUser, campaignId, body.get("scheduledAt")));
+    }
+
+    @GetMapping("/segment-recommendations")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "FR-7.5: the segments most likely to respond on a channel (email | sms | whatsapp), best first, with why")
+    public Response<List<CampaignInsightService.SegmentRec>> segmentRecommendations(@AuthenticationPrincipal User currentUser,
+                                                                                    @RequestParam String channel) {
+        return Response.ok(latency.time("segment_recommendation", AiLatency.Kind.STATISTICAL, () -> insights.segmentRecommendations(currentUser, channel)));
+    }
+
+    @GetMapping("/prediction")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "FR-7.6: predicted deliveries, opens, clicks and conversions (with a range) for a channel and segment, before saving")
+    public Response<CampaignInsightService.CampaignPrediction> predict(@AuthenticationPrincipal User currentUser, @RequestParam String channel,
+                                                                       @RequestParam Long segmentId,
+                                                                       @RequestParam(required = false) BigDecimal budget) {
+        return Response.ok(latency.time("campaign_prediction", AiLatency.Kind.STATISTICAL, () -> insights.predict(currentUser, channel, segmentId, budget)));
+    }
+
+    @GetMapping("/{campaignId}/prediction")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "FR-7.6: this campaign's predicted performance; once launched, next to what actually happened")
+    public Response<CampaignInsightService.CampaignPrediction> predictCampaign(@AuthenticationPrincipal User currentUser,
+                                                                               @PathVariable Long campaignId) {
+        return Response.ok(latency.time("campaign_prediction", AiLatency.Kind.STATISTICAL, () -> insights.predict(currentUser, campaignId)));
+    }
+
+    @GetMapping("/{campaignId}/performance")
+    @PreAuthorize(VIEW_ROLES)
+    @Operation(summary = "API-G08: delivery, engagement, leads, revenue won, cost per lead/conversion, return on spend, by day")
+    public Response<CampaignPerformanceDto> performance(@AuthenticationPrincipal User currentUser, @PathVariable Long campaignId) {
+        return Response.ok(campaignService.performance(currentUser, campaignId));
     }
 
     /** FR-7.4: sent, opened, clicked and converted, with rates. */

@@ -1,5 +1,8 @@
 package com.company.crm.payment.gateway;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
+import com.company.crm.integration.calllog.IntegrationCallLog;
 import com.company.crm.common.config.PaymentConfig.PaymentProperties;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.exception.PaymentGatewayException;
@@ -24,6 +27,14 @@ public class RazorpayPaymentGateway implements PaymentGateway {
 
     private final PaymentProperties paymentProperties;
 
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
+
+    /** INT-9: every call is logged (optional, like the health tracker). */
+    @Autowired(required = false)
+    private IntegrationCallLog callLog;
+
     @Override
     public String provider() {
         return "razorpay";
@@ -47,15 +58,24 @@ public class RazorpayPaymentGateway implements PaymentGateway {
         // retried a couple of times on the spot rather than queued; a refusal (4xx) is not retried.
         RazorpayException last = null;
         for (int attempt = 1; attempt <= ORDER_ATTEMPTS; attempt++) {
+            IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "razorpay", "orders.create");
             try {
                 RazorpayClient client = new RazorpayClient(paymentProperties.keyId(), paymentProperties.keySecret());
                 Order order = client.orders.create(orderRequest);
+                call.ok(200);
+                if (integrationHealth != null) {
+                    integrationHealth.ok(IntegrationHealthService.RAZORPAY);
+                }
                 return new GatewayOrder(
                         order.get("id"),
                         order.get("currency"),
                         Long.parseLong(order.get("amount").toString()));
             } catch (RazorpayException e) {
+                call.failed(null, e.getMessage());
                 last = e;
+                if (e.getMessage() != null && e.getMessage().toLowerCase().contains("authentication") && integrationHealth != null) {
+                    integrationHealth.authFailed(IntegrationHealthService.RAZORPAY, "Razorpay rejected the API key");
+                }
                 if (!isTransient(e) || attempt == ORDER_ATTEMPTS) {
                     break;
                 }

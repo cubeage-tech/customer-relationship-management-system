@@ -1,5 +1,7 @@
 package com.company.crm.campaign.controller;
 
+import com.company.crm.ai.perf.AiLatency;
+import com.company.crm.campaign.service.OfferRecommendationService;
 import com.company.crm.campaign.dto.request.PromotionReqDto;
 import com.company.crm.campaign.dto.request.RedemptionReqDto;
 import com.company.crm.campaign.dto.response.PromotionResDto;
@@ -28,6 +30,8 @@ public class PromotionController {
     private static final String USE_ROLES = "hasAnyRole('ADMIN', 'MARKETING_EXECUTIVE', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')";
     private static final String REDEEM_ROLES = "hasAnyRole('ADMIN', 'MARKETING_EXECUTIVE', 'SALES_MANAGER', 'SALES_EXECUTIVE')";
 
+    private final OfferRecommendationService offerRecommendations;
+    private final AiLatency latency;
     private final PromotionService promotionService;
 
     @GetMapping("/api/promotions")
@@ -65,6 +69,14 @@ public class PromotionController {
     public Response<PromotionResDto.Redemption> redeem(@AuthenticationPrincipal User currentUser, @PathVariable Long promotionId,
                                                        @Valid @RequestBody RedemptionReqDto dto) {
         return Response.ok("Redemption recorded", promotionService.redeem(currentUser, promotionId, dto));
+    }
+
+    @GetMapping("/api/customers/{customerId}/offer-recommendations")
+    @PreAuthorize(USE_ROLES)
+    @Operation(summary = "FR-7.7: the current offers ranked for this customer, with the reasons")
+    public Response<OfferRecommendationService.OfferRecs> offerRecommendations(@AuthenticationPrincipal User currentUser,
+                                                                               @PathVariable Long customerId) {
+        return Response.ok(latency.time("offer_recommendation", AiLatency.Kind.STATISTICAL, () -> offerRecommendations.recommend(currentUser, customerId)));
     }
 
     @GetMapping("/api/customers/{customerId}/promotions")

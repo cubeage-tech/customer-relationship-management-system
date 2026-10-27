@@ -1,5 +1,8 @@
 package com.company.crm.common.mail;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
+import com.company.crm.integration.calllog.IntegrationCallLog;
 import jakarta.mail.MessagingException;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
@@ -26,12 +29,24 @@ public class MailService {
     private final JavaMailSender mailSender;
     private final MailOutboxService mailOutbox;
 
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
+
+    /** INT-9: every call is logged (optional, like the health tracker). */
+    @Autowired(required = false)
+    private IntegrationCallLog callLog;
+
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
     /** FR-5.1: From address for customer emails (blank = the SMTP account default). */
     @Value("${app.communication.email.from:}")
     private String customerEmailFrom;
+
+    /** INT-2: From address for campaign (marketing) emails; blank = {@link #customerEmailFrom}. */
+    @Value("${app.communication.email.marketing-from:}")
+    private String marketingEmailFrom = "";
 
     /** FR-5.1: the shared mailbox polled over IMAP, so customer replies come back into the CRM. */
     @Value("${app.communication.email.reply-to:}")
@@ -148,8 +163,10 @@ public class MailService {
         helper.setTo(toEmail);
         helper.setSubject(subject);
         helper.setText(text, html);
-        if (!customerEmailFrom.isBlank()) {
-            helper.setFrom(customerEmailFrom);
+        // INT-2: campaigns can have their own sender, apart from transactional mail.
+        String from = marketingEmailFrom != null && !marketingEmailFrom.isBlank() ? marketingEmailFrom : customerEmailFrom;
+        if (from != null && !from.isBlank()) {
+            helper.setFrom(from);
         }
         if (!customerEmailReplyTo.isBlank()) {
             helper.setReplyTo(customerEmailReplyTo);
@@ -166,15 +183,25 @@ public class MailService {
      * thrown as before: retrying it can't help.
      */
     private void deliver(MimeMessage message) throws MessagingException {
+        IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "smtp", "email.send");
         try {
             mailSender.send(message);
+            call.ok(null);
+            if (integrationHealth != null) {
+                integrationHealth.ok(IntegrationHealthService.SMTP);
+            }
         } catch (MailSendException e) {
+            call.failed(null, e.getMessage());
             if (!retryable(e)) {
                 throw e;
             }
             mailOutbox.enqueue(message, e);
             throw new MailQueuedException("Mail server unavailable; the email was queued and will be retried automatically", e);
         } catch (MailAuthenticationException e) {
+            call.failed(null, "The mail server refused the CRM's login");
+            if (integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.SMTP, "The mail server refused the CRM's login");
+            }
             // Usually a temporary credentials/server issue; retried with backoff, then given up on.
             mailOutbox.enqueue(message, e);
             throw new MailQueuedException("Mail server refused the login; the email was queued and will be retried automatically", e);

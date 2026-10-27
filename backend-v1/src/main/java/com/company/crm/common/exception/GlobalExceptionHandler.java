@@ -1,6 +1,10 @@
 package com.company.crm.common.exception;
 
+import com.company.crm.common.ops.OpsAlertService;
 import com.company.crm.common.response.Response;
+import com.company.crm.common.web.RequestIds;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +30,10 @@ import java.util.Map;
  */
 @RestControllerAdvice
 @Slf4j
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final OpsAlertService opsAlerts;
 
     /**
      * All business errors, including the typed subclasses — SubscriptionInactiveException (402),
@@ -98,9 +105,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Response.error("Not found"));
     }
 
+    /** ERR-5: a critical error, logged with an incident reference that also reaches the user and the ops alert. */
     @ExceptionHandler(java.lang.Exception.class)
-    public ResponseEntity<Response<Object>> handleUnexpected(java.lang.Exception ex) {
-        log.error("Unhandled exception", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Response.error("Something went wrong. Please try again."));
+    public ResponseEntity<Response<Object>> handleUnexpected(java.lang.Exception ex, HttpServletRequest request) {
+        // API-4: the incident is the request's correlation ID (returned to the caller and in every log line).
+        String incident = RequestIds.current() != null ? RequestIds.current() : OpsAlertService.newIncidentId();
+        String where = request.getMethod() + " " + request.getRequestURI();
+        log.error("Unhandled exception [incident {}] on {}", incident, where, ex);
+        opsAlerts.critical(incident, where, ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Response.error("Something went wrong. Please try again. If it keeps happening, quote reference " + incident + ".",
+                        "INTERNAL_ERROR"));
     }
 }

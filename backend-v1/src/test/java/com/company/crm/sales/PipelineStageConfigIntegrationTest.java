@@ -91,7 +91,7 @@ class PipelineStageConfigIntegrationTest extends PostgresIntegrationTest {
 
         TestTenant other = testTenants.tenantWithAllRoles("Other Stages " + System.nanoTime());
         String otherAdmin = other.token(ADMIN);
-        long otherCustomer = idOf(send(post("/api/customers"), otherAdmin, "{\"companyName\":\"X\",\"industry\":\"trading\"}"));
+        long otherCustomer = idOf(send(post("/api/customers"), otherAdmin, "{\"companyName\":\"Xeno Corp\",\"industry\":\"trading\"}"));
         long otherDeal = idOf(send(post("/api/opportunities"), otherAdmin, "{\"customerId\":" + otherCustomer + ",\"dealValue\":10}")
                 .andExpect(jsonPath("$.data.stage").value("qualification")));
         send(patch("/api/opportunities/" + otherDeal + "/stage"), otherAdmin, "{\"stage\":\"discovery\"}").andExpect(status().isBadRequest());
@@ -102,7 +102,8 @@ class PipelineStageConfigIntegrationTest extends PostgresIntegrationTest {
     }
 
     private ResultActions moveTo(long id, String stage) throws Exception {
-        return send(patch("/api/opportunities/" + id + "/stage"), adminToken, "{\"stage\":\"" + stage + "\"}");
+        // VAL-7: these tests are about the stage list, not the order rule — moves skip with an override.
+        return send(patch("/api/opportunities/" + id + "/stage"), adminToken, "{\"stage\":\"" + stage + "\",\"force\":true}");
     }
 
     private ResultActions send(MockHttpServletRequestBuilder request, String token, String body) throws Exception {

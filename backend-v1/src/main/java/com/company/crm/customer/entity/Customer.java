@@ -73,6 +73,35 @@ public class Customer implements BlindIndexed {
     @Column(name = "marketing_opt_out_at")
     private LocalDateTime marketingOptOutAt;
 
+    /** NOT-7: replied STOP or asked not to be texted — no automated or marketing SMS. */
+    @Column(name = "sms_opt_out", nullable = false)
+    private boolean smsOptOut;
+
+    @Column(name = "sms_opt_out_at")
+    private LocalDateTime smsOptOutAt;
+
+    /** NOT-7: agreed to WhatsApp updates and promotions (WhatsApp needs an explicit opt-in). */
+    @Column(name = "whatsapp_opt_in", nullable = false)
+    private boolean whatsappOptIn;
+
+    @Column(name = "whatsapp_opt_in_at")
+    private LocalDateTime whatsappOptInAt;
+
+    @Column(name = "consent_updated_at")
+    private LocalDateTime consentUpdatedAt;
+
+    /** How the last consent change was made, e.g. staff, sms_stop, whatsapp_start. */
+    @Column(name = "consent_source", length = 40)
+    private String consentSource;
+
+    /** SEC-6: never send this customer's data to the AI provider. */
+    @Column(name = "ai_excluded", nullable = false)
+    private boolean aiExcluded;
+
+    /** SEC-8: when the customer's personal data was erased on request (the record stays, anonymised). */
+    @Column(name = "erased_at")
+    private LocalDateTime erasedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     private User owner;

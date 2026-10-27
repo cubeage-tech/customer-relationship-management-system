@@ -12,6 +12,7 @@ import {
 } from '../../core/constants/app.constant';
 import RoutePath from '../../core/constants/routes.constant';
 import CampaignExecution from '../../components/campaign/CampaignExecution';
+import CampaignPerformance from '../../components/campaign/CampaignPerformance';
 import { campaignPayload } from '../../core/utils/campaignPayload';
 import {
   getCampaign,
@@ -139,6 +140,9 @@ const CampaignDetail = () => {
 
       {/* ---------------- FR-7.1b/7.1c/7.4: message, launch, delivery metrics ---------------- */}
       <CampaignExecution key={campaign.id} campaign={campaign} canManage={canManage} onChange={setCampaign} />
+
+      {/* API-G08 / NAV-M08: the campaign's performance report */}
+      <CampaignPerformance campaignId={campaign.id} reloadKey={campaign.status} />
 
       {/* ---------------- Performance ---------------- */}
       <div className="mb-6 grid gap-3 sm:grid-cols-4">

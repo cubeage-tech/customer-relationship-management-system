@@ -1,5 +1,12 @@
 package com.company.crm.sales.service;
 
+import com.company.crm.common.pagination.PageRequestFactory;
+import com.company.crm.common.pagination.PageResponse;
+import com.company.crm.common.scope.ScopeSpecifications;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import com.company.crm.sales.repository.OpportunitySpecifications;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.period.ReportingPeriods;
@@ -9,6 +16,8 @@ import com.company.crm.common.enums.RoleType;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.scope.DataScope;
 import com.company.crm.common.scope.DataScopeResolver;
+import com.company.crm.common.audit.StageOverrides;
+import org.springframework.http.HttpStatus;
 import com.company.crm.customer.entity.Customer;
 import com.company.crm.customer.repository.CustomerRepository;
 import com.company.crm.lead.entity.Lead;
@@ -54,6 +63,7 @@ public class OpportunityService {
     private final PipelineStageService pipelineStageService;
     private final CommissionService commissionService;
     private final ApplicationEventPublisher eventPublisher;
+    private final PageRequestFactory pageRequestFactory;
 
     // open-in-view is disabled (see application.properties) — the mapper walks lazy
     // associations (customer, owner, lead, tenant), so the session must stay open through mapping.
@@ -67,18 +77,33 @@ public class OpportunityService {
     @Transactional(readOnly = true)
     public List<OpportunityResDto> listOpportunities(
             User currentUser, String stage, Long customerId, String search, Long ownerId) {
-        List<Opportunity> opportunities = findInScope(currentUser);
-
-        return opportunities.stream()
-                .filter(o -> ownerId == null || (o.getOwner() != null && ownerId.equals(o.getOwner().getId())))
-                .filter(o -> stage == null || stage.isBlank() || o.getStage().equals(stage))
-                .filter(o -> customerId == null || customerId.equals(o.getCustomer().getId()))
-                .filter(o -> search == null || search.isBlank()
-                        || o.getCustomer().getCompanyName().toLowerCase().contains(search.trim().toLowerCase())
-                        || (o.getProductService() != null
-                                && o.getProductService().toLowerCase().contains(search.trim().toLowerCase())))
+        // NFR-7.1b: filtered in the database rather than in memory.
+        return opportunityRepository.findAll(filters(currentUser, stage, customerId, search, ownerId), LIST_ORDER).stream()
                 .map(opportunityMapper::toDto)
                 .toList();
+    }
+
+    /** NFR-7.1b: one page of the same list (opt-in via page/size); newest first unless {@code sort} says otherwise. */
+    @Transactional(readOnly = true)
+    public PageResponse<OpportunityResDto> listOpportunitiesPage(User currentUser, String stage, Long customerId, String search,
+                                                                 Long ownerId, Integer page, Integer size, String sort) {
+        Pageable pageable = pageRequestFactory.of(page, size, sort, SORTABLE_FIELDS, PAGE_ORDER);
+        return PageResponse.of(opportunityRepository.findAll(filters(currentUser, stage, customerId, search, ownerId), pageable),
+                opportunityMapper::toDto);
+    }
+
+    private static final Sort LIST_ORDER = Sort.by(Sort.Direction.ASC, "id");
+    private static final Sort PAGE_ORDER = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
+    private static final Map<String, String> SORTABLE_FIELDS = Map.of("createdAt", "createdAt", "dealValue", "dealValue",
+            "expectedClosingDate", "expectedClosingDate", "stage", "stage");
+
+    private Specification<Opportunity> filters(User currentUser, String stage, Long customerId, String search, Long ownerId) {
+        Specification<Opportunity> spec = ScopeSpecifications.inTenant(requireTenantId(currentUser));
+        return spec.and(ScopeSpecifications.ownedWithin(dataScopeResolver.resolve(currentUser)))
+                .and(ScopeSpecifications.ownedBy(ownerId))
+                .and(ScopeSpecifications.hasValue("stage", stage))
+                .and(OpportunitySpecifications.forCustomer(customerId))
+                .and(OpportunitySpecifications.matches(search));
     }
 
     @Transactional(readOnly = true)
@@ -208,6 +233,7 @@ public class OpportunityService {
         Opportunity opportunity = findOpportunity(currentUser, opportunityId);
         assertAccess(currentUser, opportunity);
         opportunityRepository.delete(opportunity);
+        auditService.record(currentUser, AuditAction.OPPORTUNITY_DELETED, "opportunity", opportunityId, summary(opportunity));
     }
 
     /** FR-3.2/FR-3.4: change stage; a "lost" stage requires a loss reason (acceptance criterion). */
@@ -224,6 +250,12 @@ public class OpportunityService {
         if (PipelineStageService.LOST.equals(target) && (dto.getLossReason() == null || dto.getLossReason().isBlank())) {
             throw ApiException.badRequest("A loss reason is required to mark this opportunity as lost");
         }
+        // VAL-7: the configured order — the next stage, any earlier one or Lost; jumping ahead is an override.
+        int skipped = pipelineStageService.skippedStages(requireTenantId(currentUser), opportunity.getStage(), target);
+        if (skipped > 0 && !dto.isForce()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Opportunities move through the pipeline in order. This skips "
+                    + skipped + " stage" + (skipped == 1 ? "" : "s") + " — confirm the override (force=true) to move it.", "STAGE_SKIP");
+        }
 
         String previousStage = opportunity.getStage();
         opportunity.setStage(target);
@@ -236,6 +268,10 @@ public class OpportunityService {
         commissionService.onStageChanged(saved, previousStage);
         auditService.record(currentUser, AuditAction.OPPORTUNITY_STAGE_CHANGED, "opportunity", saved.getId(),
                 "stage " + previousStage + " → " + saved.getStage() + ", dealValue=" + saved.getDealValue());
+        if (skipped > 0) {
+            auditService.record(currentUser, AuditAction.OPPORTUNITY_STAGE_OVERRIDDEN, "opportunity", saved.getId(),
+                    StageOverrides.details(previousStage, target, skipped, dto.getOverrideReason()));
+        }
         return opportunityMapper.toDto(saved);
     }
 

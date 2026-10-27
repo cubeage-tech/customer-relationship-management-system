@@ -6,10 +6,12 @@ import com.company.crm.notification.dto.NotificationDtos.Inbox;
 import com.company.crm.notification.dto.NotificationDtos.MessageReq;
 import com.company.crm.notification.dto.NotificationDtos.MessageRes;
 import com.company.crm.notification.dto.NotificationDtos.NotificationRes;
+import com.company.crm.notification.delivery.NotificationDeliveryLog;
+import com.company.crm.notification.delivery.NotificationDeliveryLog.Recipient;
+import com.company.crm.notification.settings.NotificationEvent;
 import com.company.crm.notification.entity.Notification;
 import com.company.crm.notification.entity.UserDevice;
 import com.company.crm.notification.event.NotificationCreatedEvent;
-import com.company.crm.notification.event.RecordAssignedEvent;
 import com.company.crm.notification.repository.NotificationRepository;
 import com.company.crm.notification.repository.UserDeviceRepository;
 import com.company.crm.salesforce.service.SalesForceScope;
@@ -19,9 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -29,7 +29,8 @@ import java.util.stream.Collectors;
 
 /**
  * FR-M.4: notifications for assignments, follow-ups and manager messages — stored as an in-app
- * inbox and pushed to the user's registered devices (see PushDispatcher).
+ * inbox and pushed to the user's registered devices (see PushDispatcher). NOT-5 adds SLA, discount
+ * approval, AI and integration alerts (see StaffNotifier, which applies the tenant's channel settings).
  */
 @Service
 @RequiredArgsConstructor
@@ -43,6 +44,7 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final SalesForceScope salesForceScope;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationDeliveryLog deliveryLog;
 
     /** Stores a notification and queues its push for after the surrounding transaction commits. */
     @Transactional
@@ -59,16 +61,11 @@ public class NotificationService {
         n.setSenderId(senderId);
         Notification saved = notificationRepository.save(n);
         eventPublisher.publishEvent(new NotificationCreatedEvent(saved.getId()));
+        // NOT-8: every in-app notification is in the delivery log (shown as read once opened).
+        String name = userRepository.findById(userId).map(User::getFullName).orElse(null);
+        deliveryLog.log(tenantId, NotificationEvent.fromInAppType(type), "in_app", new Recipient("user", userId, name),
+                saved.getId(), null, NotificationDeliveryLog.SENT, null);
         return saved;
-    }
-
-    /** A lead or opportunity was assigned to someone else: tell them, once the assignment commits. */
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void onRecordAssigned(RecordAssignedEvent e) {
-        notify(e.tenantId(), e.assigneeId(), Notification.ASSIGNMENT, e.title(),
-                e.detail() + (e.assignedByName() != null ? " · assigned by " + e.assignedByName() : ""),
-                e.entityType(), e.entityId(), e.assignedById());
     }
 
     // ==================== Inbox ====================
@@ -80,7 +77,7 @@ public class NotificationService {
         Map<Long, String> senders = senderIds.isEmpty() ? Map.of() : userRepository.findAllById(senderIds).stream()
                 .collect(Collectors.toMap(User::getId, User::getFullName));
         return new Inbox(notificationRepository.countByUserIdAndReadAtIsNull(user.getId()),
-                items.stream().map(n -> toRes(n, senders.get(n.getSenderId()))).toList());
+                items.stream().map(n -> toRes(n, n.getSenderId() == null ? null : senders.get(n.getSenderId()))).toList());
     }
 
     @Transactional

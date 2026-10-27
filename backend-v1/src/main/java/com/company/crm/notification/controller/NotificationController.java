@@ -7,6 +7,7 @@ import com.company.crm.notification.dto.NotificationDtos.Inbox;
 import com.company.crm.notification.dto.NotificationDtos.MessageReq;
 import com.company.crm.notification.dto.NotificationDtos.MessageRes;
 import com.company.crm.notification.service.NotificationService;
+import com.company.crm.notification.service.WeeklyDigestService;
 import com.company.crm.user.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -24,16 +25,34 @@ public class NotificationController {
     private static final String MANAGERS = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'EXECUTIVE_OWNER')";
 
     private final NotificationService notificationService;
+    private final WeeklyDigestService weeklyDigestService;
+
+    /** NOT-1: the caller's email notification preferences. */
+    public record EmailPreferences(boolean weeklyDigest) {}
+
+    @GetMapping("/notifications/preferences")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "NOT-1: my email notification preferences (the weekly digest)")
+    public Response<EmailPreferences> preferences(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(new EmailPreferences(weeklyDigestService.isSubscribed(currentUser)));
+    }
+
+    @PutMapping("/notifications/preferences")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "NOT-1: turn my weekly digest email on or off")
+    public Response<EmailPreferences> savePreferences(@AuthenticationPrincipal User currentUser, @RequestBody EmailPreferences prefs) {
+        return Response.ok("Preferences saved", new EmailPreferences(weeklyDigestService.setSubscribed(currentUser, prefs.weeklyDigest())));
+    }
 
     @GetMapping("/notifications")
-    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
-    @Operation(summary = "FR-M.4: my notifications, newest first, with the unread count")
+    @PreAuthorize(RoleExpressions.ANY_AUTHENTICATED)
+    @Operation(summary = "FR-M.4 / NOT-5: my notifications, newest first, with the unread count (platform admins too, INT-8)")
     public Response<Inbox> inbox(@AuthenticationPrincipal User currentUser) {
         return Response.ok(notificationService.inbox(currentUser));
     }
 
     @PatchMapping("/notifications/{notificationId}/read")
-    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @PreAuthorize(RoleExpressions.ANY_AUTHENTICATED)
     @Operation(summary = "FR-M.4: mark one notification read")
     public Response<Void> markRead(@AuthenticationPrincipal User currentUser, @PathVariable Long notificationId) {
         notificationService.markRead(currentUser, notificationId);
@@ -41,7 +60,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/notifications/read-all")
-    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @PreAuthorize(RoleExpressions.ANY_AUTHENTICATED)
     @Operation(summary = "FR-M.4: mark all my notifications read")
     public Response<Void> markAllRead(@AuthenticationPrincipal User currentUser) {
         notificationService.markAllRead(currentUser);

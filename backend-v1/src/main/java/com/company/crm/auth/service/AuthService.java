@@ -1,5 +1,9 @@
 package com.company.crm.auth.service;
 
+import com.company.crm.edition.EditionService;
+import java.util.List;
+import com.company.crm.auth.mfa.MfaService;
+import com.company.crm.auth.password.PasswordPolicy;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.crypto.DataEncryption;
@@ -63,6 +67,10 @@ public class AuthService {
     private final EmailVerificationTokenService emailVerificationTokenService;
     private final SubscriptionService subscriptionService;
     private final MailService mailService;
+    private final MfaService mfaService;
+    private final RefreshTokenService refreshTokenService;
+    private final EditionService editionService;
+    private final PasswordPolicy passwordPolicy;
 
     // noRollbackFor: failed attempts must still be recorded even though we then throw.
     @Transactional(noRollbackFor = ApiException.class)
@@ -96,10 +104,94 @@ public class AuthService {
                     + tenant.getStatus().getDbValue().replace('_', ' ') + ". Please contact support.");
         }
 
-        recordAttempt(user, request.getEmail(), true, null);
+        // SEC-1c: a second step for users with two-step sign-in (or whose role requires it).
+        if (mfaService.applies(user)) {
+            return AuthResponse.secondStep(!user.isMfaEnabled(), mfaService.startChallenge(user));
+        }
+        return signIn(user, request.getEmail());
+    }
+
+    /** SEC-1c: the code (or a recovery code) after the password. Wrong codes count towards the sign-in lockout. */
+    @Transactional(noRollbackFor = ApiException.class)
+    public AuthResponse verifyMfa(String mfaToken, String code) {
+        User user = mfaService.challengeUser(mfaToken, MfaService.VERIFY);
+        throttle(user.getEmail());
+        if (!mfaService.checkCode(user, code)) {
+            mfaService.countFailure(mfaToken);
+            recordAttempt(user, user.getEmail(), false, "invalid_mfa_code");
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "That code isn't right", "MFA_INVALID_CODE");
+        }
+        mfaService.finish(mfaToken);
+        return signIn(user, user.getEmail());
+    }
+
+    /** SEC-1c: first sign-in of a role that requires two-step sign-in — the secret for the authenticator app. */
+    @Transactional
+    public MfaService.Setup startMfaSetup(String mfaToken) {
+        return mfaService.beginSetup(mfaService.challengeUser(mfaToken, MfaService.SETUP));
+    }
+
+    /** SEC-1c: confirms the new authenticator with a code and finishes signing in (with the recovery codes, once). */
+    @Transactional(noRollbackFor = ApiException.class)
+    public AuthResponse confirmMfaSetup(String mfaToken, String code) {
+        User user = mfaService.challengeUser(mfaToken, MfaService.SETUP);
+        throttle(user.getEmail());
+        List<String> recoveryCodes;
+        try {
+            recoveryCodes = mfaService.confirmSetup(user, code);
+        } catch (ApiException e) {
+            mfaService.countFailure(mfaToken);
+            recordAttempt(user, user.getEmail(), false, "invalid_mfa_code");
+            throw e;
+        }
+        mfaService.finish(mfaToken);
+        return signIn(user, user.getEmail()).withRecoveryCodes(recoveryCodes);
+    }
+
+    private void throttle(String email) {
+        long recentFailures = loginAttemptRepository.countByEmailAttemptedAndSuccessfulFalseAndAttemptedAtAfter(
+                email, LocalDateTime.now().minusMinutes(THROTTLE_WINDOW_MINUTES));
+        if (recentFailures >= LOGIN_MAX_FAILURES) {
+            throw ApiException.tooManyRequests("Too many failed sign-in attempts. Try again in "
+                    + THROTTLE_WINDOW_MINUTES + " minutes.");
+        }
+    }
+
+    /** The last step of every sign-in: record it and issue the access and refresh tokens. */
+    private AuthResponse signIn(User user, String emailAttempted) {
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.FORBIDDEN, statusMessage(user.getStatus()), null);
+        }
+        recordAttempt(user, emailAttempted, true, null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
+        return authMapper.toAuthResponse(accessToken(user), refreshTokenService.issue(user, null), user);
+    }
 
+    /**
+     * API-G01: a new access token (and a new refresh token, the old one is used up) without signing
+     * in again — while the account and its company are still active.
+     */
+    @Transactional(noRollbackFor = ApiException.class)
+    public AuthResponse refresh(String refreshToken) {
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken, null);
+        User user = rotation.user();
+        if (user.getStatus() != AccountStatus.ACTIVE
+                || (user.getTenant() != null && user.getTenant().getStatus() != AccountStatus.ACTIVE)) {
+            refreshTokenService.revokeAll(user.getId(), "inactive");
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Your account is no longer active", "REFRESH_TOKEN_INVALID");
+        }
+        return authMapper.toAuthResponse(accessToken(user), rotation.refreshToken(), user);
+    }
+
+    /** Signing out ends this device's refresh token (the short-lived access token simply expires). */
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
+    }
+
+    private String accessToken(User user) {
+        Tenant tenant = user.getTenant();
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("role", user.getRole().getName().getDbValue());
@@ -110,9 +202,7 @@ public class AuthService {
             claims.put("plan", subscriptionService.currentPlan(tenant).getCode());
             claims.put("subscriptionStatus", subscriptionService.currentStatus(tenant).getDbValue());
         }
-        String token = jwtService.generateAccessToken(user.getEmail(), claims);
-
-        return authMapper.toAuthResponse(token, user);
+        return jwtService.generateAccessToken(user.getEmail(), claims);
     }
 
     @Transactional
@@ -123,6 +213,7 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw ApiException.conflict("A user with this email already exists");
         }
+        passwordPolicy.check(request.getPassword(), request.getEmail(), request.getName(), null); // SEC-1b
 
         Tenant tenant = new Tenant();
         tenant.setCompanyName(request.getOrganizationName());
@@ -142,8 +233,14 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setStatus(AccountStatus.PENDING_VERIFICATION);
         user = userRepository.save(user);
+        passwordPolicy.remember(user.getId(), user.getPasswordHash());
         auditService.recordSystem(tenant.getId(), AuditAction.TENANT_SIGNED_UP, "user", user.getId(),
                 "organization=" + tenant.getCompanyName() + ", admin=" + user.getFullName());
+
+        // BIZ-2: start with the chosen industry edition's fields and pipeline stages.
+        if (request.getEdition() != null && !"standard".equals(request.getEdition())) {
+            editionService.apply(user, request.getEdition());
+        }
 
         emailVerificationTokenService.issueToken(user);
 
@@ -216,12 +313,18 @@ public class AuthService {
             throw new TokenExpiredException("This reset link has expired");
         }
 
+        User user = token.getUser();
+        // SEC-1b: checked first, so a refused password leaves the link usable.
+        passwordPolicy.check(newPassword, user.getEmail(), user.getFullName(), user.getId());
+
         token.setUsedAt(LocalDateTime.now());
         passwordResetTokenRepository.save(token);
 
-        User user = token.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        passwordPolicy.remember(user.getId(), user.getPasswordHash());
+        // API-G01: a new password ends every signed-in session.
+        refreshTokenService.revokeAll(user.getId(), "password_reset");
         auditService.recordSystem(user.getTenant() != null ? user.getTenant().getId() : null, AuditAction.PASSWORD_RESET, "user", user.getId(),
                 "password reset via emailed link");
     }
@@ -233,6 +336,13 @@ public class AuthService {
         attempt.setSuccessful(successful);
         attempt.setFailureReason(failureReason);
         loginAttemptRepository.save(attempt);
+        // SEC-7: in the audit trail too (login_attempts also drives the lockout). Never the email typed.
+        AuditAction action = successful ? AuditAction.USER_SIGNED_IN : AuditAction.USER_SIGN_IN_FAILED;
+        if (user != null) {
+            auditService.record(user, action, "user", user.getId(), failureReason);
+        } else {
+            auditService.recordSystem(null, action, "user", null, failureReason);
+        }
     }
 
     private String statusMessage(AccountStatus status) {

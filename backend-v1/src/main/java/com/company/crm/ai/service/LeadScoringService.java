@@ -65,13 +65,15 @@ public class LeadScoringService {
         long[] overall = byIndustry.values().stream().reduce(new long[]{0, 0}, (a, b) -> new long[]{a[0] + b[0], a[1] + b[1]});
         double overallRate = overall[0] == 0 ? 0.2 : (double) overall[1] / overall[0];
 
-        List<Long> ids = leads.stream().map(LeadResDto::getId).toList();
+        // NFR-7.1c: a few leads are looked up by id; many (beyond what fits in one IN list) are counted tenant-wide.
+        List<Long> ids = leads.size() <= MAX_ID_LIST ? leads.stream().map(LeadResDto::getId).toList() : null;
+        String whereLead = ids != null ? "lead_id IN (:ids)" : "lead_id IS NOT NULL";
         LocalDateTime now = LocalDateTime.now();
-        Map<Long, Long> messages = countBy("SELECT lead_id, count(*) FROM communication_logs WHERE tenant_id = :t AND lead_id IN (:ids)"
+        Map<Long, Long> messages = countBy("SELECT lead_id, count(*) FROM communication_logs WHERE tenant_id = :t AND " + whereLead
                 + " AND occurred_at >= :since GROUP BY lead_id", tenantId, ids, now.minusDays(30));
-        Map<Long, Long> meetings = countBy("SELECT lead_id, count(*) FROM meetings WHERE tenant_id = :t AND lead_id IN (:ids)"
+        Map<Long, Long> meetings = countBy("SELECT lead_id, count(*) FROM meetings WHERE tenant_id = :t AND " + whereLead
                 + " AND status = 'scheduled' AND starts_at >= :since GROUP BY lead_id", tenantId, ids, now.minusDays(30));
-        Map<Long, LocalDateTime> lastTouch = lastInteraction(tenantId, ids, now);
+        Map<Long, LocalDateTime> lastTouch = lastInteraction(tenantId, ids, whereLead, now);
 
         List<LeadScore> out = new ArrayList<>();
         for (LeadResDto lead : leads) {
@@ -103,6 +105,9 @@ public class LeadScoringService {
         return out;
     }
 
+    /** Ids per IN list, well under the database's limit on parameters per statement. */
+    private static final int MAX_ID_LIST = 1000;
+
     static String label(int score) {
         return score >= 70 ? "High" : score >= 40 ? "Medium" : "Low";
     }
@@ -119,20 +124,27 @@ public class LeadScoringService {
 
     @SuppressWarnings("unchecked")
     private Map<Long, Long> countBy(String sql, Long tenantId, List<Long> ids, LocalDateTime since) {
-        List<Object[]> rows = entityManager.createNativeQuery(sql).setParameter("t", tenantId).setParameter("ids", ids)
-                .setParameter("since", since).getResultList();
+        var query = entityManager.createNativeQuery(sql).setParameter("t", tenantId).setParameter("since", since);
+        if (ids != null) {
+            query.setParameter("ids", ids);
+        }
+        List<Object[]> rows = query.getResultList();
         Map<Long, Long> out = new HashMap<>();
         rows.forEach(r -> out.put(((Number) r[0]).longValue(), ((Number) r[1]).longValue()));
         return out;
     }
 
     @SuppressWarnings("unchecked")
-    private Map<Long, LocalDateTime> lastInteraction(Long tenantId, List<Long> ids, LocalDateTime now) {
-        List<Object[]> rows = entityManager.createNativeQuery("SELECT lead_id, max(at) FROM ("
-                        + " SELECT lead_id, occurred_at AS at FROM communication_logs WHERE tenant_id = :t AND lead_id IN (:ids)"
-                        + " UNION ALL SELECT lead_id, starts_at FROM meetings WHERE tenant_id = :t AND lead_id IN (:ids) AND starts_at <= :now"
+    private Map<Long, LocalDateTime> lastInteraction(Long tenantId, List<Long> ids, String whereLead, LocalDateTime now) {
+        var query = entityManager.createNativeQuery("SELECT lead_id, max(at) FROM ("
+                        + " SELECT lead_id, occurred_at AS at FROM communication_logs WHERE tenant_id = :t AND " + whereLead
+                        + " UNION ALL SELECT lead_id, starts_at FROM meetings WHERE tenant_id = :t AND " + whereLead + " AND starts_at <= :now"
                         + " AND status = 'scheduled') x GROUP BY lead_id")
-                .setParameter("t", tenantId).setParameter("ids", ids).setParameter("now", now).getResultList();
+                .setParameter("t", tenantId).setParameter("now", now);
+        if (ids != null) {
+            query.setParameter("ids", ids);
+        }
+        List<Object[]> rows = query.getResultList();
         Map<Long, LocalDateTime> out = new HashMap<>();
         for (Object[] r : rows) {
             Object v = r[1];

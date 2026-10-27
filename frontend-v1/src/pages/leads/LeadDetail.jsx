@@ -16,10 +16,12 @@ import {
 import RoutePath from '../../core/constants/routes.constant';
 import { getLead, updateLead, changeLeadStage, assignLead, assignLeadTeam, listAssignableTeams } from '../../core/services/lead.service';
 import { apiErrorMessage } from '../../core/utils/apiError';
+import { askOverrideReason, isStageSkip } from '../../core/utils/stageOverride';
 import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
 import MeetingsPanel from '../../components/meeting/MeetingsPanel';
 import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
+import AiExclusionToggle from '../../components/common/AiExclusionToggle';
 
 const toProfileForm = (lead) => ({
   leadName: lead.leadName || '',
@@ -95,15 +97,17 @@ const LeadDetail = () => {
       const saved = await changeLeadStage(id, nextStage);
       setLead(saved);
     } catch (err) {
-      if (err.response?.status === 400 && window.confirm('This skips pipeline stages. Move the lead anyway?')) {
-        try {
-          const saved = await changeLeadStage(id, nextStage, true);
-          setLead(saved);
-        } catch (retryErr) {
-          setStageError(retryErr.response?.data?.message || 'Could not update the stage.');
-        }
-      } else {
+      if (!isStageSkip(err)) {
         setStageError(err.response?.data?.message || 'Could not update the stage.');
+        return;
+      }
+      const reason = askOverrideReason();
+      if (reason === null) return;
+      try {
+        const saved = await changeLeadStage(id, nextStage, true, reason);
+        setLead(saved);
+      } catch (retryErr) {
+        setStageError(retryErr.response?.data?.message || 'Could not update the stage.');
       }
     }
   };
@@ -350,6 +354,8 @@ const LeadDetail = () => {
 
       {/* ARC-9: industry-specific fields */}
       <div className="mb-6"><CustomFieldsPanel entityType="lead" recordId={lead.id} canEdit={canEdit} reloadKey={lead.industry} /></div>
+      {/* SEC-6 */}
+      <AiExclusionToggle recordType="lead" recordId={lead.id} canEdit={canEdit} />
 
       {/* FR-5.1/5.2/5.4: communications logged against the lead; after conversion they also show on the customer. */}
       <MeetingsPanel leadId={lead.id} />

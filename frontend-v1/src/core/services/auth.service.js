@@ -83,6 +83,8 @@ export class UserAuthService {
           return false;
         }
         if (decoded.exp && decoded.exp < Date.now() / 1000) {
+          // API-G01: still signed in while a refresh token can renew it (the next request does).
+          if (StorageService.getData(APPLICATION_CONSTANTS.STORAGE.REFRESH_TOKEN)) return true;
           this.logoutUser();
           return false;
         }

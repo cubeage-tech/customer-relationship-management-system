@@ -17,6 +17,7 @@ import 'sync/sync_service.dart';
 class AppState with WidgetsBindingObserver {
   AppState({required this.session, required this.store, required this.firebaseReady}) {
     api = ApiClient(baseUrl: apiBaseUrl, token: session.token);
+    api.refreshSession = () => session.refresh(api);
     sync = SyncService(api, Outbox(store));
     push = PushService(api);
   }

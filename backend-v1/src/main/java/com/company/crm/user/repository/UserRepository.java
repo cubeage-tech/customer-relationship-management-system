@@ -1,6 +1,7 @@
 package com.company.crm.user.repository;
 
 import com.company.crm.common.enums.AccountStatus;
+import com.company.crm.common.enums.RoleType;
 import com.company.crm.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -38,4 +39,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update User u set u.teamId = null where u.tenant.id = :tenantId and u.teamId = :teamId")
     int clearTeam(@Param("tenantId") Long tenantId, @Param("teamId") Long teamId);
+
+    /** NOT-1: active tenant users who receive the weekly digest. */
+    @Query("select u.id from User u where u.tenant is not null and u.weeklyDigest = true"
+            + " and u.status = com.company.crm.common.enums.AccountStatus.ACTIVE order by u.id")
+    List<Long> findWeeklyDigestRecipientIds();
+
+    /** INT-8: active users of a role (e.g. the platform admins to alert). */
+    @Query("select u from User u where u.role.name = :role and u.status = com.company.crm.common.enums.AccountStatus.ACTIVE")
+    List<User> findActiveByRole(@Param("role") RoleType role);
 }

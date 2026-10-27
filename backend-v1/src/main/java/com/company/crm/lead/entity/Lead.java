@@ -98,6 +98,14 @@ public class Lead implements BlindIndexed {
     @JoinColumn(name = "campaign_id")
     private Campaign campaign;
 
+    /** SEC-6: never send this lead's data to the AI provider. */
+    @Column(name = "ai_excluded", nullable = false)
+    private boolean aiExcluded;
+
+    /** SEC-8: when the lead's personal data was erased on request. */
+    @Column(name = "erased_at")
+    private LocalDateTime erasedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

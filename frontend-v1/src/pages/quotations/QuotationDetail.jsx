@@ -273,6 +273,13 @@ const QuotationDetail = () => {
             </div>
           )}
           <div className="sm:col-span-2"><dt className="text-slate-500">Notes</dt><dd>{quotation.notes || '—'}</dd></div>
+          {quotation.customerRespondedAt && (
+            <div className="sm:col-span-2">
+              <dt className="text-slate-500">Customer&apos;s answer</dt>
+              <dd>{quotation.status === 'approved' ? 'Accepted' : 'Declined'} on {new Date(quotation.customerRespondedAt).toLocaleString()}
+                {quotation.customerResponseComment ? ` — "${quotation.customerResponseComment}"` : ''}</dd>
+            </div>
+          )}
         </dl>
       </div>
 

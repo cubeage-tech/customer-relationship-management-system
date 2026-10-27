@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { QUOTATION_STATUS_LABELS, QUOTATION_STATUSES } from '../../core/constants/app.constant';
 import { downloadCustomerQuotationPdf, getCustomerQuotation } from '../../core/services/quotation.service';
+import CustomerResponse from '../../components/quotation/CustomerResponse';
 
 const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
 
@@ -100,9 +101,12 @@ const CustomerQuotation = () => {
           <p className="text-lg font-bold text-slate-900">Total {formatCurrency(quotation.grandTotal)}</p>
         </div>
 
+        {/* NAV-2: answer right here */}
+        {quotation.canRespond && <CustomerResponse token={token} onAnswered={setQuotation} />}
+
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
-          <Button onClick={download}>Download PDF</Button>
-          <p className="text-sm text-slate-500">To accept or ask a question, simply reply to the email you received.</p>
+          <Button variant={quotation.canRespond ? 'outline' : 'primary'} onClick={download}>Download PDF</Button>
+          <p className="text-sm text-slate-500">Questions? Simply reply to the email you received.</p>
         </div>
         {downloadError && <p className="mt-2 text-sm text-red-600">{downloadError}</p>}
       </div>

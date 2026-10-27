@@ -2,6 +2,7 @@ package com.company.crm.user.service;
 
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.audit.AuditAction;
+import com.company.crm.auth.password.PasswordPolicy;
 import com.company.crm.auth.service.EmailVerificationTokenService;
 import com.company.crm.common.enums.AccountStatus;
 import com.company.crm.common.enums.RoleType;
@@ -45,6 +46,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationTokenService emailVerificationTokenService;
     private final PlanLimitService planLimitService;
+    private final PasswordPolicy passwordPolicy;
 
     @Transactional
     public UserResDto createTeamUser(User creator, CreateUserReqDto dto) {
@@ -58,6 +60,7 @@ public class UserService {
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw ApiException.conflict("A user with this email already exists");
         }
+        passwordPolicy.check(dto.getPassword(), dto.getEmail(), dto.getFullName(), null); // SEC-1b
 
         Role role = roleRepository.findByName(requestedRole)
                 .orElseThrow(() -> ApiException.badRequest("Unknown role: " + dto.getRole()));
@@ -71,6 +74,7 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(AccountStatus.PENDING_VERIFICATION);
         user = userRepository.save(user);
+        passwordPolicy.remember(user.getId(), user.getPasswordHash());
         auditService.record(creator, AuditAction.USER_CREATED, "user", user.getId(),
                 "name=" + user.getFullName() + ", role=" + requestedRole.getDbValue());
 

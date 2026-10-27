@@ -1,5 +1,6 @@
 package com.company.crm.common.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,10 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandlerImpl;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.http.HttpStatus;
 
 /** Stateless JWT security configuration. */
 @Configuration
@@ -26,6 +24,7 @@ import org.springframework.http.HttpStatus;
 public class Security {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -45,6 +44,8 @@ public class Security {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
+                        // SEC-1b: the password rules, shown on the sign-up and reset forms.
+                        .requestMatchers(HttpMethod.GET, "/auth/password-policy").permitAll()
                         // Only the public pricing list — any other /api/plans endpoint needs a login.
                         .requestMatchers(HttpMethod.GET, "/api/plans/prices").permitAll()
                         // Server-to-server from the payment provider; authenticated by its signature.
@@ -55,6 +56,8 @@ public class Security {
                                 "/api/communications/webhooks/twilio/voice").permitAll()
                         // FR-4.5 customer view link; the secret token in the path is the credential.
                         .requestMatchers(HttpMethod.GET, "/api/public/quotations/*", "/api/public/quotations/*/pdf").permitAll()
+                        // NAV-2: the customer answers from the same link; the token in the path is the credential.
+                        .requestMatchers(HttpMethod.POST, "/api/public/quotations/*/respond").permitAll()
                         // FR-5.5c per-user calendar feed for calendar apps; the secret token is the credential.
                         .requestMatchers(HttpMethod.GET, "/api/public/calendar/*").permitAll()
                         // FR-6.1 support form / FR-6.5 feedback pages; the secret token in the path is the credential.
@@ -71,8 +74,8 @@ public class Security {
                 // missing/invalid token too — but the frontend's axios interceptor only
                 // treats 401 as "please log in" and clears the session on that status.
                 .exceptionHandling(handling -> handling
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
-                        .accessDeniedHandler(new AccessDeniedHandlerImpl())
+                        .authenticationEntryPoint(JsonSecurityErrors.unauthorized(objectMapper))
+                        .accessDeniedHandler(JsonSecurityErrors.forbidden(objectMapper))
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

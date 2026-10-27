@@ -196,7 +196,7 @@ export const getPasswordStrength = (password) => {
   }
 
   let score = 0;
-  if (password.length >= 8) score += 1;
+  if (password.length >= 10) score += 1;
   if (password.length >= 12) score += 1;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
   if (/\d/.test(password)) score += 1;
@@ -205,14 +205,14 @@ export const getPasswordStrength = (password) => {
   score = Math.min(score, 4);
 
   const labels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong'];
-  return { score, label: password.length < 8 ? 'Too short' : labels[score] };
+  return { score, label: password.length < 10 ? 'Too short' : labels[score] };
 };
 
 export const validatePassword = (value, { minScore = 2 } = {}) => {
   const err = required(value, 'Password');
   if (err) return err;
 
-  const lengthErr = minLength(value, 8, 'Password');
+  const lengthErr = minLength(value, 10, 'Password'); // SEC-1b
   if (lengthErr) return lengthErr;
 
   const { score, label } = getPasswordStrength(value);

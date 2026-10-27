@@ -23,7 +23,7 @@ public class AdminSignupRequest {
     private String email;
 
     @NotBlank
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @Size(max = 128, message = "Password must be at most 128 characters") // SEC-1b: the rest is PasswordPolicy
     private String password;
 
     @NotBlank
@@ -37,4 +37,8 @@ public class AdminSignupRequest {
     private String website;
 
     private String address;
+
+    /** BIZ-2: the industry edition to start with (standard when left out). */
+    @Pattern(regexp = "standard|manufacturing|real_estate|healthcare|industrial_sales", message = "Unknown edition")
+    private String edition;
 }

@@ -1,5 +1,8 @@
 package com.company.crm.notification.push;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
+import com.company.crm.integration.calllog.IntegrationCallLog;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
@@ -42,6 +45,14 @@ public class FcmPushSender implements PushSender {
 
     private final ObjectMapper objectMapper;
 
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
+
+    /** INT-9: every call is logged (optional, like the health tracker). */
+    @Autowired(required = false)
+    private IntegrationCallLog callLog;
+
     @Value("${app.push.fcm.credentials-file:}")
     private String credentialsFile;
 
@@ -61,6 +72,7 @@ public class FcmPushSender implements PushSender {
         if (!isEnabled()) {
             return Result.FAILED;
         }
+        IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "fcm", "push.send");
         try {
             Map<String, Object> message = new LinkedHashMap<>();
             message.put("token", token);
@@ -77,9 +89,14 @@ public class FcmPushSender implements PushSender {
                     .build();
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 300) {
+                call.ok(response.statusCode());
+                if (integrationHealth != null) {
+                    integrationHealth.ok(IntegrationHealthService.FCM);
+                }
                 return Result.SENT;
             }
             String error = response.body();
+            call.failed(response.statusCode(), error);
             // The app was uninstalled or the token rotated: FCM says NOT_FOUND / UNREGISTERED.
             if (response.statusCode() == 404 || error.contains("UNREGISTERED")
                     || (response.statusCode() == 400 && error.contains("registration token"))) {
@@ -88,14 +105,21 @@ public class FcmPushSender implements PushSender {
             if (response.statusCode() == 401) {
                 accessTokenExpiry = Instant.EPOCH; // refresh next time
             }
+            if (response.statusCode() == 403 && integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.FCM, "FCM refused the service account (HTTP 403)");
+            }
             log.warn("FCM push failed ({}): {}", response.statusCode(), error.length() > 300 ? error.substring(0, 300) : error);
-            return Result.FAILED;
+            // ERR-3: an expired token, throttling or a Firebase outage is worth another try.
+            int status = response.statusCode();
+            return status == 401 || status == 429 || status >= 500 ? Result.RETRY_LATER : Result.FAILED;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return Result.FAILED;
+            call.failed(null, "interrupted");
+            return Result.RETRY_LATER;
         } catch (Exception e) {
             log.warn("FCM push error: {}", e.getMessage());
-            return Result.FAILED;
+            call.failed(null, e.getMessage());
+            return Result.RETRY_LATER; // network: Firebase unreachable
         }
     }
 
@@ -134,10 +158,23 @@ public class FcmPushSender implements PushSender {
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(form))
                 .build();
-        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "fcm", "oauth.token");
+        HttpResponse<String> response;
+        try {
+            response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            call.failed(null, e.getMessage());
+            throw e;
+        }
         if (response.statusCode() >= 300) {
+            call.failed(response.statusCode(), "token request refused");
+            // 400 invalid_grant / 401: the service-account key was revoked or deleted.
+            if ((response.statusCode() == 400 || response.statusCode() == 401) && integrationHealth != null) {
+                integrationHealth.authFailed(IntegrationHealthService.FCM, "Google rejected the service-account key (HTTP " + response.statusCode() + ")");
+            }
             throw new IllegalStateException("Google OAuth token request failed with HTTP " + response.statusCode());
         }
+        call.ok(response.statusCode());
         JsonNode json = objectMapper.readTree(response.body());
         accessToken = json.path("access_token").asText();
         accessTokenExpiry = now.plusSeconds(json.path("expires_in").asLong(3600));

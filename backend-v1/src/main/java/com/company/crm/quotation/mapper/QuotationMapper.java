@@ -40,7 +40,9 @@ public class QuotationMapper {
                 quotation.getEstimatedCost(),
                 margin(quotation),
                 marginPercent(quotation),
-                quotation.getLinesWithoutCost()
+                quotation.getLinesWithoutCost(),
+                quotation.getCustomerResponseComment(),
+                quotation.getCustomerRespondedAt()
         );
     }
 

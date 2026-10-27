@@ -18,7 +18,7 @@ public class AuthMapper {
         );
     }
 
-    public AuthResponse toAuthResponse(String token, User user) {
-        return new AuthResponse(token, toSummary(user));
+    public AuthResponse toAuthResponse(String token, String refreshToken, User user) {
+        return AuthResponse.signedIn(token, refreshToken, toSummary(user));
     }
 }

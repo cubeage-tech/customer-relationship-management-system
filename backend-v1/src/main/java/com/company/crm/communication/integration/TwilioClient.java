@@ -1,5 +1,8 @@
 package com.company.crm.communication.integration;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import com.company.crm.integration.health.IntegrationHealthService;
+import com.company.crm.integration.calllog.IntegrationCallLog;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,14 @@ public class TwilioClient {
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
     private final ObjectMapper objectMapper;
+
+    /** INT-8: told when the provider rejects our credentials (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationHealthService integrationHealth;
+
+    /** INT-9: every call is logged (optional, like the health tracker). */
+    @Autowired(required = false)
+    private IntegrationCallLog callLog;
 
     @Value("${app.communication.twilio.account-sid:}")
     private String accountSid;
@@ -111,22 +122,33 @@ public class TwilioClient {
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(encoded))
                 .build();
+        IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "twilio", from.startsWith("whatsapp:") ? "whatsapp.send" : "sms.send");
         try {
             HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
             JsonNode json = objectMapper.readTree(response.body());
             if (response.statusCode() >= 300) {
                 String message = json.path("message").asText("Twilio returned HTTP " + response.statusCode());
                 log.warn("Twilio send failed ({}): {}", response.statusCode(), message);
+                call.failed(response.statusCode(), message);
+                if (response.statusCode() == 401 && integrationHealth != null) {
+                    integrationHealth.authFailed(IntegrationHealthService.TWILIO, "Twilio answered HTTP 401: " + message);
+                }
                 throw new TwilioException(message, response.statusCode() == 429 || response.statusCode() >= 500);
             }
+            if (integrationHealth != null) {
+                integrationHealth.ok(IntegrationHealthService.TWILIO);
+            }
+            call.ok(response.statusCode());
             return new SendResult(json.path("sid").asText(), json.path("status").asText("queued"));
         } catch (TwilioException e) {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            call.failed(null, "interrupted");
             throw new TwilioException("Message provider did not respond", true);
         } catch (Exception e) {
             log.warn("Twilio send error: {}", e.getMessage());
+            call.failed(null, e.getMessage());
             throw new TwilioException("Message provider did not respond", true);
         }
     }

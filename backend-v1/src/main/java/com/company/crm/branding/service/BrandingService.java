@@ -2,6 +2,8 @@ package com.company.crm.branding.service;
 
 import com.company.crm.branding.dto.BrandingReqDto;
 import com.company.crm.branding.dto.BrandingResDto;
+import com.company.crm.common.audit.AuditAction;
+import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.storage.DocumentStorage;
 import com.company.crm.tenant.entity.Tenant;
@@ -39,6 +41,7 @@ public class BrandingService {
 
     private final TenantRepository tenantRepository;
     private final DocumentStorage documentStorage;
+    private final AuditService auditService;
 
     /** A logo ready to send to the browser. */
     public record Logo(String contentType, byte[] content) {}
@@ -56,6 +59,7 @@ public class BrandingService {
         tenant.setBrandEmail(blankToNull(dto.getEmail()));
         tenant.setBrandTaxId(blankToNull(dto.getTaxId()));
         tenant.setBrandColor(blankToNull(dto.getColor()));
+        auditService.record(currentUser, AuditAction.RECORD_UPDATED, "branding", tenant.getId(), "company details for documents");
         return toDto(tenantRepository.save(tenant));
     }
 
@@ -90,6 +94,7 @@ public class BrandingService {
         tenant.setLogoKey(key);
         tenant.setLogoContentType(contentType);
         afterCommit(() -> deleteQuietly(previousKey));
+        auditService.record(currentUser, AuditAction.RECORD_UPDATED, "branding", tenant.getId(), "logo uploaded");
         return toDto(tenantRepository.save(tenant));
     }
 
@@ -100,6 +105,7 @@ public class BrandingService {
         tenant.setLogoKey(null);
         tenant.setLogoContentType(null);
         afterCommit(() -> deleteQuietly(previousKey));
+        auditService.record(currentUser, AuditAction.RECORD_UPDATED, "branding", tenant.getId(), "logo removed");
         return toDto(tenantRepository.save(tenant));
     }
 

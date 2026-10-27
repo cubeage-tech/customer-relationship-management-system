@@ -41,7 +41,7 @@ class DashboardSummaryIntegrationTest extends PostgresIntegrationTest {
         LocalDate today = LocalDate.now();
         id(send(post("/api/opportunities"), exec, "{\"customerId\":" + execCustomer + ",\"dealValue\":1000,\"expectedClosingDate\":\"" + today + "\"}"));
         long wonOpp = id(send(post("/api/opportunities"), exec, "{\"customerId\":" + execCustomer + ",\"dealValue\":500}"));
-        send(patch("/api/opportunities/" + wonOpp + "/stage"), exec, "{\"stage\":\"won\"}").andExpect(status().isOk());
+        send(patch("/api/opportunities/" + wonOpp + "/stage"), exec, "{\"stage\":\"won\",\"force\":true}").andExpect(status().isOk());
         id(send(post("/api/opportunities"), admin, "{\"customerId\":" + adminCustomer + ",\"dealValue\":2000,\"expectedClosingDate\":\"" + today.plusDays(40) + "\"}"));
 
         id(send(post("/api/quotations"), exec, quotation(execCustomer, 1, 100, 0)));                  // draft, no discount

@@ -33,7 +33,7 @@ class CustomerPurchaseHistoryIntegrationTest extends PostgresIntegrationTest {
         // A won deal.
         long dealId = idOf(send(post("/api/opportunities"), adminToken,
                 "{\"customerId\":" + customerId + ",\"productService\":\"Industrial Crane\",\"dealValue\":2500000}"));
-        send(patch("/api/opportunities/" + dealId + "/stage"), adminToken, "{\"stage\":\"won\"}").andExpect(status().isOk());
+        send(patch("/api/opportunities/" + dealId + "/stage"), adminToken, "{\"stage\":\"won\",\"force\":true}").andExpect(status().isOk());
 
         // A quotation on that won deal is the same purchase — must not be listed twice.
         long dealQuote = createQuotation(dealId, "Industrial Crane", "2500000");

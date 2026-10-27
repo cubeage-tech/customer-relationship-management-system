@@ -64,6 +64,8 @@ function isTokenExpired(token) {
  */
 const AUTH_PATHS = [
   "/auth/login",
+  "/auth/refresh",
+  "/auth/mfa/",
   "/auth/signup",
   "/auth/verify-email",
   "/auth/forgot-password",
@@ -96,6 +98,7 @@ function clearAuthAndRedirect() {
 
   // Use constants for storage keys — never raw string literals
   StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
+  StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.REFRESH_TOKEN);
   StorageService.removeData(APPLICATION_CONSTANTS.STORAGE.USER_DETAILS);
   queryClient.clear();
 
@@ -105,6 +108,33 @@ function clearAuthAndRedirect() {
   } else {
     redirecting = false;
   }
+}
+
+/**
+ * API-G01: trades the refresh token for a new access token (and a new refresh token, the old one is
+ * used up). Concurrent callers share one request. Resolves the new access token, or null when the
+ * session can't be renewed.
+ */
+let refreshing = null;
+
+function refreshSession() {
+  const refreshToken = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.REFRESH_TOKEN);
+  if (!refreshToken) return Promise.resolve(null);
+  if (!refreshing) {
+    // Same storage as the current session (sessionStorage unless "remember me").
+    const session = sessionStorage.getItem(APPLICATION_CONSTANTS.STORAGE.REFRESH_TOKEN) !== null;
+    refreshing = axios.post(`${resolveBaseURL()}/auth/refresh`, { refreshToken }, { timeout: 15000 })
+      .then((res) => {
+        const data = res.data?.data;
+        if (!data?.token) return null;
+        StorageService.setData(APPLICATION_CONSTANTS.STORAGE.TOKEN, data.token, { session });
+        StorageService.setData(APPLICATION_CONSTANTS.STORAGE.REFRESH_TOKEN, data.refreshToken, { session });
+        return data.token;
+      })
+      .catch(() => null)
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
 }
 
 class ApiInterceptor {
@@ -119,19 +149,23 @@ class ApiInterceptor {
     if (this.initialized) return this.axiosReference;
 
     // ── Request interceptor ────────────────────────────────────────────────
-    this.axiosReference.interceptors.request.use((config) => {
+    this.axiosReference.interceptors.request.use(async (config) => {
       // Never attach (or validate) a token on the auth endpoints. A stale token
       // left in storage used to make the request interceptor reject the very
       // login call that would have replaced it.
       if (isAuthEndpoint(config.url)) return config;
 
-      const token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
+      let token = StorageService.getData(APPLICATION_CONSTANTS.STORAGE.TOKEN);
 
       if (token) {
-        // Check expiry before sending — avoids a round-trip for expired tokens
+        // Check expiry before sending — avoids a round-trip for expired tokens.
+        // API-G01: renew it with the refresh token first, if there is one.
         if (isTokenExpired(token)) {
-          clearAuthAndRedirect();
-          return Promise.reject(new Error("Session expired. Please log in again."));
+          token = await refreshSession();
+          if (!token) {
+            clearAuthAndRedirect();
+            return Promise.reject(new Error("Session expired. Please log in again."));
+          }
         }
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -142,7 +176,7 @@ class ApiInterceptor {
     // ── Response interceptor ───────────────────────────────────────────────
     this.axiosReference.interceptors.response.use(
       (res) => res,
-      (err) => {
+      async (err) => {
         // Only a 401 on a request we actually authenticated means the session is
         // dead. A 401 on /auth/login (bad password) or on a call that carried no
         // token at all is not a reason to sign the user out — that is what made a
@@ -152,6 +186,15 @@ class ApiInterceptor {
           !isAuthEndpoint(err.config?.url) &&
           hadAuthHeader(err.config)
         ) {
+          // API-G01: renew the session once and repeat the request before giving up.
+          if (!err.config._retried) {
+            const token = await refreshSession();
+            if (token) {
+              err.config._retried = true;
+              err.config.headers.Authorization = `Bearer ${token}`;
+              return this.axiosReference(err.config);
+            }
+          }
           clearAuthAndRedirect();
         }
 

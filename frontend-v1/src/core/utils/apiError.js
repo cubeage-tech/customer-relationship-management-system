@@ -27,5 +27,8 @@ export const apiErrorMessage = (error, fallback = 'Something went wrong. Please 
   const serverMessage = error.response.data?.message;
   // 5xx bodies are generic or internal — always show our own wording for them.
   if (serverMessage && status < 500) return serverMessage;
-  return STATUS_MESSAGES[status] || STATUS_MESSAGES[Math.floor(status / 100) * 100] || fallback;
+  const message = STATUS_MESSAGES[status] || STATUS_MESSAGES[Math.floor(status / 100) * 100] || fallback;
+  // ERR-2: the request's reference, which support can find in the server logs.
+  const reference = status >= 500 ? (error.response.data?.requestId || error.response.headers?.['x-request-id']) : null;
+  return reference ? `${message} (Reference: ${reference})` : message;
 };

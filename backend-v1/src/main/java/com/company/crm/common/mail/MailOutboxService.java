@@ -5,6 +5,8 @@ import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.company.crm.integration.calllog.IntegrationCallLog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -45,6 +47,10 @@ public class MailOutboxService {
     private final JavaMailSender mailSender;
     private final ApplicationEventPublisher eventPublisher;
 
+    /** INT-9 (optional so the class can be built without Spring). */
+    @Autowired(required = false)
+    private IntegrationCallLog callLog;
+
     /** Saves a message that failed its first attempt. Own transaction: kept even if the caller rolls back. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void enqueue(MimeMessage message, Exception firstFailure) throws MessagingException {
@@ -83,8 +89,10 @@ public class MailOutboxService {
             return; // another instance is on it
         }
         entry = repository.findById(id).orElseThrow();
+        IntegrationCallLog.Call call = IntegrationCallLog.start(callLog, "smtp", "email.retry");
         try {
             mailSender.send(restore(entry.getMime()));
+            call.ok(null);
             entry.setStatus(MailOutboxEntry.SENT);
             entry.setSentAt(now);
             entry.setLastError(null);
@@ -93,6 +101,7 @@ public class MailOutboxService {
             repository.save(entry);
             eventPublisher.publishEvent(new Outcome(entry.getMessageId(), true, null));
         } catch (MailException | MessagingException e) {
+            call.failed(null, e.getMessage());
             entry.setAttempts(entry.getAttempts() + 1);
             entry.setLastError(truncate(e.getMessage(), 500));
             if (entry.getAttempts() >= MAX_ATTEMPTS) {

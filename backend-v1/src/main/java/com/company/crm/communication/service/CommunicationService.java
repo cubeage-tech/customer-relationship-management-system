@@ -1,5 +1,7 @@
 package com.company.crm.communication.service;
 
+import com.company.crm.communication.event.InboundMessageRecordedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.company.crm.common.enums.CallOutcome;
 import com.company.crm.common.enums.CommunicationChannel;
 import com.company.crm.common.enums.CommunicationDirection;
@@ -71,6 +73,7 @@ public class CommunicationService {
     private final MailService mailService;
     private final TwilioClient twilioClient;
     private final PhoneNumbers phoneNumbers;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** The customer/lead a communication is logged against, after tenant and access checks. */
     private record Target(Tenant tenant, Customer customer, Lead lead) {}
@@ -179,13 +182,13 @@ public class CommunicationService {
      * timeline. Never throws: a missing address or a delivery failure is logged as FAILED.
      */
     @Transactional
-    public void sendAutomatedEmail(Tenant tenant, Customer customer, String to, String subject, String body) {
-        sendAutomatedEmail(tenant, customer, null, to, subject, body, null);
+    public Communication sendAutomatedEmail(Tenant tenant, Customer customer, String to, String subject, String body) {
+        return sendAutomatedEmail(tenant, customer, null, to, subject, body, null);
     }
 
     /** FR-5.5: same, for a customer or lead, optionally carrying an iCalendar invite ({@code ics}). */
     @Transactional
-    public void sendAutomatedEmail(Tenant tenant, Customer customer, Lead lead, String to, String subject, String body, String ics) {
+    public Communication sendAutomatedEmail(Tenant tenant, Customer customer, Lead lead, String to, String subject, String body, String ics) {
         Communication email = newLog(new Target(tenant, customer, lead), CommunicationChannel.EMAIL, CommunicationDirection.OUTBOUND, null);
         email.setSubject(subject);
         email.setBody(body);
@@ -193,8 +196,7 @@ public class CommunicationService {
         if (email.getCounterpart() == null) {
             email.setStatus(CommunicationStatus.FAILED);
             email.setErrorMessage("No email address on record");
-            communicationRepo.save(email);
-            return;
+            return communicationRepo.save(email);
         }
         email.setStatus(CommunicationStatus.QUEUED);
         email = communicationRepo.save(email);
@@ -216,7 +218,7 @@ public class CommunicationService {
             email.setStatus(CommunicationStatus.FAILED);
             email.setErrorMessage(truncate("Email could not be sent: " + e.getMessage()));
         }
-        communicationRepo.save(email);
+        return communicationRepo.save(email);
     }
 
     /**
@@ -274,6 +276,10 @@ public class CommunicationService {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "SMS is not configured for this CRM", "CHANNEL_NOT_CONFIGURED");
         }
         Target target = resolveTarget(currentUser, dto.getCustomerId(), dto.getLeadId());
+        if (target.customer() != null && target.customer().isSmsOptOut()) {
+            // NOT-7: they replied STOP or asked not to be texted.
+            throw new ApiException(HttpStatus.CONFLICT, "This customer has opted out of SMS", "CUSTOMER_OPTED_OUT");
+        }
         Communication sms = newLog(target, CommunicationChannel.SMS, CommunicationDirection.OUTBOUND, currentUser);
         sms.setCounterpart(phoneNumbers.toE164(dto.getTo()));
         sms.setBody(dto.getBody());
@@ -294,6 +300,27 @@ public class CommunicationService {
     @Transactional
     public Communication sendAutomatedLeadSms(Tenant tenant, Lead lead, String rawPhone, String body) {
         return sendAutomatedSms(new Target(tenant, null, lead), rawPhone, body);
+    }
+
+    /**
+     * NOT-2: one WhatsApp message on the system's behalf (customer updates, WhatsApp campaigns), logged
+     * with its outcome like {@link #sendAutomatedSms}. The caller checks the customer opted in (NOT-7).
+     */
+    @Transactional
+    public Communication sendAutomatedWhatsApp(Tenant tenant, Customer customer, String rawPhone, String body) {
+        Communication message = newLog(new Target(tenant, customer, null), CommunicationChannel.WHATSAPP, CommunicationDirection.OUTBOUND, null);
+        message.setBody(body);
+        message.setCounterpart(phoneNumbers.normalizeOrNull(rawPhone));
+        if (!twilioClient.isWhatsAppEnabled()) {
+            message.setStatus(CommunicationStatus.FAILED);
+            message.setErrorMessage("WhatsApp is not configured for this CRM");
+        } else if (message.getCounterpart() == null) {
+            message.setStatus(CommunicationStatus.FAILED);
+            message.setErrorMessage("No valid phone number on record");
+        } else {
+            applySendResult(message, () -> twilioClient.sendWhatsApp(message.getCounterpart(), body));
+        }
+        return communicationRepo.save(message);
     }
 
     private Communication sendAutomatedSms(Target target, String rawPhone, String body) {
@@ -347,7 +374,9 @@ public class CommunicationService {
         if (message.occurredAt() != null) {
             inbound.setOccurredAt(message.occurredAt());
         }
-        return Optional.of(communicationRepo.save(inbound));
+        Communication saved = communicationRepo.save(inbound);
+        eventPublisher.publishEvent(new InboundMessageRecordedEvent(saved.getTenant().getId(), saved.getId()));
+        return Optional.of(saved);
     }
 
     /** A finished phone call reported by the telephony provider (FR-5.4b). */

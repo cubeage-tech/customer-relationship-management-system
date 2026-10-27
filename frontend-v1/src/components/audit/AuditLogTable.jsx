@@ -3,8 +3,10 @@ import Button from '../common/Button';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getAuditEvents } from '../../core/services/audit.service';
 
-const ENTITY_TYPES = ['customer', 'quotation', 'opportunity', 'commission', 'commission_rule', 'payment', 'subscription',
-  'user', 'tenant', 'sales_team', 'service_ticket'];
+const ENTITY_TYPES = ['customer', 'lead', 'quotation', 'opportunity', 'commission', 'commission_rule', 'payment', 'subscription',
+  'user', 'tenant', 'sales_team', 'service_ticket', 'campaign', 'segment', 'promotion', 'product', 'meeting', 'customer_document',
+  'attachment', 'customer_asset', 'pipeline_stage', 'industry', 'sales_target', 'lead_assignment_rule', 'ticket_assignment_rule',
+  'report', 'report_schedule', 'branding', 'data_request'];
 const PAGE_SIZE = 50;
 const inputClass = 'border border-slate-300 rounded px-2 py-1 text-sm bg-white';
 

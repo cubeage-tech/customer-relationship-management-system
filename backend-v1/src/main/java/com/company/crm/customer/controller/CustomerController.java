@@ -1,5 +1,6 @@
 package com.company.crm.customer.controller;
 
+import com.company.crm.common.pagination.PageRequestFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import com.company.crm.customer.dto.response.CustomerSummaryDto;
 import com.company.crm.common.response.Response;
@@ -8,7 +9,11 @@ import com.company.crm.customer.dto.request.CustomerReqDto;
 import com.company.crm.customer.dto.response.CustomerPurchaseResDto;
 import com.company.crm.customer.dto.response.CustomerResDto;
 import com.company.crm.customer.dto.response.CustomerDocumentResDto;
+import com.company.crm.customer.service.CommunicationConsentService;
+import com.company.crm.customer.service.CommunicationConsentService.Consent;
+import com.company.crm.customer.service.CommunicationConsentService.ConsentReq;
 import com.company.crm.customer.service.CustomerDocumentService;
+import com.company.crm.customer.service.CustomerHistoryService;
 import com.company.crm.customer.service.CustomerService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
@@ -40,6 +45,8 @@ import java.util.List;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final CommunicationConsentService consentService;
+    private final CustomerHistoryService historyService;
     private final CustomerDocumentService customerDocumentService;
 
     @GetMapping("/summary")
@@ -51,11 +58,18 @@ public class CustomerController {
 
     @GetMapping
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
-    public Response<List<CustomerResDto>> listCustomers(
+    // NFR-7.1b: without page/size the original array; with them a PageResponse (sort=createdAt|companyName|industry|status[,asc|desc]).
+    public Response<?> listCustomers(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(required = false) String industry,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        if (PageRequestFactory.isPaged(page, size)) {
+            return Response.ok(customerService.listCustomersPage(currentUser, industry, status, search, page, size, sort));
+        }
         return Response.ok(customerService.listCustomers(currentUser, industry, status, search));
     }
 
@@ -185,5 +199,29 @@ public class CustomerController {
             @PathVariable Long customerId,
             @PathVariable Long contactId) {
         return Response.ok("Contact removed", customerService.deleteContact(currentUser, customerId, contactId));
+    }
+
+    @GetMapping("/{customerId}/communication-preferences")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "NOT-7: the customer's consent for marketing email, SMS and WhatsApp")
+    public Response<Consent> communicationPreferences(@AuthenticationPrincipal User currentUser, @PathVariable Long customerId) {
+        return Response.ok(consentService.get(currentUser, customerId));
+    }
+
+    @PutMapping("/{customerId}/communication-preferences")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "NOT-7: record the customer's choice (marketing email, SMS, WhatsApp opt-in); audited")
+    public Response<Consent> updateCommunicationPreferences(@AuthenticationPrincipal User currentUser, @PathVariable Long customerId,
+                                                             @RequestBody ConsentReq req) {
+        return Response.ok("Communication preferences saved", consentService.update(currentUser, customerId, req));
+    }
+
+    @GetMapping("/{customerId}/history")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "API-G02 (FR-1.3/1.4): the customer's history, newest first — deals, quotations, service requests, "
+            + "messages, meetings, documents and changes (types=deal,quotation,... to narrow it)")
+    public Response<List<CustomerHistoryService.HistoryEvent>> history(@AuthenticationPrincipal User currentUser, @PathVariable Long customerId,
+                                                                       @RequestParam(required = false) java.util.Set<String> types) {
+        return Response.ok(historyService.history(currentUser, customerId, types));
     }
 }

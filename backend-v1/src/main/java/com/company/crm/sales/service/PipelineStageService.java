@@ -122,6 +122,28 @@ public class PipelineStageService {
         }
     }
 
+    /**
+     * VAL-7: how many active stages a move from {@code from} to {@code to} jumps over. 0 for the next
+     * stage, any earlier stage, Lost, or Won from the last open stage. Reopening a lost (or no longer
+     * active) stage's deal is free, except straight to Won.
+     */
+    @Transactional
+    public int skippedStages(Long tenantId, String from, String to) {
+        if (from == null || to.equals(from) || LOST.equals(to)) {
+            return 0;
+        }
+        List<String> order = stages(tenantId).stream()
+                .filter(s -> s.isActive() && !LOST.equals(s.getCode()))
+                .map(PipelineStage::getCode)
+                .toList();
+        int fromIndex = order.indexOf(from);
+        int toIndex = order.indexOf(to);
+        if (fromIndex < 0) {
+            return WON.equals(to) ? 1 : 0;
+        }
+        return Math.max(0, toIndex - fromIndex - 1);
+    }
+
     /** Where new opportunities start: the first active open stage. */
     @Transactional
     public String firstOpenStage(Long tenantId) {

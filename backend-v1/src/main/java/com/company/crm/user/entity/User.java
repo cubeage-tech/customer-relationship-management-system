@@ -71,8 +71,29 @@ public class User implements UserDetails {
     @Column(name = "mfa_enabled", nullable = false)
     private boolean mfaEnabled = false;
 
+    /** SEC-1c: the authenticator secret (Base32), encrypted at rest; set once two-step sign-in is on. */
+    @Convert(converter = EncryptedString.class)
+    @Column(name = "mfa_secret")
+    private String mfaSecret;
+
+    /** SEC-1c: a secret being set up, until the user confirms it with a code. */
+    @Convert(converter = EncryptedString.class)
+    @Column(name = "mfa_pending_secret")
+    private String mfaPendingSecret;
+
+    /** SEC-1c: the last accepted 30-second step — a code can't be used twice. */
+    @Column(name = "mfa_last_step")
+    private Long mfaLastStep;
+
+    @Column(name = "mfa_enabled_at")
+    private LocalDateTime mfaEnabledAt;
+
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
+
+    /** NOT-1: receives the weekly digest email (users can opt out). */
+    @Column(name = "weekly_digest", nullable = false)
+    private boolean weeklyDigest = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

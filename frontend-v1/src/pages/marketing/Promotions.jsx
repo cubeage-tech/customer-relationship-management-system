@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
+import CampaignsNav from '../../components/campaign/CampaignsNav';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
@@ -71,6 +72,7 @@ const Promotions = () => {
     <section>
       <PageHeader title="Promotions" subtitle="Offers and their redemptions. Record a redemption from the customer's page."
         actions={canManage && !form && <Button onClick={() => setForm({ ...EMPTY })}>New promotion</Button>} />
+      <CampaignsNav />
       {error && <p className="form-error mb-4">{error}</p>}
 
       {form && (

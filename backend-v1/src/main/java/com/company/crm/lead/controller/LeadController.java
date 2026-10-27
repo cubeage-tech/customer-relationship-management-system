@@ -1,5 +1,6 @@
 package com.company.crm.lead.controller;
 
+import com.company.crm.common.pagination.PageRequestFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import com.company.crm.lead.dto.response.LeadSummaryDto;
 import com.company.crm.common.response.Response;
@@ -42,13 +43,20 @@ public class LeadController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'MARKETING_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')")
-    public Response<List<LeadResDto>> listLeads(
+    // NFR-7.1b: without page/size the original array; with them a PageResponse (sort=createdAt|leadName|companyName|followUpDate|stage[,asc|desc]).
+    public Response<?> listLeads(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(required = false) String stage,
             @RequestParam(required = false) String source,
             @RequestParam(required = false) String industry,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long ownerId) {
+            @RequestParam(required = false) Long ownerId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        if (PageRequestFactory.isPaged(page, size)) {
+            return Response.ok(leadService.listLeadsPage(currentUser, stage, source, industry, search, ownerId, page, size, sort));
+        }
         return Response.ok(leadService.listLeads(currentUser, stage, source, industry, search, ownerId));
     }
 

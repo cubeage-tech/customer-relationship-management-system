@@ -1,5 +1,6 @@
 package com.company.crm.common.response;
 
+import com.company.crm.common.web.RequestIds;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 
@@ -15,11 +16,16 @@ public class Response<T> {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final String errorCode;
 
+    /** API-4: the request's correlation ID, on every error — quote it to support; it finds the request in the logs. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String requestId;
+
     private Response(boolean success, String message, T data, String errorCode) {
         this.success = success;
         this.message = message;
         this.data = data;
         this.errorCode = errorCode;
+        this.requestId = success ? null : RequestIds.current();
     }
 
     public static <T> Response<T> ok(T data) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, CircleAlert, Megaphone, Plus, Search, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
+import CampaignsNav from '../../components/campaign/CampaignsNav';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import { usePermissions } from '../../core/hooks/usePermissions';
@@ -100,6 +101,8 @@ const Campaigns = () => {
           </Button>
         )}
       />
+      {/* NAV-M08 */}
+      <CampaignsNav />
 
       {summary && (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

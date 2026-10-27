@@ -1,5 +1,6 @@
 package com.company.crm.lead.repository;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.company.crm.common.enums.LeadStage;
 import com.company.crm.lead.entity.Lead;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface LeadRepository extends JpaRepository<Lead, Long> {
+public interface LeadRepository extends JpaRepository<Lead, Long>, JpaSpecificationExecutor<Lead> {
 
     /** Tenant-scoped lookup: a record from another tenant is indistinguishable from a missing one. */
     Optional<Lead> findByIdAndTenantId(Long id, Long tenantId);

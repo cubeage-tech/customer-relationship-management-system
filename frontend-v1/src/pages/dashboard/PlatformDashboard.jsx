@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import DashboardShell from '../../components/dashboard/DashboardShell';
+import { IntegrationAlertBanner } from '../../components/platform/IntegrationHealth';
 import { getSuperAdminDashboard } from '../../core/services/dashboard.service';
 import {
   CalendarDays,
@@ -87,6 +88,8 @@ const PlatformDashboard = () => {
       stats={stats}
     >
       <div className="space-y-6">
+        {/* INT-8 */}
+        <IntegrationAlertBanner />
         {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
         <div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
           <section className={`${cardClass} p-5 sm:p-6`} aria-labelledby="tenant-growth-heading">

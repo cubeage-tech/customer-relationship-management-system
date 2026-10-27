@@ -6,6 +6,8 @@ import {
 } from '../../core/constants/app.constant';
 import { MODULES, ROLE_DATA_SCOPE, SCOPE_LABELS } from '../../core/constants/permission.constant';
 import { getRolePermissions } from '../../core/utils/permission';
+import { usePermissions } from '../../core/hooks/usePermissions';
+import RolePermissionEditor from '../../components/admin/RolePermissionEditor';
 
 const MODULE_COLUMNS = [
   { key: MODULES.CUSTOMERS, label: 'Customers' },
@@ -20,6 +22,7 @@ const MODULE_COLUMNS = [
 const ROLES = Object.values(USER_ROLES);
 
 const Roles = () => {
+  const { is } = usePermissions();
   return (
     <section>
       <PageHeader
@@ -62,6 +65,9 @@ const Roles = () => {
           </tbody>
         </table>
       </div>
+
+      {/* ROLE-8: the tenant admin customises the matrix for this organisation */}
+      {is([USER_ROLES.ADMIN]) && <RolePermissionEditor />}
     </section>
   );
 };

@@ -48,3 +48,6 @@ export const downloadCustomerQuotationPdf = async (token, quotationNumber) => {
   const response = await ApiService.downloadPublicQuotationPdf(token);
   saveBlob(response.data, `${quotationNumber || 'quotation'}.pdf`);
 };
+
+/** NAV-2: the customer accepts ('accept') or declines ('decline') from the view link, with an optional comment. */
+export const respondToQuotation = (token, decision, comment) => ApiService.respondToQuotation(token, decision, comment);

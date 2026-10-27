@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
 import { login as loginRequest, resendVerification } from '../../core/services/auth.service';
+import MfaSignInStep from '../../components/auth/MfaSignInStep';
 import { useAuth } from '../../core/hooks/useAuth';
 import RoutePath, { getRoleHomeRoute } from '../../core/constants/routes.constant';
 import { NOTIFICATION_MESSAGES } from '../../core/constants/notification.constant';
@@ -27,6 +28,8 @@ const Login = () => {
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendNotice, setResendNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // SEC-1c: { token, setup } while the second sign-in step is shown
+  const [mfa, setMfa] = useState(null);
   const { loginUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -68,16 +71,29 @@ const Login = () => {
     setError('');
     setNeedsVerification(false);
     try {
-      const { user, token } = await loginRequest(credentials);
-      loginUser({ user, token, rememberMe });
-      // Every CRM role lands on its own dashboard.
-      navigate(getRoleHomeRoute(user.role));
+      const data = await loginRequest(credentials);
+      if (data?.mfaRequired || data?.mfaSetupRequired) {
+        setMfa({ token: data.mfaToken, setup: data.mfaSetupRequired });
+        return;
+      }
+      finishSignIn(data);
     } catch (err) {
       setError(apiErrorMessage(err, NOTIFICATION_MESSAGES.LOGIN_FAILED));
       setNeedsVerification(err.response?.data?.errorCode === 'EMAIL_NOT_VERIFIED');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const finishSignIn = ({ user, token, refreshToken }) => {
+    loginUser({ user, token, refreshToken, rememberMe });
+    // Every CRM role lands on its own dashboard.
+    navigate(getRoleHomeRoute(user.role));
+  };
+
+  const cancelMfa = (message) => {
+    setMfa(null);
+    setError(message || '');
   };
 
   const handleSubmit = (e) => {
@@ -190,6 +206,9 @@ const Login = () => {
             </div>
           )}
 
+          {mfa ? (
+            <MfaSignInStep mfaToken={mfa.token} setup={mfa.setup} onSignedIn={finishSignIn} onCancel={cancelMfa} />
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5" htmlFor="email">Work email</label>
@@ -285,6 +304,7 @@ const Login = () => {
               {submitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
+          )}
 
           {/* SSO (Google Workspace / Microsoft) buttons removed until single sign-on is implemented. */}
 

@@ -75,6 +75,8 @@ class RoutePath {
   static SERVICE_TICKETS = "/service-tickets";
   static ADD_SERVICE_TICKET = "/service-tickets/add";
   static EDIT_SERVICE_TICKET = "/service-tickets/:id";
+  // NAV-M07
+  static SLA_DASHBOARD = "/service-tickets/sla";
 
   // ======================================================
   // MARKETING
@@ -113,6 +115,10 @@ class RoutePath {
   static ADMIN_ROLES = `${this.ADMIN_BASE}/roles`;
   static ADMIN_SETTINGS = `${this.ADMIN_BASE}/settings`;
   static ADMIN_AUDIT_LOG = `${this.ADMIN_BASE}/audit-log`;
+  // NOT-8
+  static ADMIN_NOTIFICATION_LOG = `${this.ADMIN_BASE}/notification-log`;
+  // SEC-8
+  static ADMIN_DATA_REQUESTS = `${this.ADMIN_BASE}/data-requests`;
   static ADMIN_MY_PLAN = `${this.ADMIN_BASE}/my-plan`;
   static ADMIN_TEAMS = `${this.ADMIN_BASE}/teams`;
 

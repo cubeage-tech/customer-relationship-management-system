@@ -21,12 +21,20 @@ public class Notification {
     public static final String ASSIGNMENT = "assignment";
     public static final String FOLLOW_UP = "follow_up";
     public static final String MESSAGE = "message";
+    // NOT-5 / INT-8
+    public static final String SLA_ESCALATION = "sla_escalation";
+    public static final String DISCOUNT_APPROVAL = "discount_approval";
+    public static final String AI_ALERT = "ai_alert";
+    public static final String INTEGRATION = "integration";
+    // NAV-2
+    public static final String QUOTATION_RESPONSE = "quotation_response";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "tenant_id", nullable = false)
+    /** null for platform (super admin) notifications. */
+    @Column(name = "tenant_id")
     private Long tenantId;
 
     @Column(name = "user_id", nullable = false)
@@ -41,7 +49,7 @@ public class Notification {
     @Column(length = 2000)
     private String body;
 
-    /** lead | opportunity, or null */
+    /** lead | opportunity | quotation | service_ticket | customer | integration, or null */
     @Column(name = "entity_type", length = 20)
     private String entityType;
 

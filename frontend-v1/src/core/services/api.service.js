@@ -16,8 +16,9 @@ class ApiService {
     return this.apipost(ServerUrl.AUTH_REGISTER, data);
   }
 
-  static logout() {
-    return this.apipost(ServerUrl.AUTH_LOGOUT);
+  /** API-G01: ends this device's refresh token. */
+  static logout(refreshToken) {
+    return this.apipost(ServerUrl.AUTH_LOGOUT, { refreshToken });
   }
 
   static verifyEmail(data) {
@@ -443,6 +444,234 @@ class ApiService {
 
   static getInbox(params) {
     return this.apiget(ServerUrl.COMMUNICATION_INBOX, params);
+  }
+
+  // API-G02: a customer's history
+  static getCustomerHistory(customerId, types) {
+    return this.apiget(ServerUrl.customerHistory(customerId), types ? { types } : {});
+  }
+
+  // API-G08: a campaign's performance
+  static getCampaignPerformance(campaignId) {
+    return this.apiget(`${ServerUrl.API_MODULE_USER}/campaigns/${campaignId}/performance`);
+  }
+
+  // NAV-2: AI quotation draft; the customer's answer on the public link
+  static draftQuotation(data) {
+    return this.apipost(`${ServerUrl.AI}/quotation-draft`, data);
+  }
+
+  // FR-4.7: price recommendations; NFR-7.1c: AI response times
+  static getPriceRecommendations(data) {
+    return this.apipost(`${ServerUrl.AI}/price-recommendations`, data);
+  }
+
+  static getAiPerformance() {
+    return this.apiget(`${ServerUrl.AI}/performance`);
+  }
+
+  // FR-7.5 / FR-7.6 / FR-7.7
+  static getSegmentRecommendations(channel) {
+    return this.apiget(`${ServerUrl.CAMPAIGNS}/segment-recommendations`, { channel });
+  }
+
+  static predictCampaign(params) {
+    return this.apiget(`${ServerUrl.CAMPAIGNS}/prediction`, params);
+  }
+
+  static getCampaignPrediction(id) {
+    return this.apiget(`${ServerUrl.CAMPAIGNS}/${id}/prediction`);
+  }
+
+  static getOfferRecommendations(customerId) {
+    return this.apiget(`${ServerUrl.CUSTOMERS}/${customerId}/offer-recommendations`);
+  }
+
+  static respondToQuotation(token, decision, comment) {
+    return this.apipost(`${ServerUrl.publicQuotation(token)}/respond`, { decision, comment });
+  }
+
+  // SEC-5 / SEC-6: AI data controls
+  static getAiSettings() {
+    return this.apiget(`${ServerUrl.AI}/settings`);
+  }
+
+  static saveAiSettings(data) {
+    return this.apiput(`${ServerUrl.AI}/settings`, data);
+  }
+
+  static getAiExclusion(recordType, recordId) {
+    return this.apiget(`${ServerUrl.AI}/exclusions/${recordType}/${recordId}`);
+  }
+
+  static setAiExclusion(recordType, recordId, excluded) {
+    return this.apiput(`${ServerUrl.AI}/exclusions/${recordType}/${recordId}`, { excluded });
+  }
+
+  // NAV-M11: integrations for the tenant admin
+  static getIntegrationStatus() {
+    return this.apiget(ServerUrl.INTEGRATION_STATUS);
+  }
+
+  static listIntegrationKeys() {
+    return this.apiget(ServerUrl.INTEGRATION_KEYS);
+  }
+
+  static createIntegrationKey(name) {
+    return this.apipost(ServerUrl.INTEGRATION_KEYS, { name });
+  }
+
+  static revokeIntegrationKey(id) {
+    return this.apidelete(`${ServerUrl.INTEGRATION_KEYS}/${id}`);
+  }
+
+  // SEC-8: data-protection requests
+  static listDataRequests() {
+    return this.apiget(ServerUrl.DATA_REQUESTS);
+  }
+
+  static createDataRequest(data) {
+    return this.apipost(ServerUrl.DATA_REQUESTS, data);
+  }
+
+  static exportDataRequest(id) {
+    return this.axiosInstance.get(`${ServerUrl.DATA_REQUESTS}/${id}/export`, { responseType: 'blob' });
+  }
+
+  static eraseDataRequest(id, confirm) {
+    return this.apipost(`${ServerUrl.DATA_REQUESTS}/${id}/erase`, { confirm });
+  }
+
+  static rejectDataRequest(id, reason) {
+    return this.apipost(`${ServerUrl.DATA_REQUESTS}/${id}/reject`, { reason });
+  }
+
+  // BIZ-2: industry editions
+  static getEditions() {
+    return this.apiget(ServerUrl.EDITIONS);
+  }
+
+  static applyEdition(edition) {
+    return this.apiput(`${ServerUrl.EDITIONS}/current`, { edition });
+  }
+
+  // SEC-1b: the password rules (public)
+  static getPasswordPolicy() {
+    return this.apiget(ServerUrl.AUTH_PASSWORD_POLICY);
+  }
+
+  // VAL-1/VAL-3: possible duplicates of what is being entered
+  static checkDuplicates(data) {
+    return this.apipost(ServerUrl.DUPLICATE_CHECK, data);
+  }
+
+  // INT-9: outbound integration call log (platform admin)
+  static getIntegrationCalls(params) {
+    return this.apiget(ServerUrl.INTEGRATION_CALLS, params);
+  }
+
+  // SEC-1c: second sign-in step
+  static verifyMfa(mfaToken, code) {
+    return this.apipost(ServerUrl.AUTH_MFA_VERIFY, { mfaToken, code });
+  }
+
+  static startMfaSetup(mfaToken) {
+    return this.apipost(ServerUrl.AUTH_MFA_SETUP, { mfaToken });
+  }
+
+  static confirmMfaSetup(mfaToken, code) {
+    return this.apipost(ServerUrl.AUTH_MFA_SETUP_CONFIRM, { mfaToken, code });
+  }
+
+  // SEC-1c: my two-step sign-in
+  static getMfaStatus() {
+    return this.apiget(ServerUrl.MFA);
+  }
+
+  static beginMfaSetup() {
+    return this.apipost(`${ServerUrl.MFA}/setup`);
+  }
+
+  static enableMfa(code) {
+    return this.apipost(`${ServerUrl.MFA}/enable`, { code });
+  }
+
+  static disableMfa(code) {
+    return this.apipost(`${ServerUrl.MFA}/disable`, { code });
+  }
+
+  static regenerateRecoveryCodes(code) {
+    return this.apipost(`${ServerUrl.MFA}/recovery-codes`, { code });
+  }
+
+  static resetUserMfa(userId) {
+    return this.apipost(`${ServerUrl.MFA}/users/${userId}/reset`);
+  }
+
+  // NOT-5: my notification inbox
+  static getNotifications() {
+    return this.apiget(ServerUrl.NOTIFICATIONS);
+  }
+
+  static markNotificationRead(id) {
+    return this.apipatch(`${ServerUrl.NOTIFICATIONS}/${id}/read`);
+  }
+
+  static markAllNotificationsRead() {
+    return this.apipatch(`${ServerUrl.NOTIFICATIONS}/read-all`);
+  }
+
+  // NOT-6 / NOT-8: notification channels and delivery log (admin)
+  static getNotificationSettings() {
+    return this.apiget(ServerUrl.NOTIFICATION_SETTINGS);
+  }
+
+  static saveNotificationSettings(changes) {
+    return this.apiput(ServerUrl.NOTIFICATION_SETTINGS, changes);
+  }
+
+  static getNotificationDeliveries(params) {
+    return this.apiget(ServerUrl.NOTIFICATION_DELIVERIES, params);
+  }
+
+  // NOT-7: a customer's communication consent
+  static getCustomerConsent(customerId) {
+    return this.apiget(ServerUrl.customerConsent(customerId));
+  }
+
+  static saveCustomerConsent(customerId, data) {
+    return this.apiput(ServerUrl.customerConsent(customerId), data);
+  }
+
+  // INT-8: integration credential status (platform admin)
+  static getIntegrationHealth() {
+    return this.apiget(ServerUrl.INTEGRATION_HEALTH);
+  }
+
+  static resolveIntegration(integration) {
+    return this.apipost(`${ServerUrl.INTEGRATION_HEALTH}/${integration}/resolve`);
+  }
+
+  // ROLE-8: per-tenant role permissions
+  static getRolePermissionSettings() {
+    return this.apiget(ServerUrl.ROLE_PERMISSIONS);
+  }
+
+  static getMyRolePermissions() {
+    return this.apiget(`${ServerUrl.ROLE_PERMISSIONS}/mine`);
+  }
+
+  static updateRolePermissions(role, revoked) {
+    return this.apiput(`${ServerUrl.ROLE_PERMISSIONS}/${role}`, { revoked });
+  }
+
+  // NOT-1: my email notification preferences
+  static getNotificationPreferences() {
+    return this.apiget(ServerUrl.NOTIFICATION_PREFERENCES);
+  }
+
+  static saveNotificationPreferences(data) {
+    return this.apiput(ServerUrl.NOTIFICATION_PREFERENCES, data);
   }
 
   // ARC-9: custom fields and industry templates

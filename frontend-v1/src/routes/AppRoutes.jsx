@@ -45,6 +45,7 @@ const Quotations = lazy(() => import("../pages/quotations/Quotations"));
 const QuotationDetail = lazy(() => import("../pages/quotations/QuotationDetail"));
 const ServiceTickets = lazy(() => import("../pages/service/ServiceTickets"));
 const ServiceTicketDetail = lazy(() => import("../pages/service/ServiceTicketDetail"));
+const SlaDashboard = lazy(() => import("../pages/service/SlaDashboard"));
 const Campaigns = lazy(() => import("../pages/marketing/Campaigns"));
 const CampaignDetail = lazy(() => import("../pages/marketing/CampaignDetail"));
 const Segments = lazy(() => import("../pages/marketing/Segments"));
@@ -68,6 +69,8 @@ const PlatformSettings = lazy(() => import("../pages/platform/PlatformSettings")
 const PlatformReports = lazy(() => import("../pages/platform/PlatformReports"));
 const AuditLogs = lazy(() => import("../pages/platform/AuditLogs"));
 const TenantAuditLog = lazy(() => import("../pages/admin/AuditLog"));
+const NotificationLog = lazy(() => import("../pages/admin/NotificationLog"));
+const DataRequests = lazy(() => import("../pages/admin/DataRequests"));
 const Communications = lazy(() => import("../pages/communications/Communications"));
 const AiAssistant = lazy(() => import("../pages/ai/AiAssistant"));
 
@@ -292,6 +295,8 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.SERVICE_TICKETS} element={<ServiceTickets />} />
+            {/* NAV-M07 */}
+            <Route path={RoutePath.SLA_DASHBOARD} element={<SlaDashboard />} />
             <Route path={RoutePath.EDIT_SERVICE_TICKET} element={<ServiceTicketDetail />} />
           </Route>
 
@@ -402,6 +407,19 @@ const AppRoutes = () => {
             }
           >
             <Route path={RoutePath.ADMIN_AUDIT_LOG} element={<TenantAuditLog />} />
+          </Route>
+
+          {/* NOT-8: the notification delivery log (tenant admin) */}
+          <Route
+            element={
+              <ProtectedRoute
+                requiredPermissions={[PERMISSIONS.SETTINGS_MANAGE]}
+              />
+            }
+          >
+            <Route path={RoutePath.ADMIN_NOTIFICATION_LOG} element={<NotificationLog />} />
+            {/* SEC-8 */}
+            <Route path={RoutePath.ADMIN_DATA_REQUESTS} element={<DataRequests />} />
           </Route>
 
           <Route

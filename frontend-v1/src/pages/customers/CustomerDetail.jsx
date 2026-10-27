@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import OfferSuggestions from '../../components/customer/OfferSuggestions';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
@@ -21,6 +22,11 @@ import { listUsers } from '../../core/services/user.service';
 import CommunicationTimeline from '../../components/communication/CommunicationTimeline';
 import MeetingsPanel from '../../components/meeting/MeetingsPanel';
 import CustomFieldsPanel from '../../components/customfield/CustomFieldsPanel';
+import CommunicationPreferences from '../../components/customer/CommunicationPreferences';
+import CustomerHistory from '../../components/customer/CustomerHistory';
+import AiExclusionToggle from '../../components/common/AiExclusionToggle';
+import DuplicateWarning from '../../components/common/DuplicateWarning';
+import { duplicateConfirmText, useDuplicateCheck } from '../../core/hooks/useDuplicateCheck';
 import CustomerAssets from '../../components/customer/CustomerAssets';
 import CustomerPromotions from '../../components/customer/CustomerPromotions';
 import CustomerDocuments from '../../components/customer/CustomerDocuments';
@@ -141,9 +147,12 @@ const CustomerDetail = () => {
     setShowContactForm(true);
   };
 
+  const contactDuplicates = useDuplicateCheck('contact', { email: showContactForm ? contactForm.email : '' }, editingContactId);
+
   const handleContactSave = async (e) => {
     e.preventDefault();
     setContactError('');
+    if (contactDuplicates.length > 0 && !window.confirm(duplicateConfirmText(contactDuplicates))) return;
     try {
       const saved = editingContactId
         ? await updateCustomerContact(id, editingContactId, contactForm)
@@ -330,6 +339,7 @@ const CustomerDetail = () => {
             />
             {contactError && <p className="form-error sm:col-span-2">{contactError}</p>}
             <div className="sm:col-span-2 flex gap-3">
+              <DuplicateWarning matches={contactDuplicates} />
               <Button type="submit">{editingContactId ? 'Save contact' : 'Add contact'}</Button>
               <Button type="button" variant="secondary" onClick={() => setShowContactForm(false)}>
                 Cancel
@@ -428,6 +438,17 @@ const CustomerDetail = () => {
       <CustomerAssets customerId={customer.id} />
 
       <CustomerPromotions customerId={customer.id} />
+
+      {/* NOT-7: what the customer agreed to receive */}
+      <CommunicationPreferences customerId={customer.id} canEdit={canEdit} />
+      {/* SEC-6 */}
+      <AiExclusionToggle recordType="customer" recordId={customer.id} canEdit={canEdit} />
+
+      {/* FR-7.7: offers that suit this customer */}
+      <OfferSuggestions customerId={customer.id} />
+
+      {/* API-G02: what happened with this customer */}
+      <CustomerHistory customerId={customer.id} />
 
       {/* ARC-9: industry-specific fields */}
       <div className="mb-6"><CustomFieldsPanel entityType="customer" recordId={customer.id} canEdit={canEdit} reloadKey={customer.industry} /></div>

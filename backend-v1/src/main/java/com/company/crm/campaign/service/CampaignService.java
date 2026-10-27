@@ -1,5 +1,11 @@
 package com.company.crm.campaign.service;
 
+import java.util.TreeMap;
+import java.util.Map;
+import java.time.LocalDate;
+import java.math.RoundingMode;
+import org.springframework.jdbc.core.JdbcTemplate;
+import com.company.crm.campaign.dto.response.CampaignPerformanceDto;
 import com.company.crm.campaign.dto.request.CampaignReqDto;
 import com.company.crm.campaign.dto.request.CampaignStatusReqDto;
 import com.company.crm.campaign.dto.response.CampaignResDto;
@@ -44,6 +50,7 @@ public class CampaignService {
     private final SegmentService segmentService;
     private final CampaignDeliveryService deliveryService;
     private final CampaignRecipientRepository recipientRepository;
+    private final JdbcTemplate jdbc;
 
     /** FR-7.4: a recipient counts as converted if they win/approve within this many days of the send. */
     private static final int CONVERSION_WINDOW_DAYS = 30;
@@ -185,6 +192,42 @@ public class CampaignService {
         long convertedLeads = leads.stream().filter(l -> l.getStage() == LeadStage.CONVERTED).count();
         return new CampaignMetricsDto(queued + sent + failed + skipped, queued, sent, failed, skipped, opened, clicked, converted,
                 rate(opened, sent), rate(clicked, sent), rate(converted, sent), leads.size(), convertedLeads);
+    }
+
+    /**
+     * API-G08: the campaign's performance — its metrics, plus what it earned: deals won from the leads
+     * it generated, cost per lead and per conversion, return on spend, and day-by-day activity.
+     */
+    @Transactional(readOnly = true)
+    public CampaignPerformanceDto performance(User currentUser, Long campaignId) {
+        CampaignMetricsDto metrics = metrics(currentUser, campaignId);
+        Campaign c = findCampaign(currentUser, campaignId);
+        Object[] won = jdbc.queryForObject("SELECT COUNT(*), COALESCE(SUM(o.deal_value), 0) FROM opportunities o JOIN leads l ON l.id = o.lead_id"
+                + " WHERE o.tenant_id = ? AND l.campaign_id = ? AND o.stage = 'won'",
+                (rs, i) -> new Object[]{rs.getLong(1), rs.getBigDecimal(2)}, c.getTenant().getId(), c.getId());
+        long wonDeals = (Long) won[0];
+        BigDecimal revenue = (BigDecimal) won[1];
+        BigDecimal cost = c.getActualCost() == null ? BigDecimal.ZERO : c.getActualCost();
+        long conversions = Math.max(metrics.converted(), metrics.convertedLeads());
+        Double rosPercent = cost.signum() == 0 ? null
+                : revenue.subtract(cost).multiply(BigDecimal.valueOf(100)).divide(cost, 1, RoundingMode.HALF_UP).doubleValue();
+
+        Map<LocalDate, long[]> days = new TreeMap<>();
+        for (String[] column : new String[][]{{"sent_at", "0"}, {"opened_at", "1"}, {"clicked_at", "2"}}) {
+            int slot = Integer.parseInt(column[1]);
+            jdbc.query("SELECT CAST(" + column[0] + " AS DATE) AS d, COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND "
+                    + column[0] + " IS NOT NULL GROUP BY 1", rs -> {
+                days.computeIfAbsent(rs.getDate(1).toLocalDate(), d -> new long[3])[slot] = rs.getLong(2);
+            }, c.getId());
+        }
+        return new CampaignPerformanceDto(c.getId(), c.getName(), c.getChannel().getDbValue(), c.getStatus().getDbValue(), c.getStartDate(),
+                c.getEndDate(), metrics, c.getBudget(), cost, per(cost, metrics.leadsGenerated()), per(cost, conversions),
+                wonDeals, revenue, rosPercent,
+                days.entrySet().stream().map(e -> new CampaignPerformanceDto.Day(e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2])).toList());
+    }
+
+    private static BigDecimal per(BigDecimal cost, long count) {
+        return count == 0 || cost.signum() == 0 ? null : cost.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
     }
 
     /** FR-7.4: who the campaign went to, with each delivery's status and tracking. */

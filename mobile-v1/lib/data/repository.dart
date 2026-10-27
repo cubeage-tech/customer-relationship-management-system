@@ -117,11 +117,11 @@ class CrmRepository {
         'Lead ${lead['leadName']} → ${label(stage)}');
   }
 
-  /// FR-M.2: move one of my opportunities (a lost deal needs a reason).
-  Future<void> changeOpportunityStage(Json opportunity, String stage, {String? lossReason}) async {
+  /// FR-M.2: move one of my opportunities (a lost deal needs a reason). Skipping ahead needs [force] (VAL-7).
+  Future<void> changeOpportunityStage(Json opportunity, String stage, {String? lossReason, bool force = false}) async {
     await _patchCached('opportunities', opportunity['id'], {'stage': stage, 'lossReason': lossReason});
     await _queue('opportunityStage', 'PATCH', '/api/opportunities/${opportunity['id']}/stage',
-        {'stage': stage, 'lossReason': ?lossReason}, 'Deal ${opportunity['customerName']} → ${label(stage)}');
+        {'stage': stage, 'lossReason': ?lossReason, 'force': force}, 'Deal ${opportunity['customerName']} → ${label(stage)}');
   }
 
   /// FR-M.1: log a visit — when, where (if the phone allows), purpose and outcome.

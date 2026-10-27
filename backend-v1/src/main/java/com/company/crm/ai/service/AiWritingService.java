@@ -1,5 +1,6 @@
 package com.company.crm.ai.service;
 
+import com.company.crm.ai.privacy.AiPrivacyService;
 import com.company.crm.ai.dto.AiDtos.GenerateReq;
 import com.company.crm.ai.dto.AiDtos.GeneratedMessage;
 import com.company.crm.ai.dto.AiDtos.GeneratedText;
@@ -62,9 +63,11 @@ public class AiWritingService {
     private final CommunicationService communicationService;
     private final CommunicationRepo communicationRepo;
     private final DataScopeResolver dataScopeResolver;
+    private final AiPrivacyService privacy;
 
     @Transactional(readOnly = true)
     public GeneratedMessage generate(User user, GenerateReq dto) {
+        privacy.requireEnabled(user); // SEC-6
         String channel = dto.getChannel() == null ? "email" : dto.getChannel();
         String tone = dto.getTone() == null ? "friendly" : dto.getTone();
         if (!CHANNELS.contains(channel)) {
@@ -81,16 +84,19 @@ public class AiWritingService {
                 .append("\nWriter: ").append(user.getFullName());
         if (dto.getOpportunityId() != null) {
             OpportunityResDto deal = opportunityService.getOpportunity(user, dto.getOpportunityId());
+            privacy.requireNotExcludedCustomer(deal.getCustomerId());
             context.append("\nCustomer: ").append(deal.getCustomerName())
                     .append("\nDeal: ").append(deal.getProductService() != null ? deal.getProductService() : "unspecified")
                     .append(", value ").append(deal.getDealValue()).append(", stage ").append(deal.getStage());
             recent(user, deal.getCustomerId(), null, context);
         } else if (dto.getCustomerId() != null) {
             CustomerResDto customer = customerService.getCustomer(user, dto.getCustomerId());
+            privacy.requireNotExcludedCustomer(customer.getId());
             context.append("\nCustomer: ").append(customer.getCompanyName()).append(" (industry ").append(customer.getIndustry()).append(")");
             recent(user, customer.getId(), null, context);
         } else {
             LeadResDto lead = leadService.getLead(user, dto.getLeadId());
+            privacy.requireNotExcludedLead(lead.getId());
             context.append("\nLead: ").append(lead.getLeadName()).append(" at ").append(lead.getCompanyName())
                     .append(" (industry ").append(lead.getIndustry()).append(", stage ").append(lead.getStage()).append(")");
             recent(user, null, lead.getId(), context);
@@ -104,12 +110,16 @@ public class AiWritingService {
 
     @Transactional(readOnly = true)
     public SentimentRes sentiment(User user, SentimentReq dto) {
+        privacy.requireEnabled(user); // SEC-6
         String text;
         Long communicationId = dto.getCommunicationId();
         if (communicationId != null) {
+            privacy.requireMessageContentAllowed(user); // SEC-5: a stored message's text
             Communication c = communicationRepo.findById(communicationId)
                     .filter(x -> x.getTenant().getId().equals(user.getTenant().getId()))
                     .orElseThrow(() -> ApiException.notFound("Communication not found"));
+            privacy.requireNotExcluded(c.getCustomer());
+            privacy.requireNotExcluded(c.getLead());
             if (c.getCustomer() != null) {
                 dataScopeResolver.assertCanAccess(user, c.getCustomer().getOwner() != null ? c.getCustomer().getOwner().getId() : null, "customer");
             } else if (c.getLead() != null) {
