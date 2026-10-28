@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ContactTimeCard from '../../components/ai/ContactTimeCard';
 import TalkingPointsCard from '../../components/ai/TalkingPointsCard';
+import TasksPanel from '../../components/task/TasksPanel';
 import LeadScoreCard from '../../components/ai/LeadScoreCard';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
@@ -380,6 +381,8 @@ const LeadDetail = () => {
       <AiExclusionToggle recordType="lead" recordId={lead.id} canEdit={canEdit} />
 
       {/* FR-5.1/5.2/5.4: communications logged against the lead; after conversion they also show on the customer. */}
+      {/* FR-AI-7.3 */}
+      <div className="mt-6"><TasksPanel leadId={lead.id} canEdit={canEdit} /></div>
       <MeetingsPanel leadId={lead.id} />
 
       <CommunicationTimeline leadId={lead.id} defaultEmail={lead.contactEmail || ''} defaultPhone={lead.contactPhone || ''} />

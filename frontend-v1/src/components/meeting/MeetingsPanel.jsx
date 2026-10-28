@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import Button from '../common/Button';
+import MeetingRecordings from './MeetingRecordings';
+import MeetingConversation from './MeetingConversation';
 import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import { apiErrorMessage } from '../../core/utils/apiError';
@@ -58,6 +60,8 @@ const MeetingsPanel = ({ customerId, leadId }) => {
   const [meetings, setMeetings] = useState([]);
   const [error, setError] = useState('');
   const [form, setForm] = useState(null); // null = closed; { id? ...fields }
+  const [recordingsOf, setRecordingsOf] = useState(null); // FR-AI-7.1: meeting id whose recordings are open
+  const [conversationVersion, setConversationVersion] = useState(0); // FR-AI-7.2: bumped when a recording saves a transcript
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
   const [feedUrl, setFeedUrl] = useState('');
@@ -150,6 +154,8 @@ const MeetingsPanel = ({ customerId, leadId }) => {
       </div>
       <div className="flex gap-3 text-sm">
         <button type="button" className="text-blue-600 hover:underline" onClick={() => downloadMeetingIcs(m.id, m.title)}>Add to calendar</button>
+        <button type="button" className="text-blue-600 hover:underline" aria-expanded={recordingsOf === m.id}
+          onClick={() => setRecordingsOf((id) => (id === m.id ? null : m.id))}>Recording &amp; summary</button>
         {canSchedule && m.status === 'scheduled' && (
           <>
             <button type="button" className="text-blue-600 hover:underline" onClick={() => edit(m)}>Reschedule</button>
@@ -157,6 +163,14 @@ const MeetingsPanel = ({ customerId, leadId }) => {
           </>
         )}
       </div>
+      {/* FR-AI-7.1 */}
+      {recordingsOf === m.id && (
+        <>
+          <MeetingRecordings meeting={m} canRecord={canSchedule} onTranscript={() => setConversationVersion((v) => v + 1)} />
+          {/* FR-AI-7.2 */}
+          <MeetingConversation meeting={m} canEdit={canSchedule} version={conversationVersion} />
+        </>
+      )}
     </li>
   );
 

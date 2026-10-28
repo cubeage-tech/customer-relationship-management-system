@@ -234,6 +234,12 @@ public class MeetingService {
         }
     }
 
+    /** FR-AI-7.1: the meeting, if the caller may see its customer or lead (404/403 otherwise). */
+    @Transactional(readOnly = true)
+    public Meeting requireAccessible(User currentUser, Long meetingId) {
+        return findAccessible(currentUser, meetingId);
+    }
+
     private Meeting findAccessible(User currentUser, Long meetingId) {
         Meeting meeting = meetingRepository.findByIdAndTenantId(meetingId, requireTenantId(currentUser))
                 .orElseThrow(() -> ApiException.notFound("Meeting not found"));

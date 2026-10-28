@@ -61,3 +61,20 @@ export const getChurnRisk = (customerId) => ApiService.getChurnRisk(customerId);
 
 /** FR-AI-6.2: customers I can see at level (medium | high) or above, riskiest first. */
 export const getChurnRisks = (level) => ApiService.getChurnRisks(level);
+
+/** FR-AI-6.3: a customer's sentiment month by month over `months` (3–24) → { series, direction, summary, … }. */
+/** FR-AI-8.1: each salesperson's activity and conversion ({ from, to, userId? }) vs the team median and the previous period. */
+/** FR-AI-8.2: coaching for { userId?, from?, to? } → { summary, focusAreas, strengthsToKeep, weeklyGoals, source }. */
+/** FR-AI-8.3: coaching shared with a salesperson (me by default), newest first. */
+export const listSharedCoaching = (userId) => ApiService.listSharedCoaching(userId);
+
+/** FR-AI-8.3: share a plan ({ userId, from, to, summary, focusAreas, strengthsToKeep, weeklyGoals, source, note }). */
+export const shareCoaching = (data) => ApiService.shareCoaching(data);
+
+export const acknowledgeCoaching = (id, reply) => ApiService.acknowledgeCoaching(id, reply);
+
+export const getSalesCoaching = (params) => ApiService.getSalesCoaching(params);
+
+export const getSalespersonAnalysis = (params) => ApiService.getSalespersonAnalysis(params);
+
+export const getSentimentTrend = (customerId, months) => ApiService.getSentimentTrend(customerId, months);

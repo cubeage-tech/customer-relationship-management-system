@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import TalkingPointsCard from '../../components/ai/TalkingPointsCard';
 import ProposalCard from '../../components/ai/ProposalCard';
+import TasksPanel from '../../components/task/TasksPanel';
 import DealProbabilityCard from '../../components/ai/DealProbabilityCard';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
@@ -160,6 +161,8 @@ const OpportunityDetail = () => {
         <TalkingPointsCard opportunityId={opportunity.id} />
         {/* FR-AI-5.3 */}
         <ProposalCard opportunityId={opportunity.id} />
+        {/* FR-AI-7.3 */}
+        <TasksPanel opportunityId={opportunity.id} />
 
         {opportunity.leadId && (
           <p className="mt-3 text-sm text-slate-500">

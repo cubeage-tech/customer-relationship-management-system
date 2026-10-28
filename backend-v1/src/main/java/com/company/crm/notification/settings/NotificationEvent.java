@@ -40,6 +40,9 @@ public enum NotificationEvent {
             Set.of(IN_APP, EMAIL), Set.of(IN_APP, EMAIL), null, Notification.QUOTATION_RESPONSE),
     MANAGER_MESSAGE("manager_message", "Message from a manager", Audience.STAFF,
             Set.of(IN_APP), Set.of(IN_APP), null, Notification.MESSAGE),
+    // FR-AI-8.3
+    COACHING_SHARED("coaching_shared", "Coaching shared or acknowledged (salesperson and manager)", Audience.STAFF,
+            Set.of(IN_APP, EMAIL), Set.of(IN_APP), null, Notification.MESSAGE),
 
     // ---- to platform admins (not configurable per tenant) ----
     INTEGRATION_AUTH_FAILED("integration_auth_failed", "An integration's credentials were rejected", Audience.PLATFORM,

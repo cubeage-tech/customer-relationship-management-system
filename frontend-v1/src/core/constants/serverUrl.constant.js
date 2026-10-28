@@ -54,6 +54,8 @@ class ServerUrl {
     // meetings (FR-5.5)
     static MEETINGS = ServerUrl.API_MODULE_USER + "/meetings";
     static meeting = (id) => `${ServerUrl.MEETINGS}/${id}`;
+    // follow-up tasks (FR-AI-7.3)
+    static TASKS = ServerUrl.API_MODULE_USER + "/tasks";
     static meetingCancel = (id) => `${ServerUrl.MEETINGS}/${id}/cancel`;
     static meetingIcs = (id) => `${ServerUrl.MEETINGS}/${id}/ics`;
     static MEETINGS_CALENDAR_FEED = ServerUrl.MEETINGS + "/calendar-feed";

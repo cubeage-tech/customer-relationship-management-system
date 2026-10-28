@@ -1,6 +1,6 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
 import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
-import EmptyState from '../../components/common/EmptyState';
+import TasksPanel from '../../components/task/TasksPanel';
 
 const STATS = [
   { label: 'My leads', value: '—', hint: 'Leads you own' },
@@ -17,10 +17,8 @@ const SalesExecutiveDashboard = () => {
       stats={STATS}
     >
       <HeadlineMetrics />
-      <EmptyState
-        title="No follow-ups scheduled"
-        message="Create a lead and schedule an activity to see your follow-up list here."
-      />
+      {/* FR-AI-7.3 */}
+      <TasksPanel />
     </DashboardShell>
   );
 };

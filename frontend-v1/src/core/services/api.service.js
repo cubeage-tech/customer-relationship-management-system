@@ -414,6 +414,65 @@ class ApiService {
     return this.apipatch(ServerUrl.meetingCancel(id));
   }
 
+  static listMeetingRecordings(meetingId) {
+    return this.apiget(`${ServerUrl.meeting(meetingId)}/recordings`);
+  }
+
+  static uploadMeetingRecording(meetingId, file, fields) {
+    const form = new FormData();
+    form.append('file', file);
+    Object.entries(fields).forEach(([k, v]) => v !== undefined && v !== null && form.append(k, v));
+    return this.axiosInstance.post(`${ServerUrl.meeting(meetingId)}/recordings`, form).then((res) => res.data?.data);
+  }
+
+  static getMeetingRecordingAudio(meetingId, recordingId) {
+    return this.axiosInstance.get(`${ServerUrl.meeting(meetingId)}/recordings/${recordingId}/audio`, { responseType: 'blob' });
+  }
+
+  static deleteMeetingRecording(meetingId, recordingId, reason) {
+    return this.axiosInstance.delete(`${ServerUrl.meeting(meetingId)}/recordings/${recordingId}`, { params: { reason } });
+  }
+
+  static getTasks(params) {
+    return this.apiget(ServerUrl.TASKS, params);
+  }
+
+  static createTask(data) {
+    return this.apipost(ServerUrl.TASKS, data);
+  }
+
+  static updateTask(id, data) {
+    return this.axiosInstance.patch(`${ServerUrl.TASKS}/${id}`, data).then((res) => res.data?.data);
+  }
+
+  static getTaskAssignees() {
+    return this.apiget(`${ServerUrl.TASKS}/assignees`);
+  }
+
+  static findMeetingActionItems(meetingId) {
+    return this.apipost(`${ServerUrl.meeting(meetingId)}/action-items`, {});
+  }
+
+  static createMeetingTasks(meetingId, items) {
+    return this.apipost(`${ServerUrl.meeting(meetingId)}/tasks`, { items });
+  }
+
+  static getMeetingConversation(meetingId) {
+    return this.apiget(`${ServerUrl.meeting(meetingId)}/conversation`);
+  }
+
+  static saveMeetingTranscript(meetingId, data) {
+    return this.apiput(`${ServerUrl.meeting(meetingId)}/transcript`, data);
+  }
+
+  static deleteMeetingTranscript(meetingId, reason) {
+    return this.axiosInstance.delete(`${ServerUrl.meeting(meetingId)}/transcript`, { params: { reason } });
+  }
+
+  static summarizeMeeting(meetingId) {
+    return this.apipost(`${ServerUrl.meeting(meetingId)}/ai-summary`, {});
+  }
+
   static downloadMeetingIcs(id) {
     return this.axiosInstance.get(ServerUrl.meetingIcs(id), { responseType: 'blob' });
   }
@@ -481,6 +540,30 @@ class ApiService {
 
   static getChurnRisks(level) {
     return this.apiget(`${ServerUrl.AI}/churn-risks`, { level });
+  }
+
+  static listSharedCoaching(userId) {
+    return this.apiget(`${ServerUrl.API_MODULE_USER}/coaching`, { userId });
+  }
+
+  static shareCoaching(data) {
+    return this.apipost(`${ServerUrl.API_MODULE_USER}/coaching`, data);
+  }
+
+  static acknowledgeCoaching(id, reply) {
+    return this.apipost(`${ServerUrl.API_MODULE_USER}/coaching/${id}/acknowledge`, { reply });
+  }
+
+  static getSalesCoaching({ userId, from, to }) {
+    return this.axiosInstance.post(`${ServerUrl.AI}/sales-coaching`, null, { params: { userId, from, to } }).then((res) => res.data?.data);
+  }
+
+  static getSalespersonAnalysis(params) {
+    return this.apiget(`${ServerUrl.AI}/sales-performance`, params);
+  }
+
+  static getSentimentTrend(customerId, months) {
+    return this.apiget(`${ServerUrl.AI}/sentiment-trend`, { customerId, months });
   }
 
   static getAiPerformance() {

@@ -11,6 +11,8 @@ import com.company.crm.communication.service.CommunicationService;
 import com.company.crm.communication.service.CommunicationService.InboundMessage;
 import com.company.crm.ai.llm.LlmGateway;
 import com.company.crm.ai.service.AiContentService;
+import com.company.crm.ai.service.SalesCoachingService.CoachingPlan;
+import com.company.crm.ai.service.SalesCoachingService.FocusArea;
 import com.company.crm.support.PostgresIntegrationTest;
 import com.company.crm.support.TestTenants.TestTenant;
 import com.company.crm.user.entity.User;
@@ -395,6 +397,224 @@ class SalesAssistantIntegrationTest extends PostgresIntegrationTest {
         User otherExec = testTenants.createUser(tenant.tenant(), SALES_EXECUTIVE);
         send(get("/api/ai/churn-risks"), testTenants.tokenFor(otherExec), null).andExpect(jsonPath("$.data").isEmpty());
         send(get("/api/ai/churn-risks"), tenant.token(SERVICE_AGENT), null).andExpect(status().isForbidden());
+    }
+
+    // ==================== FR-AI-6.3 ====================
+
+    @Test
+    void theSentimentTrendShowsEachMonthAndWhetherItIsDeclining() throws Exception {
+        long customer = customer("Trend Co", null);
+        // Positive four and five months ago; negative last month and this month (a message and a review); one message not yet read.
+        reading(customer, "date_trunc('month', now()) - interval '5 months' + interval '2 days'", "positive", 0.6);
+        reading(customer, "date_trunc('month', now()) - interval '4 months' + interval '2 days'", "positive", 0.8);
+        reading(customer, "date_trunc('month', now()) - interval '1 month' + interval '2 days'", "negative", -0.4);
+        reading(customer, "now()", "negative", -0.6);
+        reading(customer, "now()", null, null);
+        jdbc.update("INSERT INTO service_tickets (tenant_id, customer_id, subject, priority, status, sla_due_at, resolved_at, created_at, feedback_score, "
+                + "feedback_comment, feedback_at, feedback_sentiment, feedback_sentiment_score) VALUES (?, ?, 'Slow', 'medium', 'resolved', now(), now(), now(), "
+                + "2, 'Too slow', now(), 'negative', -0.5)", tenantId, customer);
+
+        String execToken = tenant.token(SALES_EXECUTIVE);
+        send(get("/api/ai/sentiment-trend").param("customerId", String.valueOf(customer)), execToken, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.series.length()").value(6))
+                .andExpect(jsonPath("$.data.series[0].positive").value(1))
+                .andExpect(jsonPath("$.data.series[5].month").value(java.time.YearMonth.now().toString()))
+                .andExpect(jsonPath("$.data.series[5].negative").value(2))
+                .andExpect(jsonPath("$.data.series[5].averageScore").value(-0.55))
+                .andExpect(jsonPath("$.data.series[2].averageScore").doesNotExist())
+                .andExpect(jsonPath("$.data.readings").value(5))
+                .andExpect(jsonPath("$.data.fromReviews").value(1))
+                .andExpect(jsonPath("$.data.recentAverage").value(-0.5))
+                .andExpect(jsonPath("$.data.earlierAverage").value(0.7))
+                .andExpect(jsonPath("$.data.direction").value("declining"))
+                .andExpect(jsonPath("$.data.summary").value(containsString("declining — -0.50 in the last 3 months, down from +0.70")))
+                .andExpect(jsonPath("$.data.unclassified").value(1));
+        send(get("/api/ai/sentiment-trend").param("customerId", String.valueOf(customer)).param("months", "1"), execToken, null)
+                .andExpect(status().isBadRequest());
+        User otherExec = testTenants.createUser(tenant.tenant(), SALES_EXECUTIVE);
+        send(get("/api/ai/sentiment-trend").param("customerId", String.valueOf(customer)), testTenants.tokenFor(otherExec), null)
+                .andExpect(status().is4xxClientError());
+        send(get("/api/ai/sentiment-trend").param("customerId", String.valueOf(customer)), tenant.token(SERVICE_AGENT), null)
+                .andExpect(status().isForbidden());
+    }
+
+    private void reading(long customerId, String at, String sentiment, Double score) {
+        jdbc.update("INSERT INTO communication_logs (tenant_id, customer_id, channel, direction, status, body, sentiment, sentiment_score, occurred_at, created_at) "
+                + "VALUES (?, ?, 'email', 'inbound', 'received', 'A message', ?, ?, " + at + ", now())", tenantId, customerId, sentiment, score);
+    }
+
+    // ==================== FR-AI-8.1 ====================
+
+    @Test
+    void eachSalespersonsActivityAndConversionIsAnalysedAgainstTheTeam() throws Exception {
+        User other = testTenants.createUser(tenant.tenant(), SALES_EXECUTIVE);
+        long customer = customer("Perf Co", null);
+        // exec: busy, but few calls connect and most deals are lost on price; well behind the revenue target.
+        for (int i = 0; i < 10; i++) {
+            call(exec, customer, i < 2 ? "connected" : "no_answer");
+        }
+        deal(exec, customer, "won", 500, 20, null);
+        for (int i = 0; i < 3; i++) {
+            deal(exec, customer, "lost", 800, 10, i < 2 ? "Price" : "Timing");
+        }
+        jdbc.update("INSERT INTO sales_targets (tenant_id, user_id, metric, target_value, period_start, period_end) "
+                + "VALUES (?, ?, 'revenue', 10000, current_date - 10, current_date + 20)", tenantId, exec.getId());
+        // the colleague: wins most of their deals
+        for (int i = 0; i < 4; i++) {
+            call(other, customer, "connected");
+        }
+        for (int i = 0; i < 3; i++) {
+            deal(other, customer, "won", 1000, 30, null);
+        }
+        deal(other, customer, "lost", 1000, 5, "Price");
+
+        String execToken = tenant.token(SALES_EXECUTIVE);
+        send(get("/api/ai/sales-performance"), execToken, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.people.length()").value(1)) // only themselves
+                .andExpect(jsonPath("$.data.people[0].metrics.calls").value(10))
+                .andExpect(jsonPath("$.data.people[0].metrics.connectedCalls").value(2))
+                .andExpect(jsonPath("$.data.people[0].metrics.winRate").value(0.25))
+                .andExpect(jsonPath("$.data.people[0].metrics.revenueWon").value(500.0))
+                .andExpect(jsonPath("$.data.people[0].metrics.topLossReason").value("price"))
+                .andExpect(jsonPath("$.data.people[0].metrics.daysToClose").value(20.0))
+                .andExpect(jsonPath("$.data.team.winRate").value(0.5))
+                .andExpect(jsonPath("$.data.people[0].gaps[*].metric").value(hasItems("calls", "win_rate", "target")))
+                .andExpect(jsonPath("$.data.people[0].gaps[?(@.metric == 'win_rate')].text").value(contains(containsString("\"price\""))))
+                .andExpect(jsonPath("$.data.people[0].strengths[*].metric").value(hasItem("activity")));
+        send(get("/api/ai/sales-performance").param("userId", String.valueOf(other.getId())), execToken, null).andExpect(status().isForbidden());
+
+        // Admin sees everyone in sales; the colleague's win rate is a strength.
+        send(get("/api/ai/sales-performance"), adminToken, null)
+                .andExpect(jsonPath("$.data.people[?(@.userId == " + other.getId() + ")].strengths[*].metric").value(hasItem("win_rate")))
+                .andExpect(jsonPath("$.data.people[?(@.userId == " + tenant.user(SALES_MANAGER).getId() + ")].gaps[*].metric").value(hasItem("activity")));
+        send(get("/api/ai/sales-performance").param("from", "2026-01-01").param("to", "2025-01-01"), adminToken, null).andExpect(status().isBadRequest());
+        send(get("/api/ai/sales-performance"), tenant.token(SERVICE_AGENT), null).andExpect(status().isForbidden());
+    }
+
+    // ==================== FR-AI-8.2 ====================
+
+    @Test
+    void salespeopleGetPersonalCoachingFromTheirFigures() throws Exception {
+        User other = testTenants.createUser(tenant.tenant(), SALES_EXECUTIVE);
+        long customer = customer("Coach Co", null);
+        for (int i = 0; i < 10; i++) {
+            call(exec, customer, i < 2 ? "connected" : "no_answer");
+        }
+        deal(exec, customer, "won", 500, 20, null);
+        for (int i = 0; i < 3; i++) {
+            deal(exec, customer, "lost", 800, 10, "Price");
+        }
+        jdbc.update("INSERT INTO sales_targets (tenant_id, user_id, metric, target_value, period_start, period_end) "
+                + "VALUES (?, ?, 'revenue', 10000, current_date - 10, current_date + 20)", tenantId, exec.getId());
+        for (int i = 0; i < 4; i++) {
+            call(other, customer, "connected");
+        }
+        for (int i = 0; i < 3; i++) {
+            deal(other, customer, "won", 1000, 30, null);
+        }
+        deal(other, customer, "lost", 1000, 5, "Price");
+        String execToken = tenant.token(SALES_EXECUTIVE);
+
+        // No answer from the model: the built-in plan, from the same findings.
+        send(post("/api/ai/sales-coaching"), execToken, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.source").value("rules"))
+                .andExpect(jsonPath("$.data.userId").value(exec.getId().intValue()))
+                .andExpect(jsonPath("$.data.focusAreas.length()").value(3))
+                .andExpect(jsonPath("$.data.focusAreas[*].area").value(hasItems("Call connection", "Winning deals")))
+                .andExpect(jsonPath("$.data.focusAreas[?(@.area == 'Winning deals')].actions[0]").value(contains(containsString("\"price\""))))
+                .andExpect(jsonPath("$.data.strengthsToKeep[0]").value(containsString("More active than the team")))
+                .andExpect(jsonPath("$.data.weeklyGoals").isNotEmpty());
+
+        // With the model: its plan, written only from the figures.
+        when(llm.structured(anyString(), anyString(), eq(CoachingPlan.class))).thenReturn(Optional.of(new CoachingPlan(
+                "You are busy and active. Turning calls into conversations is the next step.",
+                List.of(new FocusArea("Call connection", "2 of 10 calls connected", List.of("Call at the best contact times"), "5 of 10 calls connecting")),
+                List.of("High activity"), List.of("15 customer touches"))));
+        send(post("/api/ai/sales-coaching"), execToken, null)
+                .andExpect(jsonPath("$.data.source").value("ai"))
+                .andExpect(jsonPath("$.data.focusAreas[0].measure").value("5 of 10 calls connecting"));
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        // asked twice: the first time it gave no plan (so the built-in one was used)
+        verify(llm, org.mockito.Mockito.times(2)).structured(anyString(), prompt.capture(), eq(CoachingPlan.class));
+        assertThat(prompt.getValue()).contains("Salesperson: " + exec.getFullName().split("\\s+")[0], "10 calls, 2 connected", "win rate 25%",
+                "Most common loss reason: price", "CRM tools:").doesNotContain("Coach Co");
+
+        // AI switched off: the built-in plan again, nothing sent.
+        send(put("/api/ai/settings"), adminToken, "{\"aiEnabled\":false,\"messageContent\":true}").andExpect(status().isOk());
+        send(post("/api/ai/sales-coaching"), execToken, null).andExpect(jsonPath("$.data.source").value("rules"));
+        verify(llm, org.mockito.Mockito.times(2)).structured(anyString(), anyString(), eq(CoachingPlan.class)); // not asked again
+
+        // A manager or admin coaches their people; a colleague can't; an admin isn't coached as a salesperson.
+        send(post("/api/ai/sales-coaching").param("userId", String.valueOf(exec.getId())), adminToken, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.name").value(exec.getFullName()));
+        send(post("/api/ai/sales-coaching").param("userId", String.valueOf(exec.getId())), testTenants.tokenFor(other), null).andExpect(status().isForbidden());
+        send(post("/api/ai/sales-coaching"), adminToken, null).andExpect(status().isBadRequest());
+    }
+
+    // ==================== FR-AI-8.3 ====================
+
+    @Test
+    void coachingIsSharedBetweenTheSalespersonAndTheirManager() throws Exception {
+        User manager = tenant.user(SALES_MANAGER);
+        long team = jdbc.queryForObject("INSERT INTO sales_teams (tenant_id, name, manager_id) VALUES (?, ?, ?) RETURNING id", Long.class,
+                tenantId, "Coach team " + System.nanoTime(), manager.getId());
+        jdbc.update("UPDATE users SET team_id = ? WHERE id = ?", team, exec.getId());
+        String managerToken = tenant.token(SALES_MANAGER);
+        String execToken = tenant.token(SALES_EXECUTIVE);
+        String plan = ",\"from\":\"" + LocalDate.now().minusDays(89) + "\",\"to\":\"" + LocalDate.now() + "\",\"summary\":\"Busy and active; next, connect more calls.\","
+                + "\"focusAreas\":[{\"area\":\"Call connection\",\"why\":\"2 of 10 calls connected\",\"actions\":[\"Call at the best contact times\"],"
+                + "\"measure\":\"5 of 10 connecting\"}],\"strengthsToKeep\":[\"High activity\"],\"weeklyGoals\":[\"15 customer touches\"],\"source\":\"rules\"";
+
+        // The manager shares it with the salesperson, with a note.
+        long shared = idOf(send(post("/api/coaching"), managerToken, "{\"userId\":" + exec.getId() + plan + ",\"note\":\"Let's go through this on Monday\"}"));
+        send(get("/api/notifications"), execToken, null)
+                .andExpect(jsonPath("$.data.items[?(@.title == 'Coaching from " + manager.getFullName() + "')].body")
+                        .value(contains(containsString("Let's go through this on Monday"))));
+        send(get("/api/coaching"), execToken, null)
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].sharedByName").value(manager.getFullName()))
+                .andExpect(jsonPath("$.data[0].plan.focusAreas[0].measure").value("5 of 10 connecting"))
+                .andExpect(jsonPath("$.data[0].acknowledgedAt").doesNotExist());
+
+        // Nobody else in sales sees or answers it.
+        User other = testTenants.createUser(tenant.tenant(), SALES_EXECUTIVE);
+        String otherToken = testTenants.tokenFor(other);
+        send(get("/api/coaching").param("userId", String.valueOf(exec.getId())), otherToken, null).andExpect(status().isForbidden());
+        send(post("/api/coaching/" + shared + "/acknowledge"), otherToken, "{}").andExpect(status().isNotFound());
+        send(post("/api/coaching/" + shared + "/acknowledge"), managerToken, "{}").andExpect(status().isForbidden());
+        send(post("/api/coaching"), otherToken, "{\"userId\":" + exec.getId() + plan + "}").andExpect(status().isForbidden());
+
+        // The salesperson acknowledges with a reply; the manager is told.
+        send(post("/api/coaching/" + shared + "/acknowledge"), execToken, "{\"reply\":\"Thanks — I'll try mornings\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.reply").value("Thanks — I'll try mornings"))
+                .andExpect(jsonPath("$.data.acknowledgedAt").isString());
+        send(post("/api/coaching/" + shared + "/acknowledge"), execToken, "{}").andExpect(status().isConflict());
+        send(get("/api/notifications"), managerToken, null)
+                .andExpect(jsonPath("$.data.items[?(@.title == '" + exec.getFullName() + " acknowledged your coaching')].body")
+                        .value(contains("Thanks — I'll try mornings")));
+
+        // The salesperson shares their own plan with their manager.
+        send(post("/api/coaching"), execToken, "{" + plan.substring(1) + "}").andExpect(status().isOk());
+        send(get("/api/notifications"), managerToken, null)
+                .andExpect(jsonPath("$.data.items[?(@.title == '" + exec.getFullName() + " shared their coaching plan')]").value(hasSize(1)));
+        send(get("/api/coaching").param("userId", String.valueOf(exec.getId())), managerToken, null).andExpect(jsonPath("$.data.length()").value(2));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE action = 'COACHING_SHARED' AND entity_id = ?", Long.class, exec.getId()))
+                .isEqualTo(2);
+        send(post("/api/coaching"), managerToken, "{\"userId\":" + exec.getId() + plan.replace("\"rules\"", "\"magic\"") + "}").andExpect(status().isBadRequest());
+    }
+
+    private void call(User by, long customerId, String outcome) {
+        jdbc.update("INSERT INTO communication_logs (tenant_id, customer_id, channel, direction, status, call_outcome, occurred_at, created_at, created_by) "
+                + "VALUES (?, ?, 'call', 'outbound', 'logged', ?, now() - interval '2 days', now(), ?)", tenantId, customerId, outcome, by.getId());
+    }
+
+    private void deal(User owner, long customerId, String stage, int value, int daysOpen, String lossReason) {
+        jdbc.update("INSERT INTO opportunities (tenant_id, customer_id, owner_id, deal_value, stage, stage_changed_at, loss_reason, created_at) "
+                + "VALUES (?, ?, ?, ?, ?, now() - interval '1 day', ?, now() - interval '1 day' - make_interval(days => ?))",
+                tenantId, customerId, owner.getId(), value, stage, lossReason, daysOpen);
     }
 
     // ==================== helpers ====================

@@ -16,6 +16,11 @@ import jakarta.validation.constraints.Pattern;
 import com.company.crm.ai.service.AiQuotationDraftService;
 import com.company.crm.ai.service.AiContentService;
 import com.company.crm.ai.service.ChurnRiskService;
+import com.company.crm.ai.service.SentimentTrendService;
+import com.company.crm.ai.service.SalesPerformanceService;
+import com.company.crm.ai.service.SalesCoachingService;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 import com.company.crm.ai.privacy.AiPrivacyService;
 import com.company.crm.ai.dto.AiDtos.*;
 import com.company.crm.ai.llm.LlmGateway;
@@ -67,6 +72,9 @@ public class AiController {
     private final SalesCoachService salesCoach;
     private final AiContentService content;
     private final ChurnRiskService churnRisk;
+    private final SentimentTrendService sentimentTrends;
+    private final SalesPerformanceService salesPerformance;
+    private final SalesCoachingService salesCoaching;
 
     @GetMapping("/status")
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
@@ -228,6 +236,34 @@ public class AiController {
     public Response<List<ChurnRiskService.ChurnRisk>> churnRisks(@AuthenticationPrincipal User currentUser,
                                                                 @RequestParam(defaultValue = "medium") String level) {
         return Response.ok(latency.time("churn_risks", AiLatency.Kind.STATISTICAL, () -> churnRisk.atRisk(currentUser, level)));
+    }
+
+    @GetMapping("/sales-performance")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')")
+    @Operation(summary = "FR-AI-8.1: each salesperson's activity and conversion (default last 90 days), against the team median and the previous period")
+    public Response<SalesPerformanceService.PerformanceReport> salesPerformance(@AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return Response.ok(latency.time("sales_performance", AiLatency.Kind.STATISTICAL, () -> salesPerformance.analyse(currentUser, userId, from, to)));
+    }
+
+    @PostMapping("/sales-coaching")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')")
+    @Operation(summary = "FR-AI-8.2: personal coaching for a salesperson (me by default) from their activity and conversion")
+    public Response<SalesCoachingService.Coaching> salesCoaching(@AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return Response.ok(latency.time("sales_coaching", AiLatency.Kind.GENERATIVE, () -> salesCoaching.coach(currentUser, userId, from, to)));
+    }
+
+    @GetMapping("/sentiment-trend")
+    @PreAuthorize(CHURN_ROLES)
+    @Operation(summary = "FR-AI-6.3: a customer's sentiment month by month (positive/neutral/negative, average) and whether it is improving")
+    public Response<SentimentTrendService.SentimentTrend> sentimentTrend(@AuthenticationPrincipal User currentUser, @RequestParam Long customerId,
+                                                                         @RequestParam(required = false) Integer months) {
+        return Response.ok(latency.time("sentiment_trend", AiLatency.Kind.STATISTICAL, () -> sentimentTrends.trend(currentUser, customerId, months)));
     }
 
     @PostMapping("/sentiment")

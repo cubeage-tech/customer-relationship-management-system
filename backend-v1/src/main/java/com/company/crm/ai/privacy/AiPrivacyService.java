@@ -53,6 +53,8 @@ public class AiPrivacyService {
                     "Contact details, notes"),
             new FeatureData("Customer sentiment / AI alerts", "The text of the message or feedback comment being analysed (if message text is allowed)",
                     "Email addresses, phone numbers and ID numbers inside it (removed first)"),
+            new FeatureData("Meeting summary", "The meeting transcript (if message text is allowed), the meeting title and the customer's name",
+                    "Email addresses, phone numbers and ID numbers inside it (removed first); the audio recording"),
             new FeatureData("Lead score / revenue forecast", "Nothing — calculated inside the CRM", "Everything"));
 
     @Transactional(readOnly = true)
