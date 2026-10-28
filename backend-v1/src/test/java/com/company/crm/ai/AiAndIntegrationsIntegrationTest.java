@@ -97,7 +97,7 @@ class AiAndIntegrationsIntegrationTest extends PostgresIntegrationTest {
         assertThat(hotScore).isGreaterThan(coldScore).isBetween(0, 100);
         send(get("/api/ai/lead-score").param("leadId", String.valueOf(hot)), adminToken, null)
                 .andExpect(jsonPath("$.data[0].label").value("High"))
-                .andExpect(jsonPath("$.data[0].factors.length()").value(5))
+                .andExpect(jsonPath("$.data[0].factors.length()").value(7)) // FR-AI-1.1: + budget and buying behaviour
                 .andExpect(jsonPath("$.data[0].factors[?(@.name == 'engagement')].detail").value(hasItem(containsString("4 message(s)"))));
         send(get("/api/ai/lead-score").param("minScore", "101"), tenant.token(SALES_EXECUTIVE), null).andExpect(jsonPath("$.data.length()").value(0));
 
@@ -136,7 +136,7 @@ class AiAndIntegrationsIntegrationTest extends PostgresIntegrationTest {
         send(patch("/api/opportunities/" + wonDeal + "/stage"), adminToken, "{\"stage\":\"won\",\"force\":true}").andExpect(status().isOk());
 
         when(llm.structured(eq(com.company.crm.ai.service.AiAssistantService.PLAN_SYSTEM), anyString(), eq(ChatPlan.class)))
-                .thenReturn(Optional.of(new ChatPlan("inactive_customers", 180, null, null, null, null, null, null)));
+                .thenReturn(Optional.of(new ChatPlan("inactive_customers", 180, null, null, null, null, null, null, null, null)));
         when(llm.structured(eq(com.company.crm.ai.service.AiAssistantService.WORDING_SYSTEM), anyString(), eq(ChatWording.class)))
                 .thenReturn(Optional.of(new ChatWording("1 customer hasn't purchased in 6 months.", "Send a reactivation campaign")));
 
@@ -149,7 +149,7 @@ class AiAndIntegrationsIntegrationTest extends PostgresIntegrationTest {
 
         // A service agent asking about deals gets no data, whatever the model chose.
         when(llm.structured(eq(com.company.crm.ai.service.AiAssistantService.PLAN_SYSTEM), anyString(), eq(ChatPlan.class)))
-                .thenReturn(Optional.of(new ChatPlan("opportunities", null, null, null, null, null, null, BigDecimal.ONE)));
+                .thenReturn(Optional.of(new ChatPlan("opportunities", null, null, null, null, null, null, BigDecimal.ONE, null, null)));
         send(post("/api/ai/chat"), tenant.token(SERVICE_AGENT), "{\"question\":\"Biggest deals?\"}")
                 .andExpect(jsonPath("$.data.matchCount").value(0))
                 .andExpect(jsonPath("$.data.answer").value(containsString("doesn't have access")));

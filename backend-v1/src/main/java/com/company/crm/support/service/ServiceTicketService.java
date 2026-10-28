@@ -30,6 +30,7 @@ import com.company.crm.user.entity.User;
 import com.company.crm.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import com.company.crm.support.event.TicketStatusChangedEvent;
+import com.company.crm.support.event.TicketFeedbackReceivedEvent;
 import com.company.crm.support.event.TicketFeedbackRequestedEvent;
 import com.company.crm.support.dto.response.PublicFeedbackDto;
 import org.springframework.context.ApplicationEventPublisher;
@@ -304,7 +305,9 @@ public class ServiceTicketService {
         ticket.setFeedbackScore(dto.getScore());
         ticket.setFeedbackComment(dto.getComment());
         ticket.setFeedbackAt(LocalDateTime.now());
-        return ticketMapper.toDto(ticketRepository.save(ticket));
+        ServiceTicket saved = ticketRepository.save(ticket);
+        eventPublisher.publishEvent(new TicketFeedbackReceivedEvent(saved.getTenant().getId(), saved.getId())); // FR-AI-6.1
+        return ticketMapper.toDto(saved);
     }
 
     /** FR-6.5: what the customer's feedback page shows. 404 for an unknown link. */
@@ -327,6 +330,7 @@ public class ServiceTicketService {
         ticket.setFeedbackComment(dto.getComment() != null && !dto.getComment().isBlank() ? dto.getComment().trim() : null);
         ticket.setFeedbackAt(LocalDateTime.now());
         ticketRepository.save(ticket);
+        eventPublisher.publishEvent(new TicketFeedbackReceivedEvent(ticket.getTenant().getId(), ticket.getId())); // FR-AI-6.1
         return feedbackPage(token);
     }
 

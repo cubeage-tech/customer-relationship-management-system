@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import ContactTimeCard from '../../components/ai/ContactTimeCard';
+import TalkingPointsCard from '../../components/ai/TalkingPointsCard';
+import ChurnRiskCard from '../../components/ai/ChurnRiskCard';
+import ProductSuggestions from '../../components/customer/ProductSuggestions';
 import OfferSuggestions from '../../components/customer/OfferSuggestions';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
@@ -443,6 +447,14 @@ const CustomerDetail = () => {
       <CommunicationPreferences customerId={customer.id} canEdit={canEdit} />
       {/* SEC-6 */}
       <AiExclusionToggle recordType="customer" recordId={customer.id} canEdit={canEdit} />
+
+      {/* FR-AI-6.2 */}
+      <ChurnRiskCard customerId={customer.id} />
+      {/* FR-AI-3.1: products to offer next */}
+      <ProductSuggestions customerId={customer.id} />
+      {/* FR-AI-3.2 / 3.3 */}
+      <ContactTimeCard customerId={customer.id} />
+      <TalkingPointsCard customerId={customer.id} />
 
       {/* FR-7.7: offers that suit this customer */}
       <OfferSuggestions customerId={customer.id} />

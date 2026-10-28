@@ -27,4 +27,9 @@ public class EmailSendReqDto {
     @NotBlank
     @Size(max = 20000)
     private String body;
+
+    /** FR-AI-5.2: when the text comes from an AI draft — its id, and the user's confirmation they reviewed it. */
+    private Long aiDraftId;
+
+    private boolean aiReviewed;
 }

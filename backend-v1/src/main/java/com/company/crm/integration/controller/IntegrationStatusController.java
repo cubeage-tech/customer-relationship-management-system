@@ -53,7 +53,9 @@ public class IntegrationStatusController {
                 new IntegrationStatus("whatsapp", "WhatsApp", twilioClient.isWhatsAppEnabled(), "Customer updates and WhatsApp campaigns",
                         problem(IntegrationHealthService.TWILIO)),
                 new IntegrationStatus("push", "Mobile push", pushSender.isEnabled(), "Notifications on the mobile app", problem(IntegrationHealthService.FCM)),
-                new IntegrationStatus("ai", "AI assistant", llm.isConfigured(), "Chat, drafting, sentiment", problem(IntegrationHealthService.ANTHROPIC)),
+                new IntegrationStatus("ai", "AI assistant", llm.isConfigured(), "Chat, drafting, sentiment"
+                        + (llm.isConfigured() ? " — " + ("xai".equals(llm.provider()) ? "xAI Grok" : "Anthropic Claude") : ""),
+                        problem("xai".equals(llm.provider()) ? IntegrationHealthService.XAI : IntegrationHealthService.ANTHROPIC)),
                 new IntegrationStatus("payments", "Online payments", paymentProperties.keyId() != null && !paymentProperties.keyId().isBlank(),
                         "Subscription payments", problem(IntegrationHealthService.RAZORPAY)),
                 new IntegrationStatus("erp", "ERP sync", activeKeys > 0, activeKeys + " active API key(s)", null)));

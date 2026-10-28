@@ -36,7 +36,8 @@ public class AiPrivacyService {
     private final LeadService leadService;
     private final AuditService auditService;
 
-    public record AiSettings(boolean aiEnabled, boolean messageContent) {}
+    /** {@code autoSentiment}: FR-AI-6.1 — left out (null) keeps the current value. */
+    public record AiSettings(boolean aiEnabled, boolean messageContent, Boolean autoSentiment) {}
 
     public record Exclusion(String recordType, Long recordId, boolean excluded) {}
 
@@ -50,27 +51,30 @@ public class AiPrivacyService {
                     "Email addresses, phone numbers, message bodies"),
             new FeatureData("Draft a quotation", "Your product names and prices, the customer's industry, the deal's product and value, past purchases",
                     "Contact details, notes"),
-            new FeatureData("Customer sentiment / AI alerts", "The text of the message being analysed (if message text is allowed)",
+            new FeatureData("Customer sentiment / AI alerts", "The text of the message or feedback comment being analysed (if message text is allowed)",
                     "Email addresses, phone numbers and ID numbers inside it (removed first)"),
             new FeatureData("Lead score / revenue forecast", "Nothing — calculated inside the CRM", "Everything"));
 
     @Transactional(readOnly = true)
     public AiSettings settings(User user) {
         Tenant t = tenant(user);
-        return new AiSettings(t.isAiEnabled(), t.isAiMessageContent());
+        return new AiSettings(t.isAiEnabled(), t.isAiMessageContent(), t.isAiSentimentAuto());
     }
 
     @Transactional
     public AiSettings updateSettings(User admin, AiSettings req) {
         Tenant t = tenant(admin);
-        if (t.isAiEnabled() != req.aiEnabled() || t.isAiMessageContent() != req.messageContent()) {
+        boolean autoSentiment = req.autoSentiment() != null ? req.autoSentiment() : t.isAiSentimentAuto();
+        if (t.isAiEnabled() != req.aiEnabled() || t.isAiMessageContent() != req.messageContent() || t.isAiSentimentAuto() != autoSentiment) {
             t.setAiEnabled(req.aiEnabled());
             t.setAiMessageContent(req.messageContent());
+            t.setAiSentimentAuto(autoSentiment);
             tenantRepository.save(t);
             auditService.record(admin, AuditAction.AI_SETTINGS_CHANGED, "tenant", t.getId(),
-                    "ai=" + (req.aiEnabled() ? "on" : "off") + ", message_text=" + (req.messageContent() ? "allowed" : "withheld"));
+                    "ai=" + (req.aiEnabled() ? "on" : "off") + ", message_text=" + (req.messageContent() ? "allowed" : "withheld")
+                            + ", auto_sentiment=" + (autoSentiment ? "on" : "off"));
         }
-        return new AiSettings(t.isAiEnabled(), t.isAiMessageContent());
+        return new AiSettings(t.isAiEnabled(), t.isAiMessageContent(), t.isAiSentimentAuto());
     }
 
     /** 403 AI_DISABLED when the tenant switched AI off. */
@@ -84,6 +88,12 @@ public class AiPrivacyService {
     @Transactional(readOnly = true)
     public boolean enabled(Long tenantId) {
         return tenantRepository.findById(tenantId).map(Tenant::isAiEnabled).orElse(false);
+    }
+
+    /** FR-AI-6.1: whether new messages and feedback are classified as they arrive. */
+    @Transactional(readOnly = true)
+    public boolean autoSentiment(Long tenantId) {
+        return tenantRepository.findById(tenantId).map(Tenant::isAiSentimentAuto).orElse(false);
     }
 
     /** Whether message text may be sent (AI on, and message text allowed). */

@@ -47,6 +47,14 @@ const AiDataSettings = () => {
               <span><span className="text-slate-900">Allow message text</span>
                 <span className="block text-slate-500">Needed for sentiment checks and AI alerts on customer messages.</span></span>
             </label>
+            {/* FR-AI-6.1 */}
+            <label className="flex items-start gap-2">
+              <input type="checkbox" className="mt-0.5" checked={Boolean(data.settings.autoSentiment)}
+                disabled={!data.settings.aiEnabled || !data.settings.messageContent}
+                onChange={(e) => change({ autoSentiment: e.target.checked })} />
+              <span><span className="text-slate-900">Classify sentiment automatically</span>
+                <span className="block text-slate-500">Each incoming email, WhatsApp and SMS, and each feedback comment on a ticket, is marked positive, neutral or negative as it arrives. Off: staff check single messages on request.</span></span>
+            </label>
           </div>
           <div className="overflow-x-auto mt-4">
             <table className="min-w-full text-sm">

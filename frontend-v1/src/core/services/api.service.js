@@ -466,6 +466,23 @@ class ApiService {
     return this.apipost(`${ServerUrl.AI}/price-recommendations`, data);
   }
 
+  // FR-AI-2.2 / FR-AI-3.1
+  static getDealProbabilities(params) {
+    return this.apiget(`${ServerUrl.AI}/deal-probabilities`, params);
+  }
+
+  static getProductRecommendations(customerId) {
+    return this.apiget(`${ServerUrl.AI}/product-recommendations`, { customerId });
+  }
+
+  static getChurnRisk(customerId) {
+    return this.apiget(`${ServerUrl.AI}/churn-risk`, { customerId });
+  }
+
+  static getChurnRisks(level) {
+    return this.apiget(`${ServerUrl.AI}/churn-risks`, { level });
+  }
+
   static getAiPerformance() {
     return this.apiget(`${ServerUrl.AI}/performance`);
   }
@@ -719,12 +736,30 @@ class ApiService {
     return this.apiget(`${ServerUrl.AI}/forecast`, params);
   }
 
-  static askAi(question) {
-    return this.apipost(`${ServerUrl.AI}/chat`, { question });
+  // FR-AI-4.1: earlier questions give follow-ups their context
+  static askAi(question, history = []) {
+    return this.apipost(`${ServerUrl.AI}/chat`, { question, history });
+  }
+
+  // FR-AI-3.2 / FR-AI-3.3
+  static getContactTime(params) {
+    return this.apiget(`${ServerUrl.AI}/contact-time`, params);
+  }
+
+  static getTalkingPoints(data) {
+    return this.apipost(`${ServerUrl.AI}/talking-points`, data);
   }
 
   static generateMessage(data) {
     return this.apipost(`${ServerUrl.AI}/generate-email`, data);
+  }
+
+  static draftCampaignCopy(data) {
+    return this.apipost(`${ServerUrl.AI}/campaign-copy`, data);
+  }
+
+  static draftProposal(data) {
+    return this.apipost(`${ServerUrl.AI}/proposal`, data);
   }
 
   static analyseSentiment(data) {

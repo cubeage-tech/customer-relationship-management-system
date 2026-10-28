@@ -5,7 +5,8 @@ import { usePermissions } from '../../core/hooks/usePermissions';
 import { PERMISSIONS } from '../../core/constants/permission.constant';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { listCommunications, logCall, sendEmail, sendSms, sendWhatsApp } from '../../core/services/communication.service';
-import { generateMessage } from '../../core/services/ai.service';
+import { analyseSentiment, generateMessage } from '../../core/services/ai.service';
+import SentimentBadge from '../ai/SentimentBadge';
 
 const CHANNEL = {
   email: { label: 'Email', Icon: Mail },
@@ -57,16 +58,24 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
   const [form, setForm] = useState({});
   const [formError, setFormError] = useState('');
   const [drafting, setDrafting] = useState(false);
+  const [sendTime, setSendTime] = useState(''); // FR-AI-3.2 via the draft
+  // FR-AI-5.2: the AI draft being reviewed — sent only once the user confirms they checked it.
+  const [aiDraft, setAiDraft] = useState(null); // { id, body }
+  const [reviewed, setReviewed] = useState(false);
 
   // FR-AI-5: draft the message with AI from a short purpose; the user edits it before sending.
-  const draftWithAi = async () => {
-    const purpose = window.prompt('What should the message do? (e.g. follow up on the demo)');
-    if (!purpose) return;
+  // FR-AI-5.3: a follow-up needs no purpose — it picks up from the latest contact.
+  const draftWithAi = async (kind = 'message') => {
+    const purpose = kind === 'follow_up' ? undefined : window.prompt('What should the message do? (e.g. offer the new pump range)');
+    if (kind !== 'follow_up' && !purpose) return;
     setDrafting(true);
     setFormError('');
     try {
-      const draft = await generateMessage({ ...scope, channel: mode, purpose });
+      const draft = await generateMessage({ ...scope, channel: mode, kind, purpose });
       setForm((prev) => ({ ...prev, subject: draft.subject ?? prev.subject, body: draft.body }));
+      setSendTime(draft.bestTimeToSend || '');
+      setAiDraft({ id: draft.draftId, body: draft.body });
+      setReviewed(false);
     } catch (err) {
       setFormError(apiErrorMessage(err, 'Could not draft the message.'));
     } finally {
@@ -74,6 +83,20 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
     }
   };
   const [submitting, setSubmitting] = useState(false);
+  const [checking, setChecking] = useState(null); // FR-AI-6.1: id of the message being classified
+
+  const checkSentiment = async (id) => {
+    setChecking(id);
+    setLoadError('');
+    try {
+      await analyseSentiment({ communicationId: id });
+      refresh();
+    } catch (err) {
+      setLoadError(apiErrorMessage(err, 'Could not check the sentiment.'));
+    } finally {
+      setChecking(null);
+    }
+  };
 
   const refresh = () =>
     listCommunications(scope)
@@ -90,6 +113,9 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
 
   const open = (next) => {
     setFormError('');
+    setAiDraft(null);
+    setReviewed(false);
+    setSendTime('');
     setMode(mode === next ? null : next);
     if (next === 'call') setForm({ direction: 'outbound', outcome: 'connected', minutes: '', notes: '', occurredAt: nowLocal(), phone: defaultPhone });
     if (next === 'email') setForm({ to: defaultEmail, subject: '', body: '' });
@@ -101,6 +127,7 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
   const submit = async (e) => {
     e.preventDefault();
     if (submitting) return;
+    const approval = aiDraft ? { aiDraftId: aiDraft.id, aiReviewed: reviewed } : {};
     setSubmitting(true);
     setFormError('');
     try {
@@ -116,16 +143,17 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
           occurredAt: form.occurredAt ? `${form.occurredAt}:00` : null,
         });
       } else if (mode === 'email') {
-        saved = await sendEmail({ ...scope, to: form.to, subject: form.subject, body: form.body });
+        saved = await sendEmail({ ...scope, to: form.to, subject: form.subject, body: form.body, ...approval });
       } else if (mode === 'sms') {
-        saved = await sendSms({ ...scope, to: form.to, body: form.body });
+        saved = await sendSms({ ...scope, to: form.to, body: form.body, ...approval });
       } else {
-        saved = await sendWhatsApp({ ...scope, to: form.to, body: form.body });
+        saved = await sendWhatsApp({ ...scope, to: form.to, body: form.body, ...approval });
       }
       if (saved?.status === 'failed') {
         setFormError(saved.errorMessage || 'The message could not be sent.');
       } else {
         setMode(null);
+        setAiDraft(null);
       }
       refresh();
     } catch (err) {
@@ -202,14 +230,32 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
             </>
           )}
           {formError && <p className="text-sm text-red-600 sm:col-span-2">{formError}</p>}
+          {sendTime && mode !== 'call' && <p className="text-xs text-emerald-700 sm:col-span-2">Best time to send: {sendTime}</p>}
+          {aiDraft && mode !== 'call' && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
+              <p className="font-medium">This message was written by AI — read and edit it before sending.</p>
+              <p className="text-xs text-amber-800">
+                {form.body === aiDraft.body ? 'Not edited yet.' : 'You have edited the draft.'} Check names, facts and promises; nothing is sent until you approve it.
+              </p>
+              <label className="mt-2 flex items-center gap-2">
+                <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
+                I have reviewed this message and approve sending it
+              </label>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 sm:col-span-2">
             {mode !== 'call' && (
-              <Button type="button" variant="outline" disabled={drafting} onClick={draftWithAi}>
-                {drafting ? 'Drafting…' : 'Draft with AI'}
-              </Button>
+              <>
+                <Button type="button" variant="outline" disabled={drafting} onClick={() => draftWithAi()}>
+                  {drafting ? 'Drafting…' : 'Draft with AI'}
+                </Button>
+                <Button type="button" variant="outline" disabled={drafting} onClick={() => draftWithAi('follow_up')}>
+                  Follow up with AI
+                </Button>
+              </>
             )}
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving…' : mode === 'call' ? 'Log call' : 'Send'}
+            <Button type="submit" disabled={submitting || (aiDraft && mode !== 'call' && !reviewed)}>
+              {submitting ? 'Saving…' : mode === 'call' ? 'Log call' : aiDraft ? 'Approve and send' : 'Send'}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setMode(null)}>Cancel</Button>
           </div>
@@ -243,6 +289,14 @@ const CommunicationTimeline = ({ customerId, leadId, defaultEmail = '', defaultP
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[c.status] || 'bg-slate-100 text-slate-600'}`}>
                         {label(c.status)}
                       </span>
+                    )}
+                    {/* FR-AI-6.1 */}
+                    <SentimentBadge sentiment={c.sentiment} />
+                    {inbound && !c.sentiment && c.channel !== 'call' && c.channel !== 'meeting' && (c.body || c.subject) && (
+                      <button type="button" onClick={() => checkSentiment(c.id)} disabled={checking === c.id}
+                        className="text-xs text-primary hover:underline disabled:opacity-50">
+                        {checking === c.id ? 'Checking…' : 'Check sentiment'}
+                      </button>
                     )}
                   </div>
                   {c.subject && <p className="text-sm font-medium text-slate-800 mt-1">{c.subject}</p>}

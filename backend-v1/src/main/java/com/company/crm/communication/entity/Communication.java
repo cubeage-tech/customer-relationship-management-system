@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -92,6 +93,22 @@ public class Communication implements BlindIndexed {
 
     @Column(name = "call_duration_seconds")
     private Integer callDurationSeconds;
+
+    /** FR-AI-6.1: written only by SentimentService, so a save here never clears them. */
+    @Column(name = "sentiment", length = 10, insertable = false, updatable = false)
+    private String sentiment;
+
+    @Column(name = "sentiment_score", precision = 3, scale = 2, insertable = false, updatable = false)
+    private BigDecimal sentimentScore;
+
+    @Column(name = "churn_risk", length = 10, insertable = false, updatable = false)
+    private String churnRisk;
+
+    @Column(name = "sentiment_reason", length = 300, insertable = false, updatable = false)
+    private String sentimentReason;
+
+    @Column(name = "sentiment_at", insertable = false, updatable = false)
+    private LocalDateTime sentimentAt;
 
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;

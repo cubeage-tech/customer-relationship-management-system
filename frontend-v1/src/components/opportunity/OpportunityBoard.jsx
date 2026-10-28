@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ScoreBadge from '../ai/ScoreBadge';
 import { Link } from 'react-router-dom';
 import { CalendarDays, UserRound } from 'lucide-react';
 import RoutePath from '../../core/constants/routes.constant';
@@ -10,7 +11,7 @@ const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN
  * value. With edit rights, cards move between stages by drag and drop or the card's stage select.
  * FR-3.2: `stages` are the tenant's columns; `stageOptionsFor(stage)` the card select's choices.
  */
-const OpportunityBoard = ({ opportunities, stages, stageOptionsFor, canEdit, onStageChange }) => {
+const OpportunityBoard = ({ opportunities, chances = {}, stages, stageOptionsFor, canEdit, onStageChange }) => {
   const [dragId, setDragId] = useState(null);
   const [overStage, setOverStage] = useState(null);
 
@@ -56,7 +57,10 @@ const OpportunityBoard = ({ opportunities, stages, stageOptionsFor, canEdit, onS
                     {o.customerName}
                   </Link>
                   {o.productService && <p className="mt-0.5 truncate text-xs text-slate-500">{o.productService}</p>}
-                  <p className="mt-2 text-sm font-bold text-slate-900">{formatCurrency(o.dealValue)}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-sm font-bold text-slate-900">{formatCurrency(o.dealValue)}</p>
+                    {chances[o.id] && <ScoreBadge value={chances[o.id].percent} suffix="%" label={chances[o.id].label} title="Chance to win" />}
+                  </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                     {o.expectedClosingDate && (
                       <span className="inline-flex items-center gap-1"><CalendarDays size={12} aria-hidden="true" />{new Date(o.expectedClosingDate).toLocaleDateString()}</span>

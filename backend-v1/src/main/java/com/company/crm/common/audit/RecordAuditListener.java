@@ -80,7 +80,7 @@ public class RecordAuditListener implements PostInsertEventListener, PostUpdateE
 
     /** Bookkeeping the application updates itself — a change to only these isn't worth an entry. */
     private static final Set<String> IGNORED_FIELDS = Set.of("createdAt", "updatedAt", "emailHash", "phoneHash",
-            "lastRunAt", "nextRunAt", "lastStatus", "lastError");
+            "lastRunAt", "nextRunAt", "lastStatus", "lastError", "aiScore", "aiScoreLabel", "aiScoredAt");
 
     private static final int MAX_DETAILS = 1000;
 

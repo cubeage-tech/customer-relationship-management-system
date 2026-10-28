@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ScoreBadge from '../../components/ai/ScoreBadge';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, Search, Target, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
@@ -28,6 +29,7 @@ const INITIAL_FORM = {
   source: LEAD_SOURCE_OPTIONS[0].value,
   contactEmail: '',
   contactPhone: '',
+  budget: '',
 };
 
 const VIEW_KEY = 'leads.view';
@@ -60,6 +62,9 @@ const Leads = () => {
   const [stageFilter, setStageFilter] = useState(() => searchParams.get('stage') ?? '');
   const [sourceFilter, setSourceFilter] = useState(() => searchParams.get('source') ?? '');
   const [ownerFilter, setOwnerFilter] = useState('');
+  // FR-AI-1.3: filter and sort by AI score.
+  const [scoreFilter, setScoreFilter] = useState(() => searchParams.get('scoreLabel') ?? '');
+  const [sortBy, setSortBy] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
   const [owners, setOwners] = useState([]);
   const [search, setSearch] = useState('');
@@ -82,7 +87,7 @@ const Leads = () => {
   const [total, setTotal] = useState(0);
   const loadPage = (pageNo) =>
     listLeads({ stage: stageFilter, source: sourceFilter, industry: industryFilter, search, ownerId: ownerFilter || undefined,
-      page: pageNo, size: PAGE_SIZE })
+      scoreLabel: scoreFilter || undefined, sort: sortBy || undefined, page: pageNo, size: PAGE_SIZE })
       .then((data) => {
         setLeads((prev) => (pageNo === 0 ? data?.items ?? [] : [...prev, ...(data?.items ?? [])]));
         setTotal(data?.totalElements ?? 0);
@@ -97,7 +102,7 @@ const Leads = () => {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stageFilter, sourceFilter, industryFilter, search, ownerFilter]);
+  }, [stageFilter, sourceFilter, industryFilter, search, ownerFilter, scoreFilter, sortBy]);
 
   useEffect(() => {
     if (!canFilterByOwner) return;
@@ -120,7 +125,7 @@ const Leads = () => {
     e.preventDefault();
     if (duplicates.length > 0 && !window.confirm(duplicateConfirmText(duplicates))) return;
     try {
-      await createLead(form);
+      await createLead({ ...form, budget: form.budget === '' ? null : Number(form.budget) });
       setForm(INITIAL_FORM);
       setShowForm(false);
       refresh();
@@ -315,6 +320,19 @@ const Leads = () => {
                     />
                   </span>
                 </label>
+                <label className="space-y-1.5 text-sm font-medium text-slate-700">
+                  Budget <span className="font-normal text-slate-400">Optional — used by the AI score</span>
+                  <input
+                    type="number"
+                    name="budget"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 250000"
+                    value={form.budget}
+                    onChange={handleChange}
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  />
+                </label>
                 <div className="sm:col-span-2"><DuplicateWarning matches={duplicates} /></div>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4 sm:col-span-2">
                   <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -404,6 +422,29 @@ const Leads = () => {
               </option>
             ))}
           </select>
+          <label className="sr-only" htmlFor="lead-score-filter">Filter by AI score</label>
+          <select
+            id="lead-score-filter"
+            value={scoreFilter}
+            onChange={(e) => setScoreFilter(e.target.value)}
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">Any AI score</option>
+            <option value="High">High (70+)</option>
+            <option value="Medium">Medium (40–69)</option>
+            <option value="Low">Low (under 40)</option>
+          </select>
+          <label className="sr-only" htmlFor="lead-sort">Sort leads</label>
+          <select
+            id="lead-sort"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">Newest first</option>
+            <option value="aiScore,desc">AI score: high to low</option>
+            <option value="aiScore,asc">AI score: low to high</option>
+          </select>
           {canFilterByOwner && (
             <>
               <label className="sr-only" htmlFor="lead-owner-filter">Filter by owner</label>
@@ -461,6 +502,7 @@ const Leads = () => {
                   <th className="px-4 py-3 font-semibold">Company</th>
                   <th className="px-4 py-3 font-semibold">Source</th>
                   <th className="px-4 py-3 font-semibold">Stage</th>
+                  <th className="px-4 py-3 font-semibold">AI score</th>
                   <th className="px-4 py-3 font-semibold">Owner</th>
                   <th className="px-4 py-3 font-semibold">Follow-up</th>
                   {canDelete && <th className="px-4 py-3" aria-label="Actions" />}
@@ -499,6 +541,7 @@ const Leads = () => {
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3.5"><ScoreBadge value={lead.aiScore} label={lead.aiScoreLabel} /></td>
                     <td className="px-4 py-3.5 text-slate-600">{lead.ownerName || '—'}</td>
                     <td className={`px-4 py-3.5 ${isOverdue(lead) ? 'font-semibold text-rose-600' : 'text-slate-600'}`}>
                       {lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString() : '—'}

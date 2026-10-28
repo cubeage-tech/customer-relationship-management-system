@@ -1,5 +1,7 @@
 package com.company.crm.communication.service;
 
+import com.company.crm.ai.dto.AiDtos.SentimentTag;
+import com.company.crm.ai.service.AiDraftService;
 import com.company.crm.communication.event.InboundMessageRecordedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import com.company.crm.common.enums.CallOutcome;
@@ -74,6 +76,7 @@ public class CommunicationService {
     private final TwilioClient twilioClient;
     private final PhoneNumbers phoneNumbers;
     private final ApplicationEventPublisher eventPublisher;
+    private final AiDraftService aiDrafts;
 
     /** The customer/lead a communication is logged against, after tenant and access checks. */
     private record Target(Tenant tenant, Customer customer, Lead lead) {}
@@ -153,12 +156,14 @@ public class CommunicationService {
     @Transactional
     public CommunicationResDto sendEmail(User currentUser, EmailSendReqDto dto) {
         Target target = resolveTarget(currentUser, dto.getCustomerId(), dto.getLeadId());
+        AiDraftService.Approval approval = aiDrafts.check(currentUser, dto.getAiDraftId(), dto.isAiReviewed(), "email", dto.getSubject(), dto.getBody());
         Communication email = newLog(target, CommunicationChannel.EMAIL, CommunicationDirection.OUTBOUND, currentUser);
         email.setStatus(CommunicationStatus.QUEUED);
         email.setSubject(dto.getSubject().trim());
         email.setBody(dto.getBody());
         email.setCounterpart(dto.getTo().trim().toLowerCase());
         email = communicationRepo.save(email);
+        aiDrafts.approved(currentUser, approval, email.getId(), "email");
 
         String messageId = "<crm." + email.getId() + "." + UUID.randomUUID() + "@smartcrm>";
         email.setProviderMessageId(messageId);
@@ -259,11 +264,14 @@ public class CommunicationService {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "WhatsApp is not configured for this CRM", "CHANNEL_NOT_CONFIGURED");
         }
         Target target = resolveTarget(currentUser, dto.getCustomerId(), dto.getLeadId());
+        AiDraftService.Approval approval = aiDrafts.check(currentUser, dto.getAiDraftId(), dto.isAiReviewed(), "whatsapp", null, dto.getBody());
         Communication message = newLog(target, CommunicationChannel.WHATSAPP, CommunicationDirection.OUTBOUND, currentUser);
         message.setCounterpart(phoneNumbers.toE164(dto.getTo()));
         message.setBody(dto.getBody());
         applySendResult(message, () -> twilioClient.sendWhatsApp(message.getCounterpart(), dto.getBody()));
-        return toDto(communicationRepo.save(message));
+        Communication saved = communicationRepo.save(message);
+        aiDrafts.approved(currentUser, approval, saved.getId(), "whatsapp");
+        return toDto(saved);
     }
 
     /**
@@ -280,11 +288,14 @@ public class CommunicationService {
             // NOT-7: they replied STOP or asked not to be texted.
             throw new ApiException(HttpStatus.CONFLICT, "This customer has opted out of SMS", "CUSTOMER_OPTED_OUT");
         }
+        AiDraftService.Approval approval = aiDrafts.check(currentUser, dto.getAiDraftId(), dto.isAiReviewed(), "sms", null, dto.getBody());
         Communication sms = newLog(target, CommunicationChannel.SMS, CommunicationDirection.OUTBOUND, currentUser);
         sms.setCounterpart(phoneNumbers.toE164(dto.getTo()));
         sms.setBody(dto.getBody());
         applySendResult(sms, () -> twilioClient.sendSms(sms.getCounterpart(), dto.getBody()));
-        return toDto(communicationRepo.save(sms));
+        Communication saved = communicationRepo.save(sms);
+        aiDrafts.approved(currentUser, approval, saved.getId(), "sms");
+        return toDto(saved);
     }
 
     /**
@@ -579,7 +590,8 @@ public class CommunicationService {
                 c.getCallOutcome() != null ? c.getCallOutcome().getDbValue() : null,
                 c.getCallDurationSeconds(),
                 c.getOccurredAt(),
-                c.getCreatedBy() != null ? c.getCreatedBy().getFullName() : null);
+                c.getCreatedBy() != null ? c.getCreatedBy().getFullName() : null,
+                SentimentTag.of(c.getSentiment(), c.getSentimentScore(), c.getChurnRisk(), c.getSentimentReason(), c.getSentimentAt()));
     }
 
     /** FR-5.6: a meeting as a timeline entry — channel "meeting", status scheduled/cancelled, at its start time. */
@@ -600,7 +612,8 @@ public class CommunicationService {
                 null,
                 (int) Duration.between(m.getStartsAt(), m.getEndsAt()).toSeconds(),
                 m.getStartsAt(),
-                m.getOrganizer().getFullName());
+                m.getOrganizer().getFullName(),
+                null);
     }
 
     private static CommunicationStatus mapProviderStatus(String providerStatus) {

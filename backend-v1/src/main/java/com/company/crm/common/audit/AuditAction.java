@@ -93,5 +93,8 @@ public enum AuditAction {
 
     // BR-1 / VAL-7: a stage skipped by explicit override
     LEAD_STAGE_OVERRIDDEN,
-    OPPORTUNITY_STAGE_OVERRIDDEN
+    OPPORTUNITY_STAGE_OVERRIDDEN,
+
+    // FR-AI-5.2: a person approved AI-written content before it was sent
+    AI_CONTENT_APPROVED
 }

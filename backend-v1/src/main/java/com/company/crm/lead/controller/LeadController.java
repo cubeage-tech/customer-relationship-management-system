@@ -51,13 +51,17 @@ public class LeadController {
             @RequestParam(required = false) String industry,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long ownerId,
+            // FR-AI-1.3: by AI score (sort=aiScore,desc for best first)
+            @RequestParam(required = false) Integer minScore,
+            @RequestParam(required = false) String scoreLabel,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort) {
         if (PageRequestFactory.isPaged(page, size)) {
-            return Response.ok(leadService.listLeadsPage(currentUser, stage, source, industry, search, ownerId, page, size, sort));
+            return Response.ok(leadService.listLeadsPage(currentUser, stage, source, industry, search, ownerId, minScore, scoreLabel,
+                    page, size, sort));
         }
-        return Response.ok(leadService.listLeads(currentUser, stage, source, industry, search, ownerId));
+        return Response.ok(leadService.listLeads(currentUser, stage, source, industry, search, ownerId, minScore, scoreLabel));
     }
 
     @GetMapping("/{leadId}")

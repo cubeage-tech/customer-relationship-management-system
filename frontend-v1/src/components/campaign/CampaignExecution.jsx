@@ -5,6 +5,7 @@ import Button from '../common/Button';
 import { apiErrorMessage } from '../../core/utils/apiError';
 import { getCampaignMetrics, getCampaignRecipients, launchCampaign, scheduleCampaign, updateCampaign } from '../../core/services/campaign.service';
 import { listSegments } from '../../core/services/marketing.service';
+import { draftCampaignCopy } from '../../core/services/ai.service';
 import { campaignPayload } from '../../core/utils/campaignPayload';
 
 // NOT-2: WhatsApp campaigns reach only customers who opted in (NOT-7).
@@ -36,6 +37,7 @@ const CampaignExecution = ({ campaign, canManage, onChange }) => {
   const [recipients, setRecipients] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [aiCopy, setAiCopy] = useState(null); // FR-AI-5.3: { basedOn } while an AI draft is in the form
 
   useEffect(() => {
     if (sendable && canManage) listSegments().then((data) => setSegments(data ?? [])).catch(() => setSegments([]));
@@ -68,6 +70,25 @@ const CampaignExecution = ({ campaign, canManage, onChange }) => {
   };
 
   const change = (e) => setMessage((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  // FR-AI-5.3: the AI writes the campaign message for its audience; the user edits it before saving.
+  const writeWithAi = async () => {
+    const purpose = window.prompt('What should this campaign message do? (e.g. announce the spring offer)');
+    if (!purpose) return;
+    setBusy(true);
+    setError('');
+    try {
+      const copy = await draftCampaignCopy({
+        campaignId: campaign.id, segmentId: message.segmentId ? Number(message.segmentId) : undefined, purpose,
+      });
+      setMessage((prev) => ({ ...prev, messageSubject: copy.subject ?? prev.messageSubject, messageBody: copy.body }));
+      setAiCopy({ basedOn: copy.basedOn });
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Could not write the message.'));
+    } finally {
+      setBusy(false);
+    }
+  };
   const segment = segments.find((s) => String(s.id) === String(message.segmentId));
 
   return (
@@ -103,8 +124,17 @@ const CampaignExecution = ({ campaign, canManage, onChange }) => {
                 <textarea name="messageBody" value={message.messageBody} onChange={change} rows={campaign.channel === 'email' ? 8 : 3} className={inputClass}
                   placeholder={campaign.channel === 'email' ? 'Write your message. Paste links like https://example.com/offer — clicks are counted.' : 'Short text message'} />
               </label>
+              {aiCopy && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                  <p className="font-medium">Written by AI — read and edit it before saving; it goes to every customer in the segment.</p>
+                  <p className="mt-1">Based on: {aiCopy.basedOn.join(' · ')}</p>
+                </div>
+              )}
               {segment && <p className="text-xs text-slate-500">{segment.customerCount} customers match now; unsubscribed customers and those without a {campaign.channel === 'email' ? 'email address' : 'phone number'} are skipped. An unsubscribe link is added to every email.</p>}
-              <div><Button type="submit" disabled={busy}>Save message</Button></div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" disabled={busy} onClick={writeWithAi}>Write with AI</Button>
+                <Button type="submit" disabled={busy}>Save message</Button>
+              </div>
             </form>
           ) : (
             <p className="mt-2 text-sm text-slate-500">{campaign.segmentName ? `Segment: ${campaign.segmentName}` : 'No segment chosen.'}</p>

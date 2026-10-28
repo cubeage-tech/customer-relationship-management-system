@@ -57,6 +57,8 @@ class LeadsScreen extends StatelessWidget {
           subtitle: Text([
             lead['companyName'],
             label(lead['stage'] as String?),
+            // FR-AI-1.2: the AI lead score and its purchase-probability label.
+            if (lead['aiScore'] != null) 'AI score ${lead['aiScore']} (${lead['aiScoreLabel']})',
             if (lead['followUpDate'] != null) 'follow up ${formatDateTime(lead['followUpDate'])}',
           ].whereType<String>().where((s) => s.isNotEmpty).join(' · ')),
           trailing: lead['_pending'] == true ? const PendingChip() : const Icon(Icons.swap_vert),

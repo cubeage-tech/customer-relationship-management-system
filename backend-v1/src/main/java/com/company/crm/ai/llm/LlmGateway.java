@@ -3,7 +3,8 @@ package com.company.crm.ai.llm;
 import java.util.Optional;
 
 /**
- * API-G11: the language model behind the AI features that need one (chat, writing, sentiment).
+ * API-G11: the language model behind the AI features that need one (chat, writing, sentiment) —
+ * Anthropic Claude or xAI Grok, whichever is configured (see {@link LlmRouter}).
  * Lead scoring and forecasting are computed from CRM data and don't use it.
  */
 public interface LlmGateway {
@@ -16,4 +17,9 @@ public interface LlmGateway {
      * empty if the model declined to answer.
      */
     <T> Optional<T> structured(String system, String prompt, Class<T> type);
+
+    /** The provider answering (anthropic | xai), or "none". */
+    default String provider() {
+        return isConfigured() ? "anthropic" : "none";
+    }
 }

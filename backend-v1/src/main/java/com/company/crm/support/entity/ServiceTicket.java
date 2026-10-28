@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -64,6 +65,22 @@ public class ServiceTicket {
     /** FR-6.5: when feedback was given. */
     @Column(name = "feedback_at")
     private LocalDateTime feedbackAt;
+
+    /** FR-AI-6.1: the AI's reading of the feedback; written only by SentimentService. */
+    @Column(name = "feedback_sentiment", length = 10, insertable = false, updatable = false)
+    private String feedbackSentiment;
+
+    @Column(name = "feedback_sentiment_score", precision = 3, scale = 2, insertable = false, updatable = false)
+    private BigDecimal feedbackSentimentScore;
+
+    @Column(name = "feedback_churn_risk", length = 10, insertable = false, updatable = false)
+    private String feedbackChurnRisk;
+
+    @Column(name = "feedback_sentiment_reason", length = 300, insertable = false, updatable = false)
+    private String feedbackSentimentReason;
+
+    @Column(name = "feedback_sentiment_at", insertable = false, updatable = false)
+    private LocalDateTime feedbackSentimentAt;
 
     /** FR-6.1: the customer's equipment this ticket is about (optional). */
     @ManyToOne(fetch = FetchType.LAZY)

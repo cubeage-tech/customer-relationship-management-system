@@ -26,4 +26,9 @@ public class SmsSendReqDto {
     @NotBlank
     @Size(max = 1600)
     private String body;
+
+    /** FR-AI-5.2: when the text comes from an AI draft — its id, and the user's confirmation they reviewed it. */
+    private Long aiDraftId;
+
+    private boolean aiReviewed;
 }

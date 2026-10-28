@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, RotateCcw, Search, Users, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
+import AtRiskCustomers from '../../components/ai/AtRiskCustomers';
 import Button from '../../components/common/Button';
 import DuplicateWarning from '../../components/common/DuplicateWarning';
 import { duplicateConfirmText, useDuplicateCheck } from '../../core/hooks/useDuplicateCheck';
@@ -143,6 +144,9 @@ const Customers = () => {
           )
         }
       />
+
+      {/* FR-AI-6.2 */}
+      <AtRiskCustomers />
 
       {canCreate && showForm && (
         <div

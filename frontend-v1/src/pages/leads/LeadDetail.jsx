@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import ContactTimeCard from '../../components/ai/ContactTimeCard';
+import TalkingPointsCard from '../../components/ai/TalkingPointsCard';
+import LeadScoreCard from '../../components/ai/LeadScoreCard';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
@@ -32,6 +35,7 @@ const toProfileForm = (lead) => ({
   contactPhone: lead.contactPhone || '',
   followUpDate: lead.followUpDate ? lead.followUpDate.slice(0, 10) : '',
   notes: lead.notes || '',
+  budget: lead.budget ?? '',
 });
 
 const LeadDetail = () => {
@@ -81,6 +85,7 @@ const LeadDetail = () => {
       const saved = await updateLead(id, {
         ...profileForm,
         followUpDate: profileForm.followUpDate ? `${profileForm.followUpDate}T00:00:00` : null,
+        budget: profileForm.budget === '' ? null : Number(profileForm.budget),
       });
       setLead(saved);
       setProfileForm(toProfileForm(saved));
@@ -313,6 +318,18 @@ const LeadDetail = () => {
                 className="ml-2 border border-slate-300 rounded px-2 py-1"
               />
             </label>
+            <label className="text-sm text-slate-600 sm:col-span-2">
+              Budget <span className="text-slate-400">(optional — used by the AI score)</span>
+              <input
+                type="number"
+                name="budget"
+                min="0"
+                step="0.01"
+                value={profileForm.budget}
+                onChange={handleProfileChange}
+                className="ml-2 border border-slate-300 rounded px-2 py-1"
+              />
+            </label>
             <textarea
               name="notes"
               placeholder="Notes"
@@ -353,6 +370,11 @@ const LeadDetail = () => {
       </div>
 
       {/* ARC-9: industry-specific fields */}
+      {/* FR-AI-1.1/1.2 */}
+      <LeadScoreCard leadId={lead.id} reloadKey={`${lead.stage}:${lead.budget}:${lead.aiScore}`} />
+      {/* FR-AI-3.2 / 3.3 */}
+      <ContactTimeCard leadId={lead.id} />
+      <TalkingPointsCard leadId={lead.id} />
       <div className="mb-6"><CustomFieldsPanel entityType="lead" recordId={lead.id} canEdit={canEdit} reloadKey={lead.industry} /></div>
       {/* SEC-6 */}
       <AiExclusionToggle recordType="lead" recordId={lead.id} canEdit={canEdit} />

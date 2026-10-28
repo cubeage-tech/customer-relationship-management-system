@@ -37,7 +37,7 @@ import java.util.Optional;
  */
 @Component
 @Slf4j
-public class ClaudeGateway implements LlmGateway {
+public class ClaudeGateway implements LlmProvider {
 
     private final String apiKey;
     private final String model;
@@ -64,6 +64,11 @@ public class ClaudeGateway implements LlmGateway {
         this.effort = effort;
         this.maxTokens = maxTokens;
         this.timeout = Duration.ofSeconds(timeoutSeconds);
+    }
+
+    @Override
+    public String key() {
+        return "anthropic";
     }
 
     @Override

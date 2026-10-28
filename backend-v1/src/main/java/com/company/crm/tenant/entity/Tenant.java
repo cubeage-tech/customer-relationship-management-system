@@ -75,6 +75,10 @@ public class Tenant {
     @Column(name = "ai_message_content", nullable = false)
     private boolean aiMessageContent = true;
 
+    /** FR-AI-6.1: classify the sentiment of customer messages and feedback as they arrive (sends their text). */
+    @Column(name = "ai_sentiment_auto", nullable = false)
+    private boolean aiSentimentAuto;
+
     /** BIZ-2: the industry edition (standard, manufacturing, real_estate, healthcare, industrial_sales). */
     @Column(nullable = false, length = 30)
     private String edition = "standard";

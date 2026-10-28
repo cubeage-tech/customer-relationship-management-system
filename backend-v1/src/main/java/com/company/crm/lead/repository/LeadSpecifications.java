@@ -28,6 +28,11 @@ public final class LeadSpecifications {
         };
     }
 
+    /** FR-AI-1.3: leads scored at least {@code minScore}. */
+    public static Specification<Lead> scoreAtLeast(Integer minScore) {
+        return minScore == null ? null : (root, query, cb) -> cb.greaterThanOrEqualTo(root.<Integer>get("aiScore"), minScore);
+    }
+
     /** Case-insensitive match on the lead's name or company. */
     public static Specification<Lead> matches(String search) {
         if (search == null || search.isBlank()) {
