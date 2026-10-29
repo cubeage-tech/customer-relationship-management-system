@@ -93,5 +93,28 @@ public enum AuditAction {
 
     // BR-1 / VAL-7: a stage skipped by explicit override
     LEAD_STAGE_OVERRIDDEN,
-    OPPORTUNITY_STAGE_OVERRIDDEN
+    OPPORTUNITY_STAGE_OVERRIDDEN,
+
+    // FR-AI-5.2: a person approved AI-written content before it was sent
+    AI_CONTENT_APPROVED,
+
+    // FR-AI-7.1: meeting recordings (with consent), and every time one is played
+    MEETING_RECORDING_ADDED,
+    MEETING_RECORDING_PLAYED,
+    MEETING_RECORDING_DELETED,
+
+    // FR-AI-7.2: the meeting's conversation and its AI summary
+    MEETING_TRANSCRIPT_SAVED,
+    MEETING_TRANSCRIPT_DELETED,
+    MEETING_SUMMARY_GENERATED,
+
+    // FR-AI-7.3: a meeting's confirmed action items became follow-up tasks
+    FOLLOW_UP_TASKS_CREATED,
+
+    // FR-AI-8.3: coaching shared between a salesperson and their manager
+    COACHING_SHARED,
+    COACHING_ACKNOWLEDGED,
+
+    // FR-AI-9.1: a suggested duplicate pair was confirmed as two different records
+    DUPLICATE_DISMISSED
 }

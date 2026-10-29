@@ -33,10 +33,16 @@ public enum NotificationEvent {
             Set.of(IN_APP, EMAIL), Set.of(IN_APP), null, Notification.DISCOUNT_APPROVAL),
     AI_CHURN_RISK("ai_churn_risk", "AI alert: a customer message reads as unhappy", Audience.STAFF,
             Set.of(IN_APP, EMAIL), Set.of(), null, Notification.AI_ALERT),
+    // FR-AI-6.2: worked out inside the CRM (no data to the AI provider), so on by default in the app.
+    CUSTOMER_CHURN_RISK("customer_churn_risk", "Customer at high risk of churning (to owner and manager)", Audience.STAFF,
+            Set.of(IN_APP, EMAIL), Set.of(IN_APP), null, Notification.AI_ALERT),
     QUOTATION_RESPONSE("quotation_response", "Customer accepted or declined a quotation", Audience.STAFF,
             Set.of(IN_APP, EMAIL), Set.of(IN_APP, EMAIL), null, Notification.QUOTATION_RESPONSE),
     MANAGER_MESSAGE("manager_message", "Message from a manager", Audience.STAFF,
             Set.of(IN_APP), Set.of(IN_APP), null, Notification.MESSAGE),
+    // FR-AI-8.3
+    COACHING_SHARED("coaching_shared", "Coaching shared or acknowledged (salesperson and manager)", Audience.STAFF,
+            Set.of(IN_APP, EMAIL), Set.of(IN_APP), null, Notification.MESSAGE),
 
     // ---- to platform admins (not configurable per tenant) ----
     INTEGRATION_AUTH_FAILED("integration_auth_failed", "An integration's credentials were rejected", Audience.PLATFORM,

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ScoreBadge from '../ai/ScoreBadge';
 import { Link } from 'react-router-dom';
 import { CalendarClock, UserRound } from 'lucide-react';
 import RoutePath from '../../core/constants/routes.constant';
@@ -50,6 +51,7 @@ const LeadBoard = ({ leads, stages = LEAD_STAGE_OPTIONS, canEdit, onStageChange,
                     {lead.leadName}
                   </Link>
                   <p className="mt-0.5 truncate text-xs text-slate-500">{lead.companyName} · {LEAD_SOURCE_LABELS[lead.source] || lead.source}</p>
+                  {lead.aiScore != null && <div className="mt-1.5"><ScoreBadge value={lead.aiScore} label={lead.aiScoreLabel} title="AI lead score" /></div>}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                     {lead.followUpDate && (
                       <span className={`inline-flex items-center gap-1 ${isOverdue?.(lead) ? 'font-semibold text-rose-600' : ''}`}>

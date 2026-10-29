@@ -1,5 +1,6 @@
 package com.company.crm.support.mapper;
 
+import com.company.crm.ai.dto.AiDtos.SentimentTag;
 import com.company.crm.common.enums.TicketStatus;
 import com.company.crm.support.dto.response.ServiceTicketResDto;
 import com.company.crm.support.entity.ServiceTicket;
@@ -32,7 +33,9 @@ public class ServiceTicketMapper {
                 ticket.getAsset() != null ? assetLabel(ticket) : null,
                 ticket.getSource(),
                 ticket.getReporterEmail(),
-                ticket.getFeedbackAt()
+                ticket.getFeedbackAt(),
+                SentimentTag.of(ticket.getFeedbackSentiment(), ticket.getFeedbackSentimentScore(), ticket.getFeedbackChurnRisk(),
+                        ticket.getFeedbackSentimentReason(), ticket.getFeedbackSentimentAt())
         );
     }
 

@@ -26,7 +26,10 @@ public class LeadMapper {
                 lead.getCampaign() != null ? lead.getCampaign().getName() : null,
                 lead.getCreatedAt(),
                 lead.getTeam() != null ? lead.getTeam().getId() : null,
-                lead.getTeam() != null ? lead.getTeam().getName() : null
+                lead.getTeam() != null ? lead.getTeam().getName() : null,
+                lead.getBudget(),
+                lead.getAiScore(),
+                lead.getAiScoreLabel()
         );
     }
 }

@@ -83,6 +83,15 @@ public class OpportunityService {
                 .toList();
     }
 
+    /** FR-AI-2.2: only the open deals (not won or lost) the caller can see — filtered in the database. */
+    @Transactional(readOnly = true)
+    public List<OpportunityResDto> listOpenOpportunities(User currentUser) {
+        Specification<Opportunity> open = (root, query, cb) -> cb.not(root.get("stage").in(PipelineStageService.WON, PipelineStageService.LOST));
+        return opportunityRepository.findAll(filters(currentUser, null, null, null, null).and(open), LIST_ORDER).stream()
+                .map(opportunityMapper::toDto)
+                .toList();
+    }
+
     /** NFR-7.1b: one page of the same list (opt-in via page/size); newest first unless {@code sort} says otherwise. */
     @Transactional(readOnly = true)
     public PageResponse<OpportunityResDto> listOpportunitiesPage(User currentUser, String stage, Long customerId, String search,

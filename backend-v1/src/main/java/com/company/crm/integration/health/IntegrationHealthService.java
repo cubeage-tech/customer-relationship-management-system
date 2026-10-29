@@ -36,6 +36,7 @@ public class IntegrationHealthService {
     public static final String SMTP = "smtp";
     public static final String FCM = "fcm";
     public static final String ANTHROPIC = "anthropic";
+    public static final String XAI = "xai";
     public static final String RAZORPAY = "razorpay";
 
     private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
@@ -54,6 +55,8 @@ public class IntegrationHealthService {
                 "Create a new service-account key in Firebase, point FCM_CREDENTIALS_FILE at it, then restart the backend."));
         KNOWN.put(ANTHROPIC, new Integration(ANTHROPIC, "AI assistant (Anthropic)",
                 "Create a new API key in the Anthropic Console, set ANTHROPIC_API_KEY, then restart the backend."));
+        KNOWN.put(XAI, new Integration(XAI, "AI assistant (xAI Grok)",
+                "Create a new API key in the xAI console, set XAI_API_KEY, then restart the backend."));
         KNOWN.put(RAZORPAY, new Integration(RAZORPAY, "Payments (Razorpay)",
                 "Check PAYMENT_KEY_ID and PAYMENT_KEY_SECRET in the Razorpay dashboard, then restart the backend."));
     }

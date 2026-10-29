@@ -1,5 +1,6 @@
 package com.company.crm.support.dto.response;
 
+import com.company.crm.ai.dto.AiDtos.SentimentTag;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -32,4 +33,6 @@ public class ServiceTicketResDto {
     private String reporterEmail;
     /** FR-6.5: when the feedback was given. */
     private LocalDateTime feedbackAt;
+    /** FR-AI-6.1: the AI's reading of the feedback; null until classified. */
+    private SentimentTag feedbackSentiment;
 }

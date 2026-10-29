@@ -1,5 +1,8 @@
 package com.company.crm.lead.dto.request;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import java.math.BigDecimal;
 import com.company.crm.common.validation.ValidPhone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -37,6 +40,11 @@ public class LeadReqDto {
     private LocalDateTime followUpDate;
 
     private String notes;
+
+    /** FR-AI-1.1: expected spend, optional. */
+    @DecimalMin(value = "0", message = "Budget can't be negative")
+    @Digits(integer = 12, fraction = 2)
+    private BigDecimal budget;
 
     /** Salesperson this lead is assigned to. Defaults to the creator when omitted. */
     private Long ownerId;

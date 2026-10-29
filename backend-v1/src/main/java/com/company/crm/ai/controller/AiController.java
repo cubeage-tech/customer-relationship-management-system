@@ -1,9 +1,27 @@
 package com.company.crm.ai.controller;
 
+import com.company.crm.ai.dto.AiDtos.ContactTime;
+import com.company.crm.ai.dto.AiDtos.SalesApproach;
+import com.company.crm.ai.dto.AiDtos.TalkingPointsReq;
+import com.company.crm.ai.service.ContactTimeService;
+import com.company.crm.ai.service.SalesCoachService;
+import com.company.crm.ai.dto.AiDtos.DealProbability;
+import com.company.crm.ai.dto.AiDtos.ProductRecs;
+import com.company.crm.ai.service.DealProbabilityService;
+import com.company.crm.ai.service.ProductRecommendationService;
+import java.util.Objects;
 import com.company.crm.ai.perf.AiLatency;
 import com.company.crm.ai.service.PriceRecommendationService;
 import jakarta.validation.constraints.Pattern;
 import com.company.crm.ai.service.AiQuotationDraftService;
+import com.company.crm.ai.service.AiContentService;
+import com.company.crm.ai.service.ChurnRiskService;
+import com.company.crm.ai.service.SentimentTrendService;
+import com.company.crm.ai.service.SalesPerformanceService;
+import com.company.crm.ai.service.SalesCoachingService;
+import com.company.crm.ai.service.DuplicateDetectionService;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 import com.company.crm.ai.privacy.AiPrivacyService;
 import com.company.crm.ai.dto.AiDtos.*;
 import com.company.crm.ai.llm.LlmGateway;
@@ -37,6 +55,8 @@ public class AiController {
     private static final String LEAD_ROLES =
             "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'MARKETING_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')";
     private static final String FORECAST_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')";
+    private static final String DATA_QUALITY_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')";
+    private static final String CHURN_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')";
     private static final String WRITER_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'SERVICE_AGENT', 'MARKETING_EXECUTIVE')";
 
     private final LeadScoringService leadScoring;
@@ -48,6 +68,16 @@ public class AiController {
     private final AiQuotationDraftService quotationDrafts;
     private final PriceRecommendationService priceRecommendations;
     private final AiLatency latency;
+    private final DealProbabilityService dealProbabilities;
+    private final ProductRecommendationService productRecommendations;
+    private final ContactTimeService contactTimes;
+    private final SalesCoachService salesCoach;
+    private final AiContentService content;
+    private final ChurnRiskService churnRisk;
+    private final SentimentTrendService sentimentTrends;
+    private final SalesPerformanceService salesPerformance;
+    private final SalesCoachingService salesCoaching;
+    private final DuplicateDetectionService duplicates;
 
     @GetMapping("/status")
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
@@ -55,6 +85,7 @@ public class AiController {
     public Response<Map<String, Object>> status(@AuthenticationPrincipal User currentUser) {
         AiPrivacyService.AiSettings settings = privacy.settings(currentUser);
         return Response.ok(Map.of("llmConfigured", llm.isConfigured() && settings.aiEnabled(), "providerConfigured", llm.isConfigured(),
+                "provider", Objects.requireNonNullElse(llm.provider(), "none"),
                 "aiEnabled", settings.aiEnabled(), "messageContent", settings.messageContent(), "policy", AiPrivacyService.POLICY));
     }
 
@@ -107,6 +138,38 @@ public class AiController {
         return Response.ok(latency.time("price_recommendation", AiLatency.Kind.STATISTICAL, () -> priceRecommendations.recommend(currentUser, req)));
     }
 
+    @GetMapping("/deal-probabilities")
+    @PreAuthorize(FORECAST_ROLES)
+    @Operation(summary = "FR-AI-2.2: close probability of each open deal I can see (likeliest first), or one deal, with the reasons")
+    public Response<List<DealProbability>> dealProbabilities(@AuthenticationPrincipal User currentUser,
+                                                             @RequestParam(required = false) Long opportunityId) {
+        return Response.ok(latency.time("deal_probability", AiLatency.Kind.STATISTICAL, () -> opportunityId != null
+                ? List.of(dealProbabilities.probability(currentUser, opportunityId)) : dealProbabilities.probabilities(currentUser)));
+    }
+
+    @GetMapping("/product-recommendations")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'MARKETING_EXECUTIVE', 'EXECUTIVE_OWNER')")
+    @Operation(summary = "FR-AI-3.1: complementary, next and re-order products for a customer from purchase history, with the reasons")
+    public Response<ProductRecs> productRecommendations(@AuthenticationPrincipal User currentUser, @RequestParam Long customerId) {
+        return Response.ok(latency.time("product_recommendation", AiLatency.Kind.STATISTICAL,
+                () -> productRecommendations.recommend(currentUser, customerId)));
+    }
+
+    @GetMapping("/contact-time")
+    @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
+    @Operation(summary = "FR-AI-3.2: the best weekday/time windows to contact a customer or lead, from when they have engaged")
+    public Response<ContactTime> contactTime(@AuthenticationPrincipal User currentUser, @RequestParam(required = false) Long customerId,
+                                             @RequestParam(required = false) Long leadId) {
+        return Response.ok(latency.time("contact_time", AiLatency.Kind.STATISTICAL, () -> contactTimes.bestTime(currentUser, customerId, leadId)));
+    }
+
+    @PostMapping("/talking-points")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "FR-AI-3.3: a suggested sales approach — talking points, questions, objections — for a customer, lead or deal")
+    public Response<SalesApproach> talkingPoints(@AuthenticationPrincipal User currentUser, @RequestBody TalkingPointsReq req) {
+        return Response.ok(latency.time("talking_points", AiLatency.Kind.GENERATIVE, () -> salesCoach.talkingPoints(currentUser, req)));
+    }
+
     @GetMapping("/performance")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @Operation(summary = "NFR-7.1c: response times of each AI feature on this server (p50/p95) against their 2 s / 8 s budgets")
@@ -136,7 +199,8 @@ public class AiController {
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
     @Operation(summary = "FR-AI-4: ask a question about the CRM in plain language; answer + recommended action")
     public Response<ChatRes> chat(@AuthenticationPrincipal User currentUser, @Valid @RequestBody ChatReq dto) {
-        return Response.ok(latency.time("assistant_chat", AiLatency.Kind.GENERATIVE, () -> assistant.ask(currentUser, dto.getQuestion().trim())));
+        return Response.ok(latency.time("assistant_chat", AiLatency.Kind.GENERATIVE,
+                () -> assistant.ask(currentUser, dto.getQuestion().trim(), dto.getHistory())));
     }
 
     @PostMapping("/generate-email")
@@ -144,6 +208,82 @@ public class AiController {
     @Operation(summary = "FR-AI-5: draft an email, WhatsApp or SMS for a customer, lead or deal (not sent)")
     public Response<GeneratedMessage> generateEmail(@AuthenticationPrincipal User currentUser, @Valid @RequestBody GenerateReq dto) {
         return Response.ok(latency.time("message_writing", AiLatency.Kind.GENERATIVE, () -> writing.generate(currentUser, dto)));
+    }
+
+    @PostMapping("/campaign-copy")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MARKETING_EXECUTIVE')")
+    @Operation(summary = "FR-AI-5.3: draft the message of an email, SMS or WhatsApp campaign for its audience (not saved)")
+    public Response<AiContentService.CampaignCopy> campaignCopy(@AuthenticationPrincipal User currentUser,
+                                                                @Valid @RequestBody AiContentService.CampaignCopyReq req) {
+        return Response.ok(latency.time("campaign_copy", AiLatency.Kind.GENERATIVE, () -> content.campaignCopy(currentUser, req)));
+    }
+
+    @PostMapping("/proposal")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')")
+    @Operation(summary = "FR-AI-5.3: draft proposal text for a deal from its quotation (not saved)")
+    public Response<AiContentService.Proposal> proposal(@AuthenticationPrincipal User currentUser,
+                                                        @Valid @RequestBody AiContentService.ProposalReq req) {
+        return Response.ok(latency.time("proposal_writing", AiLatency.Kind.GENERATIVE, () -> content.proposal(currentUser, req)));
+    }
+
+    @GetMapping("/churn-risk")
+    @PreAuthorize(CHURN_ROLES)
+    @Operation(summary = "FR-AI-6.2: a customer's churn risk now (low/medium/high, 0–100) and the reasons")
+    public Response<ChurnRiskService.ChurnRisk> churnRisk(@AuthenticationPrincipal User currentUser, @RequestParam Long customerId) {
+        return Response.ok(latency.time("churn_risk", AiLatency.Kind.STATISTICAL, () -> churnRisk.assess(currentUser, customerId)));
+    }
+
+    @GetMapping("/churn-risks")
+    @PreAuthorize(CHURN_ROLES)
+    @Operation(summary = "FR-AI-6.2: customers I can see at risk of churning (level=medium|high), riskiest first")
+    public Response<List<ChurnRiskService.ChurnRisk>> churnRisks(@AuthenticationPrincipal User currentUser,
+                                                                @RequestParam(defaultValue = "medium") String level) {
+        return Response.ok(latency.time("churn_risks", AiLatency.Kind.STATISTICAL, () -> churnRisk.atRisk(currentUser, level)));
+    }
+
+    @GetMapping("/sales-performance")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')")
+    @Operation(summary = "FR-AI-8.1: each salesperson's activity and conversion (default last 90 days), against the team median and the previous period")
+    public Response<SalesPerformanceService.PerformanceReport> salesPerformance(@AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return Response.ok(latency.time("sales_performance", AiLatency.Kind.STATISTICAL, () -> salesPerformance.analyse(currentUser, userId, from, to)));
+    }
+
+    @PostMapping("/sales-coaching")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')")
+    @Operation(summary = "FR-AI-8.2: personal coaching for a salesperson (me by default) from their activity and conversion")
+    public Response<SalesCoachingService.Coaching> salesCoaching(@AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return Response.ok(latency.time("sales_coaching", AiLatency.Kind.GENERATIVE, () -> salesCoaching.coach(currentUser, userId, from, to)));
+    }
+
+    @GetMapping("/duplicates/customers")
+    @PreAuthorize(DATA_QUALITY_ROLES)
+    @Operation(summary = "FR-AI-9.1: probable duplicate customers I can see — pairs with a score, likely/possible, and the reasons")
+    public Response<List<DuplicateDetectionService.DuplicatePair>> duplicateCustomers(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(latency.time("duplicate_customers", AiLatency.Kind.STATISTICAL, () -> duplicates.customers(currentUser)));
+    }
+
+    public record DismissReq(Long firstId, Long secondId) {}
+
+    @PostMapping("/duplicates/customers/dismiss")
+    @PreAuthorize(DATA_QUALITY_ROLES)
+    @Operation(summary = "FR-AI-9.1: mark a suggested pair as not duplicates, so it isn't suggested again")
+    public Response<Void> dismissDuplicate(@AuthenticationPrincipal User currentUser, @RequestBody DismissReq req) {
+        duplicates.dismiss(currentUser, req.firstId(), req.secondId());
+        return Response.ok("Marked as not duplicates", null);
+    }
+
+    @GetMapping("/sentiment-trend")
+    @PreAuthorize(CHURN_ROLES)
+    @Operation(summary = "FR-AI-6.3: a customer's sentiment month by month (positive/neutral/negative, average) and whether it is improving")
+    public Response<SentimentTrendService.SentimentTrend> sentimentTrend(@AuthenticationPrincipal User currentUser, @RequestParam Long customerId,
+                                                                         @RequestParam(required = false) Integer months) {
+        return Response.ok(latency.time("sentiment_trend", AiLatency.Kind.STATISTICAL, () -> sentimentTrends.trend(currentUser, customerId, months)));
     }
 
     @PostMapping("/sentiment")

@@ -1,5 +1,6 @@
 package com.company.crm.lead.entity;
 
+import java.math.BigDecimal;
 import com.company.crm.common.crypto.BlindIndexed;
 import com.company.crm.common.crypto.DataEncryption;
 import com.company.crm.common.crypto.EncryptedString;
@@ -97,6 +98,20 @@ public class Lead implements BlindIndexed {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campaign_id")
     private Campaign campaign;
+
+    /** FR-AI-1.1: what the lead expects to spend (optional) — a scoring factor. */
+    @Column(name = "budget", precision = 14, scale = 2)
+    private BigDecimal budget;
+
+    /** FR-AI-1.2/1.3: the latest AI score (0–100) and label, refreshed by LeadScoringService. */
+    @Column(name = "ai_score")
+    private Integer aiScore;
+
+    @Column(name = "ai_score_label", length = 10)
+    private String aiScoreLabel;
+
+    @Column(name = "ai_scored_at")
+    private LocalDateTime aiScoredAt;
 
     /** SEC-6: never send this lead's data to the AI provider. */
     @Column(name = "ai_excluded", nullable = false)

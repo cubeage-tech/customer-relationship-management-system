@@ -236,7 +236,7 @@ class ApiPrivacyEditionsIntegrationTest extends PostgresIntegrationTest {
                 + "\"source\":\"website\",\"ownerId\":" + exec.getId() + "}"));
         send(put("/api/ai/exclusions/lead/" + lead), adminToken, "{\"excluded\":true}").andExpect(status().isOk());
         when(llm.structured(anyString(), anyString(), eq(ChatPlan.class)))
-                .thenReturn(Optional.of(new ChatPlan("leads", null, null, null, null, null, null, null)));
+                .thenReturn(Optional.of(new ChatPlan("leads", null, null, null, null, null, null, null, null, null)));
         when(llm.structured(anyString(), anyString(), eq(ChatWording.class))).thenReturn(Optional.of(new ChatWording("One lead.", null)));
 
         send(post("/api/ai/chat"), adminToken, "{\"question\":\"Show my leads\"}")

@@ -1,4 +1,10 @@
 import { useEffect, useState } from 'react';
+import ContactTimeCard from '../../components/ai/ContactTimeCard';
+import TalkingPointsCard from '../../components/ai/TalkingPointsCard';
+import ChurnRiskCard from '../../components/ai/ChurnRiskCard';
+import TasksPanel from '../../components/task/TasksPanel';
+import SentimentTrendCard from '../../components/ai/SentimentTrendCard';
+import ProductSuggestions from '../../components/customer/ProductSuggestions';
 import OfferSuggestions from '../../components/customer/OfferSuggestions';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
@@ -444,6 +450,16 @@ const CustomerDetail = () => {
       {/* SEC-6 */}
       <AiExclusionToggle recordType="customer" recordId={customer.id} canEdit={canEdit} />
 
+      {/* FR-AI-6.2 */}
+      <ChurnRiskCard customerId={customer.id} />
+      {/* FR-AI-6.3 */}
+      <SentimentTrendCard customerId={customer.id} />
+      {/* FR-AI-3.1: products to offer next */}
+      <ProductSuggestions customerId={customer.id} />
+      {/* FR-AI-3.2 / 3.3 */}
+      <ContactTimeCard customerId={customer.id} />
+      <TalkingPointsCard customerId={customer.id} />
+
       {/* FR-7.7: offers that suit this customer */}
       <OfferSuggestions customerId={customer.id} />
 
@@ -453,6 +469,8 @@ const CustomerDetail = () => {
       {/* ARC-9: industry-specific fields */}
       <div className="mb-6"><CustomFieldsPanel entityType="customer" recordId={customer.id} canEdit={canEdit} reloadKey={customer.industry} /></div>
 
+      {/* FR-AI-7.3 */}
+      <div className="mt-6"><TasksPanel customerId={customer.id} canEdit={canEdit} /></div>
       <MeetingsPanel customerId={customer.id} />
 
       <CommunicationTimeline customerId={customer.id} defaultEmail={customer.email || ''} defaultPhone={customer.phone || ''} />

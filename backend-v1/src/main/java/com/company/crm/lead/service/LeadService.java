@@ -1,5 +1,6 @@
 package com.company.crm.lead.service;
 
+import com.company.crm.lead.event.LeadChangedEvent;
 import com.company.crm.common.pagination.PageRequestFactory;
 import com.company.crm.common.pagination.PageResponse;
 import com.company.crm.common.scope.ScopeSpecifications;
@@ -71,8 +72,15 @@ public class LeadService {
     @Transactional(readOnly = true)
     public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search,
                                       Long ownerId) {
+        return listLeads(currentUser, stage, source, industry, search, ownerId, null, null);
+    }
+
+    /** FR-AI-1.3: also by AI score — at least {@code minScore}, or one label (High / Medium / Low). */
+    @Transactional(readOnly = true)
+    public List<LeadResDto> listLeads(User currentUser, String stage, String source, String industry, String search,
+                                      Long ownerId, Integer minScore, String scoreLabel) {
         // NFR-7.1b: filtered in the database rather than in memory.
-        return leadRepository.findAll(filters(currentUser, stage, source, industry, search, ownerId), LIST_ORDER).stream()
+        return leadRepository.findAll(filters(currentUser, stage, source, industry, search, ownerId, minScore, scoreLabel), LIST_ORDER).stream()
                 .map(leadMapper::toDto)
                 .toList();
     }
@@ -98,6 +106,7 @@ public class LeadService {
         }
         Lead saved = leadRepository.save(lead);
         announceAssignment(currentUser, null, saved);
+        eventPublisher.publishEvent(new LeadChangedEvent(saved.getTenant().getId(), saved.getId())); // FR-AI-1.2
         return leadMapper.toDto(saved);
     }
 
@@ -109,6 +118,7 @@ public class LeadService {
         applyFields(currentUser, lead, dto);
         Lead saved = leadRepository.save(lead);
         announceAssignment(currentUser, previousOwnerId, saved);
+        eventPublisher.publishEvent(new LeadChangedEvent(saved.getTenant().getId(), saved.getId())); // FR-AI-1.2
         return leadMapper.toDto(saved);
     }
 
@@ -154,7 +164,9 @@ public class LeadService {
             opportunityService.createFromLeadConversion(lead, customer);
         }
 
-        return leadMapper.toDto(leadRepository.save(lead));
+        Lead saved = leadRepository.save(lead);
+        eventPublisher.publishEvent(new LeadChangedEvent(saved.getTenant().getId(), saved.getId())); // FR-AI-1.2
+        return leadMapper.toDto(saved);
     }
 
     /** FR-2.3/LEADS_ASSIGN: reassigning ownership is restricted to admin/sales_manager at the controller. */
@@ -229,6 +241,7 @@ public class LeadService {
         }
         lead.setFollowUpDate(dto.getFollowUpDate());
         lead.setNotes(dto.getNotes());
+        lead.setBudget(dto.getBudget());
         lead.setCampaign(dto.getCampaignId() != null ? resolveCampaign(currentUser, dto.getCampaignId()) : null);
 
         // sales_executive may work a lead without reassigning it — only honor an
@@ -298,19 +311,20 @@ public class LeadService {
     /** NFR-7.1b: one page of the same list (opt-in via page/size); newest first unless {@code sort} says otherwise. */
     @Transactional(readOnly = true)
     public PageResponse<LeadResDto> listLeadsPage(User currentUser, String stage, String source, String industry, String search,
-                                                  Long ownerId, Integer page, Integer size, String sort) {
+                                                  Long ownerId, Integer minScore, String scoreLabel, Integer page, Integer size, String sort) {
         Pageable pageable = pageRequestFactory.of(page, size, sort, SORTABLE_FIELDS, PAGE_ORDER);
-        return PageResponse.of(leadRepository.findAll(filters(currentUser, stage, source, industry, search, ownerId), pageable),
-                leadMapper::toDto);
+        return PageResponse.of(leadRepository.findAll(filters(currentUser, stage, source, industry, search, ownerId, minScore, scoreLabel),
+                pageable), leadMapper::toDto);
     }
 
     private static final Sort LIST_ORDER = Sort.by(Sort.Direction.ASC, "id");
     private static final Sort PAGE_ORDER = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
     private static final Map<String, String> SORTABLE_FIELDS = Map.of("createdAt", "createdAt", "leadName", "leadName",
-            "companyName", "companyName", "followUpDate", "followUpDate", "stage", "stage");
+            "companyName", "companyName", "followUpDate", "followUpDate", "stage", "stage", "aiScore", "aiScore");
 
     /** Tenant, data scope (FR-2.3 incl. managed teams), then the optional filters — FR-2.7 owner within the scope. */
-    private Specification<Lead> filters(User currentUser, String stage, String source, String industry, String search, Long ownerId) {
+    private Specification<Lead> filters(User currentUser, String stage, String source, String industry, String search, Long ownerId,
+                                        Integer minScore, String scoreLabel) {
         DataScope scope = dataScopeResolver.resolve(currentUser);
         Specification<Lead> spec = ScopeSpecifications.inTenant(requireTenantId(currentUser));
         return spec.and(LeadSpecifications.visible(scope, scope.isTenantWide() ? List.of() : dataScopeResolver.managedTeamIds(currentUser)))
@@ -318,7 +332,9 @@ public class LeadService {
                 .and(ScopeSpecifications.hasEnum("source", source, LeadSource.class, LeadSource::getDbValue))
                 .and(ScopeSpecifications.hasEnum("industry", industry, IndustryType.class, IndustryType::getDbValue))
                 .and(LeadSpecifications.matches(search))
-                .and(ScopeSpecifications.ownedBy(ownerId));
+                .and(ScopeSpecifications.ownedBy(ownerId))
+                .and(LeadSpecifications.scoreAtLeast(minScore))
+                .and(ScopeSpecifications.hasValue("aiScoreLabel", scoreLabel));
     }
 
     /** Dashboard counts, aggregated in the database within the caller's data scope. */

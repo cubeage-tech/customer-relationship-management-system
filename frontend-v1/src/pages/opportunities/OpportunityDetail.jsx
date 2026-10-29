@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import TalkingPointsCard from '../../components/ai/TalkingPointsCard';
+import ProposalCard from '../../components/ai/ProposalCard';
+import TasksPanel from '../../components/task/TasksPanel';
+import DealProbabilityCard from '../../components/ai/DealProbabilityCard';
 import { useParams, Link } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
@@ -150,6 +154,15 @@ const OpportunityDetail = () => {
         {opportunity.stage === OPPORTUNITY_STAGES.LOST && opportunity.lossReason && (
           <p className="mt-3 text-sm text-red-600">Loss reason: {opportunity.lossReason}</p>
         )}
+
+        {/* FR-AI-2.2 */}
+        <div className="mt-4"><DealProbabilityCard opportunityId={opportunity.id} reloadKey={`${opportunity.stage}:${opportunity.dealValue}`} /></div>
+        {/* FR-AI-3.3 */}
+        <TalkingPointsCard opportunityId={opportunity.id} />
+        {/* FR-AI-5.3 */}
+        <ProposalCard opportunityId={opportunity.id} />
+        {/* FR-AI-7.3 */}
+        <TasksPanel opportunityId={opportunity.id} />
 
         {opportunity.leadId && (
           <p className="mt-3 text-sm text-slate-500">

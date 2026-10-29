@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import ScoreBadge from '../../components/ai/ScoreBadge';
+import ForecastPanel from '../../components/ai/ForecastPanel';
+import { useDealProbabilities } from '../../core/hooks/useDealProbabilities';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Building2, CalendarDays, CheckCircle2, CircleAlert, CircleDollarSign, Plus, Search, Target, Trash2, UserRound, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
@@ -66,6 +69,9 @@ const Opportunities = () => {
   };
 
   // `background` = an automatic poll: a failed poll keeps what is on screen instead of emptying it.
+  // FR-AI-2.2: each open deal's chance — fetched again only when the deals or their stages change.
+  const chances = useDealProbabilities(opportunities.map((o) => `${o.id}:${o.stage}:${o.dealValue}`).join(','));
+
   const refresh = (background = false) => {
     listOpportunities({ stage: stageFilter, search })
       .then((data) => setOpportunities(data ?? []))
@@ -189,6 +195,9 @@ const Opportunities = () => {
           )
         }
       />
+
+      {/* FR-AI-2.1 / 2.3 */}
+      {can(PERMISSIONS.OPPORTUNITIES_VIEW) && <ForecastPanel />}
 
       {/* FR-3.3: cumulative deal value per stage */}
       {summary.length > 0 && (
@@ -314,6 +323,7 @@ const Opportunities = () => {
         ) : view === 'board' ? (
           <OpportunityBoard
             opportunities={opportunities}
+            chances={chances}
             stages={stageFilter ? boardStages.filter((o) => o.value === stageFilter) : boardStages}
             stageOptionsFor={stageOptionsFor}
             canEdit={canEdit}
@@ -323,7 +333,7 @@ const Opportunities = () => {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr><th className="px-5 py-3 font-semibold">Customer</th><th className="px-4 py-3 font-semibold">Product / service</th><th className="px-4 py-3 font-semibold">Value</th><th className="px-4 py-3 font-semibold">Expected close</th><th className="px-4 py-3 font-semibold">Stage</th><th className="px-4 py-3 font-semibold">Owner</th>{canDelete && <th className="px-4 py-3" aria-label="Actions" />}</tr>
+                <tr><th className="px-5 py-3 font-semibold">Customer</th><th className="px-4 py-3 font-semibold">Product / service</th><th className="px-4 py-3 font-semibold">Value</th><th className="px-4 py-3 font-semibold">Expected close</th><th className="px-4 py-3 font-semibold">Stage</th><th className="px-4 py-3 font-semibold">Chance to win</th><th className="px-4 py-3 font-semibold">Owner</th>{canDelete && <th className="px-4 py-3" aria-label="Actions" />}</tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {opportunities.map((o) => (
@@ -333,6 +343,7 @@ const Opportunities = () => {
                     <td className="px-4 py-3.5 font-semibold text-slate-800">{formatCurrency(o.dealValue)}</td>
                     <td className="px-4 py-3.5 text-slate-600">{o.expectedClosingDate ? new Date(o.expectedClosingDate).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-3.5">{canEdit ? <select value={o.stage} onChange={(e) => handleStageChange(o, e.target.value)} className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20">{stageOptionsFor(o.stage).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : <span className="inline-flex rounded-full bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">{stageLabel(o.stage)}</span>}</td>
+                    <td className="px-4 py-3.5"><ScoreBadge value={chances[o.id]?.percent} suffix="%" label={chances[o.id]?.label} /></td>
                     <td className="px-4 py-3.5 text-slate-600">{o.ownerName || '—'}</td>
                     {canDelete && <td className="px-4 py-3.5 text-right"><button type="button" onClick={() => handleDelete(o)} className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><Trash2 size={14} />Delete</button></td>}
                   </tr>

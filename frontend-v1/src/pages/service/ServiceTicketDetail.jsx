@@ -22,6 +22,8 @@ import {
   claimTicket,
 } from '../../core/services/serviceTicket.service';
 import { listUsers } from '../../core/services/user.service';
+import { analyseSentiment } from '../../core/services/ai.service';
+import SentimentBadge from '../../components/ai/SentimentBadge';
 import { apiErrorMessage } from '../../core/utils/apiError';
 
 const SLA_BADGE_CLASS = {
@@ -42,6 +44,21 @@ const ServiceTicketDetail = () => {
   const [technicians, setTechnicians] = useState([]);
   const [actionError, setActionError] = useState('');
   const [feedbackForm, setFeedbackForm] = useState({ score: 5, comment: '' });
+  const [checkingSentiment, setCheckingSentiment] = useState(false);
+
+  // FR-AI-6.1: classify the customer's review on request (stored on the ticket).
+  const checkSentiment = async () => {
+    setCheckingSentiment(true);
+    setActionError('');
+    try {
+      await analyseSentiment({ ticketId: ticket.id });
+      refresh();
+    } catch (err) {
+      setActionError(apiErrorMessage(err, 'Could not check the sentiment.'));
+    } finally {
+      setCheckingSentiment(false);
+    }
+  };
 
   const refresh = () => {
     getTicket(id)
@@ -214,7 +231,17 @@ const ServiceTicketDetail = () => {
         <h2 className="font-semibold text-slate-900 mb-3">Customer feedback</h2>
         {ticket.feedbackScore ? (
           <div className="text-sm">
-            <p className="font-medium">{ticket.feedbackScore} / 5{ticket.technicianName ? ` for ${ticket.technicianName}` : ''}</p>
+            <p className="flex flex-wrap items-center gap-2 font-medium">
+              {ticket.feedbackScore} / 5{ticket.technicianName ? ` for ${ticket.technicianName}` : ''}
+              <SentimentBadge sentiment={ticket.feedbackSentiment} />
+              {ticket.feedbackComment && !ticket.feedbackSentiment && (
+                <button type="button" onClick={checkSentiment} disabled={checkingSentiment}
+                  className="text-xs font-normal text-primary hover:underline disabled:opacity-50">
+                  {checkingSentiment ? 'Checking…' : 'Check sentiment'}
+                </button>
+              )}
+            </p>
+            {ticket.feedbackSentiment?.reason && <p className="text-xs text-slate-500 mt-1">AI: {ticket.feedbackSentiment.reason}</p>}
             {ticket.feedbackComment && <p className="text-slate-600 mt-1">{ticket.feedbackComment}</p>}
             {ticket.feedbackAt && <p className="text-xs text-slate-400 mt-1">{new Date(ticket.feedbackAt).toLocaleString()}</p>}
           </div>

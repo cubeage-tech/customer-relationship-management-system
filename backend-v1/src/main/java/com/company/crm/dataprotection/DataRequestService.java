@@ -1,5 +1,7 @@
 package com.company.crm.dataprotection;
 
+import com.company.crm.common.crypto.DataEncryption;
+import com.company.crm.ai.service.MeetingSummaryService;
 import com.company.crm.common.audit.AuditAction;
 import com.company.crm.common.audit.AuditService;
 import com.company.crm.common.enums.CustomerStatus;
@@ -175,6 +177,12 @@ public class DataRequestService {
         out.put("serviceRequests", rows("SELECT subject, description, priority, status, created_at, resolved_at, feedback_score, feedback_comment, reporter_email"
                 + " FROM service_tickets WHERE tenant_id = ? AND customer_id = ? ORDER BY created_at", admin, id));
         out.put("documents", rows("SELECT file_name, content_type, size_bytes, created_at FROM customer_documents WHERE tenant_id = ? AND customer_id = ? ORDER BY created_at", admin, id));
+        // FR-AI-7.1: which meetings were recorded and the consent given (the audio itself is available on request)
+        out.put("meetingTranscripts", jdbc.query("SELECT title, starts_at, transcript FROM meetings WHERE tenant_id = ? AND customer_id = ? "
+                        + "AND transcript IS NOT NULL ORDER BY starts_at", (rs, i) -> Map.of("meeting", rs.getString(1), "startsAt", rs.getTimestamp(2).toString(),
+                        "transcript", DataEncryption.get().decrypt(rs.getString(3))), tenantId(admin), id)); // FR-AI-7.2
+        out.put("meetingRecordings", rows("SELECT m.title AS meeting, r.duration_seconds, r.consent_given_by, r.consent_method, r.consent_at, r.created_at"
+                + " FROM meeting_recordings r JOIN meetings m ON m.id = r.meeting_id WHERE r.tenant_id = ? AND m.customer_id = ? ORDER BY r.created_at", admin, id));
         out.put("industryDetails", customFields(admin, "customer", id));
         return out;
     }
@@ -251,6 +259,8 @@ public class DataRequestService {
         int messages = jdbc.update("UPDATE communication_logs SET subject = NULL, body = '[erased]', counterpart = NULL, counterpart_hash = NULL,"
                 + " error_message = NULL WHERE tenant_id = ? AND customer_id = ?", tenantId, id);
         jdbc.update("UPDATE meetings SET title = 'Meeting', location = NULL, notes = NULL WHERE tenant_id = ? AND customer_id = ?", tenantId, id);
+        MeetingSummaryService.clear(jdbc, "tenant_id = ? AND customer_id = ?", tenantId, id); // FR-AI-7.2
+        jdbc.update("UPDATE follow_up_tasks SET title = 'Follow-up', notes = NULL WHERE tenant_id = ? AND customer_id = ?", tenantId, id); // FR-AI-7.3
         jdbc.update("UPDATE service_tickets SET description = NULL, feedback_comment = NULL, reporter_email = NULL WHERE tenant_id = ? AND customer_id = ?",
                 tenantId, id);
         jdbc.update("UPDATE quotations SET customer_response_comment = NULL WHERE tenant_id = ? AND customer_id = ?", tenantId, id);
@@ -264,6 +274,7 @@ public class DataRequestService {
                         + " AND entity_id IN (SELECT id FROM service_tickets WHERE customer_id = ?)",
                 "DELETE FROM attachments WHERE tenant_id = ? AND entity_type = 'service_ticket' AND entity_id IN (SELECT id FROM service_tickets WHERE customer_id = ?)",
                 tenantId, id);
+        documents += eraseRecordings(tenantId, "customer_id", id); // FR-AI-7.1
         // The leads this customer came from hold the same person's details.
         List<Long> leads = jdbc.queryForList("SELECT id FROM leads WHERE tenant_id = ? AND converted_customer_id = ?", Long.class, tenantId, id);
         leads.forEach(leadId -> eraseLeadData(tenantId, leadId));
@@ -289,10 +300,20 @@ public class DataRequestService {
         int messages = jdbc.update("UPDATE communication_logs SET subject = NULL, body = '[erased]', counterpart = NULL, counterpart_hash = NULL,"
                 + " error_message = NULL WHERE tenant_id = ? AND lead_id = ?", tenantId, leadId);
         jdbc.update("UPDATE meetings SET title = 'Meeting', location = NULL, notes = NULL WHERE tenant_id = ? AND lead_id = ?", tenantId, leadId);
+        MeetingSummaryService.clear(jdbc, "tenant_id = ? AND lead_id = ?", tenantId, leadId); // FR-AI-7.2
+        jdbc.update("UPDATE follow_up_tasks SET title = 'Follow-up', notes = NULL WHERE tenant_id = ? AND lead_id = ?", tenantId, leadId); // FR-AI-7.3
         jdbc.update("DELETE FROM custom_field_values WHERE tenant_id = ? AND entity_type = 'lead' AND record_id = ?", tenantId, leadId);
+        eraseRecordings(tenantId, "lead_id", leadId); // FR-AI-7.1
         jdbc.update("UPDATE notification_deliveries SET recipient_name = ? WHERE tenant_id = ? AND recipient_type = 'lead' AND recipient_id = ?",
                 "Erased lead #" + leadId, tenantId, leadId);
         return messages;
+    }
+
+    /** FR-AI-7.1: the audio of every recorded meeting with the customer or lead ({@code column} is a fixed name). */
+    private int eraseRecordings(Long tenantId, String column, Long id) {
+        String meetings = "(SELECT id FROM meetings WHERE tenant_id = ? AND " + column + " = ?)";
+        return deleteFiles("SELECT storage_key FROM meeting_recordings WHERE meeting_id IN " + meetings,
+                "DELETE FROM meeting_recordings WHERE meeting_id IN " + meetings, tenantId, id);
     }
 
     /** Deletes the stored files (a missing file is fine) and then their rows. */

@@ -1,5 +1,6 @@
 package com.company.crm.lead.dto.response;
 
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -27,4 +28,9 @@ public class LeadResDto {
     /** FR-2.3: assigned sales team, if any. */
     private Long teamId;
     private String teamName;
+    /** FR-AI-1.1 */
+    private BigDecimal budget;
+    /** FR-AI-1.2: latest AI score and Low/Medium/High label (null until first scored). */
+    private Integer aiScore;
+    private String aiScoreLabel;
 }

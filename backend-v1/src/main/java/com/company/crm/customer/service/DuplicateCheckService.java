@@ -1,5 +1,6 @@
 package com.company.crm.customer.service;
 
+import com.company.crm.ai.service.DuplicateDetectionService;
 import com.company.crm.common.crypto.DataEncryption;
 import com.company.crm.common.exception.ApiException;
 import com.company.crm.common.scope.DataScope;
@@ -20,7 +21,8 @@ import java.util.regex.Pattern;
 /**
  * VAL-1/VAL-3: before a customer, lead or contact is saved, the records of the same tenant that look
  * like the same company or person — the same email (customers, contacts and leads) or the same
- * company name once case, punctuation and suffixes like "Pvt Ltd" are ignored. It is a warning,
+ * company name once case, punctuation and suffixes like "Pvt Ltd" are ignored, or (FR-AI-9.1) a
+ * near-identical customer name. It is a warning,
  * not a block. A match the user may not open shows only that it exists, not whose it is.
  */
 @Service
@@ -40,6 +42,7 @@ public class DuplicateCheckService {
     private final JdbcTemplate jdbc;
     private final DataEncryption encryption;
     private final DataScopeResolver dataScopeResolver;
+    private final DuplicateDetectionService detection;
 
     /** What is being saved: type customer | lead | contact; {@code excludeId} is the record being edited. */
     public record CheckReq(String type, String companyName, String email, Long excludeId) {}
@@ -80,6 +83,8 @@ public class DuplicateCheckService {
             add(matches, scope, "company name", jdbc.queryForList("SELECT 'lead' AS type, id, lead_name || ' (' || company_name || ')' AS name, owner_id "
                     + "FROM leads WHERE tenant_id = ? AND erased_at IS NULL AND converted_customer_id IS NULL AND id <> ? AND "
                     + NAME_SQL.formatted("company_name") + " = ?", tenantId, exclude(req, type, "lead"), name));
+            // FR-AI-9.1: near-identical customer names too ("Acme Industrie" for "Acme Industries")
+            add(matches, scope, "similar company name", detection.similarNames(tenantId, req.companyName(), exclude(req, type, "customer")));
         }
         return new ArrayList<>(matches.values()).subList(0, Math.min(MAX_MATCHES, matches.size()));
     }

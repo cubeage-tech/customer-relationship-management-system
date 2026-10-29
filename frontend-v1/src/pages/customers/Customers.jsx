@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, Building2, CheckCircle2, CircleAlert, Mail, Phone, Plus, RotateCcw, Search, Users, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
+import AtRiskCustomers from '../../components/ai/AtRiskCustomers';
+import DuplicateCustomers from '../../components/ai/DuplicateCustomers';
+import { USER_ROLES } from '../../core/constants/app.constant';
 import Button from '../../components/common/Button';
 import DuplicateWarning from '../../components/common/DuplicateWarning';
 import { duplicateConfirmText, useDuplicateCheck } from '../../core/hooks/useDuplicateCheck';
@@ -23,7 +26,7 @@ const INITIAL_FORM = { companyName: '', industry: '', email: '', phone: '' };
 const PAGE_SIZE = 100;
 
 const Customers = () => {
-  const { can, scopeFor } = usePermissions();
+  const { can, scopeFor, is } = usePermissions();
   const canCreate = can(PERMISSIONS.CUSTOMERS_CREATE);
   const canArchive = can(PERMISSIONS.CUSTOMERS_DELETE);
   const { options: industryOptions, labelOf: industryLabel } = useIndustries();
@@ -143,6 +146,11 @@ const Customers = () => {
           )
         }
       />
+
+      {/* FR-AI-6.2 */}
+      <AtRiskCustomers />
+      {/* FR-AI-9.1 */}
+      {is([USER_ROLES.ADMIN, USER_ROLES.SALES_MANAGER, USER_ROLES.SALES_EXECUTIVE]) && <DuplicateCustomers />}
 
       {canCreate && showForm && (
         <div

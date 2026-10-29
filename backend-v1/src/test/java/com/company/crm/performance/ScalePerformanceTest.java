@@ -63,6 +63,7 @@ class ScalePerformanceTest extends PostgresIntegrationTest {
             calls.put("AI: offer recommendations", get("/api/customers/" + customer + "/offer-recommendations"));
             calls.put("AI: lead scores (all 50,000)", get("/api/ai/lead-score").param("minScore", "70"));
             calls.put("AI: forecast", get("/api/ai/forecast"));
+            calls.put("AI: deal probabilities (all open deals)", get("/api/ai/deal-probabilities"));
 
             Map<String, Long> timings = new LinkedHashMap<>();
             for (Map.Entry<String, MockHttpServletRequestBuilder> call : calls.entrySet()) {
