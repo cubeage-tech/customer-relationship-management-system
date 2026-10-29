@@ -113,5 +113,8 @@ public enum AuditAction {
 
     // FR-AI-8.3: coaching shared between a salesperson and their manager
     COACHING_SHARED,
-    COACHING_ACKNOWLEDGED
+    COACHING_ACKNOWLEDGED,
+
+    // FR-AI-9.1: a suggested duplicate pair was confirmed as two different records
+    DUPLICATE_DISMISSED
 }

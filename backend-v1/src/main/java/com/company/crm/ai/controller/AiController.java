@@ -19,6 +19,7 @@ import com.company.crm.ai.service.ChurnRiskService;
 import com.company.crm.ai.service.SentimentTrendService;
 import com.company.crm.ai.service.SalesPerformanceService;
 import com.company.crm.ai.service.SalesCoachingService;
+import com.company.crm.ai.service.DuplicateDetectionService;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import com.company.crm.ai.privacy.AiPrivacyService;
@@ -54,6 +55,7 @@ public class AiController {
     private static final String LEAD_ROLES =
             "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'MARKETING_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')";
     private static final String FORECAST_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'FINANCE_APPROVER', 'EXECUTIVE_OWNER')";
+    private static final String DATA_QUALITY_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE')";
     private static final String CHURN_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'EXECUTIVE_OWNER')";
     private static final String WRITER_ROLES = "hasAnyRole('ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'SERVICE_AGENT', 'MARKETING_EXECUTIVE')";
 
@@ -75,6 +77,7 @@ public class AiController {
     private final SentimentTrendService sentimentTrends;
     private final SalesPerformanceService salesPerformance;
     private final SalesCoachingService salesCoaching;
+    private final DuplicateDetectionService duplicates;
 
     @GetMapping("/status")
     @PreAuthorize(RoleExpressions.ANY_TENANT_ROLE)
@@ -256,6 +259,23 @@ public class AiController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return Response.ok(latency.time("sales_coaching", AiLatency.Kind.GENERATIVE, () -> salesCoaching.coach(currentUser, userId, from, to)));
+    }
+
+    @GetMapping("/duplicates/customers")
+    @PreAuthorize(DATA_QUALITY_ROLES)
+    @Operation(summary = "FR-AI-9.1: probable duplicate customers I can see — pairs with a score, likely/possible, and the reasons")
+    public Response<List<DuplicateDetectionService.DuplicatePair>> duplicateCustomers(@AuthenticationPrincipal User currentUser) {
+        return Response.ok(latency.time("duplicate_customers", AiLatency.Kind.STATISTICAL, () -> duplicates.customers(currentUser)));
+    }
+
+    public record DismissReq(Long firstId, Long secondId) {}
+
+    @PostMapping("/duplicates/customers/dismiss")
+    @PreAuthorize(DATA_QUALITY_ROLES)
+    @Operation(summary = "FR-AI-9.1: mark a suggested pair as not duplicates, so it isn't suggested again")
+    public Response<Void> dismissDuplicate(@AuthenticationPrincipal User currentUser, @RequestBody DismissReq req) {
+        duplicates.dismiss(currentUser, req.firstId(), req.secondId());
+        return Response.ok("Marked as not duplicates", null);
     }
 
     @GetMapping("/sentiment-trend")

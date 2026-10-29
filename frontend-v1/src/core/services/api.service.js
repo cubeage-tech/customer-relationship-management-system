@@ -554,6 +554,14 @@ class ApiService {
     return this.apipost(`${ServerUrl.API_MODULE_USER}/coaching/${id}/acknowledge`, { reply });
   }
 
+  static findDuplicateCustomers() {
+    return this.apiget(`${ServerUrl.AI}/duplicates/customers`);
+  }
+
+  static dismissDuplicateCustomers(firstId, secondId) {
+    return this.apipost(`${ServerUrl.AI}/duplicates/customers/dismiss`, { firstId, secondId });
+  }
+
   static getSalesCoaching({ userId, from, to }) {
     return this.axiosInstance.post(`${ServerUrl.AI}/sales-coaching`, null, { params: { userId, from, to } }).then((res) => res.data?.data);
   }

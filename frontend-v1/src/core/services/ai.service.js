@@ -73,6 +73,12 @@ export const shareCoaching = (data) => ApiService.shareCoaching(data);
 
 export const acknowledgeCoaching = (id, reply) => ApiService.acknowledgeCoaching(id, reply);
 
+/** FR-AI-9.1: probable duplicate customers → [{ first, second, score, level, reasons }]. */
+export const findDuplicateCustomers = () => ApiService.findDuplicateCustomers();
+
+/** FR-AI-9.1: the pair are different companies — don't suggest it again. */
+export const dismissDuplicateCustomers = (firstId, secondId) => ApiService.dismissDuplicateCustomers(firstId, secondId);
+
 export const getSalesCoaching = (params) => ApiService.getSalesCoaching(params);
 
 export const getSalespersonAnalysis = (params) => ApiService.getSalespersonAnalysis(params);

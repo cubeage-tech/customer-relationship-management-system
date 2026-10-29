@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.company.crm.common.enums.RoleType.*;
@@ -604,6 +605,51 @@ class SalesAssistantIntegrationTest extends PostgresIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE action = 'COACHING_SHARED' AND entity_id = ?", Long.class, exec.getId()))
                 .isEqualTo(2);
         send(post("/api/coaching"), managerToken, "{\"userId\":" + exec.getId() + plan.replace("\"rules\"", "\"magic\"") + "}").andExpect(status().isBadRequest());
+    }
+
+    // ==================== FR-AI-9.1 ====================
+
+    @Test
+    void probableDuplicateCustomersAreFoundWithTheirReasons() throws Exception {
+        long acme = company("Acme Industries Pvt Ltd", "ravi@acme.co.in", null, "https://www.acme.co.in/about", exec);
+        long acme2 = company("ACME Industrie", "sales@acme.co.in", null, null, null);
+        long bharat = company("Bharat Pumps", null, "+91 98200 11111", null, null);
+        long bp = company("BP Fluid Systems", null, "+91 98200 11111", null, null);
+        company("Sunrise Traders", "sunrise@gmail.com", null, null, null);
+        company("Sunset Traders", "sunset@gmail.com", null, null, null);
+
+        String body = send(get("/api/ai/duplicates/customers"), adminToken, null).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        List<Map<String, Object>> pairs = JsonPath.read(body, "$.data");
+        assertThat(pairs).hasSize(2); // the two "Traders" (free email, different names) are not suggested
+        assertThat(JsonPath.<Integer>read(body, "$.data[0].first.id").longValue()).isEqualTo(acme);
+        assertThat(JsonPath.<Integer>read(body, "$.data[0].second.id").longValue()).isEqualTo(acme2);
+        assertThat(JsonPath.<String>read(body, "$.data[0].level")).isEqualTo("likely");
+        assertThat(JsonPath.<List<String>>read(body, "$.data[0].reasons")).anyMatch(r -> r.startsWith("Almost the same company name"))
+                .contains("Email at the same company domain (acme.co.in)");
+        assertThat(JsonPath.<Integer>read(body, "$.data[1].first.id").longValue()).isEqualTo(bharat);
+        assertThat(JsonPath.<Integer>read(body, "$.data[1].second.id").longValue()).isEqualTo(bp);
+        assertThat(JsonPath.<String>read(body, "$.data[1].level")).isEqualTo("possible");
+        assertThat(JsonPath.<List<String>>read(body, "$.data[1].reasons")).containsExactly("Same phone number");
+
+        // An executive only sees pairs they can open both of.
+        send(get("/api/ai/duplicates/customers"), tenant.token(SALES_EXECUTIVE), null).andExpect(jsonPath("$.data").isEmpty());
+
+        // "Not a duplicate": no longer suggested; audited once.
+        send(post("/api/ai/duplicates/customers/dismiss"), adminToken, "{\"firstId\":" + bp + ",\"secondId\":" + bharat + "}").andExpect(status().isOk());
+        send(post("/api/ai/duplicates/customers/dismiss"), adminToken, "{\"firstId\":" + bharat + ",\"secondId\":" + bp + "}").andExpect(status().isOk());
+        send(get("/api/ai/duplicates/customers"), adminToken, null).andExpect(jsonPath("$.data.length()").value(1));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_events WHERE action = 'DUPLICATE_DISMISSED' AND tenant_id = ?", Long.class, tenantId)).isOne();
+        send(post("/api/ai/duplicates/customers/dismiss"), adminToken, "{\"firstId\":" + acme + ",\"secondId\":" + acme + "}").andExpect(status().isBadRequest());
+
+        // Saving a new one with a near-identical name warns too.
+        send(post("/api/duplicates/check"), adminToken, "{\"type\":\"customer\",\"companyName\":\"Acme Industris\"}")
+                .andExpect(jsonPath("$.data[?(@.matchedOn == 'similar company name')].recordId").value(hasItems((int) acme, (int) acme2)));
+    }
+
+    private long company(String name, String email, String phone, String website, User owner) throws Exception {
+        return idOf(send(post("/api/customers"), adminToken, "{\"companyName\":\"" + name + "\",\"industry\":\"trading\""
+                + (email != null ? ",\"email\":\"" + email + "\"" : "") + (phone != null ? ",\"phone\":\"" + phone + "\"" : "")
+                + (website != null ? ",\"website\":\"" + website + "\"" : "") + (owner != null ? ",\"ownerId\":" + owner.getId() : "") + "}"));
     }
 
     private void call(User by, long customerId, String outcome) {
