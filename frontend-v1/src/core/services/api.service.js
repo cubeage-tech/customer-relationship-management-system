@@ -82,6 +82,36 @@ class ApiService {
     return this.apidelete(ServerUrl.customerContact(customerId, contactId));
   }
 
+  static getCustomerCommunications(customerId) {
+    return this.apiget(ServerUrl.customerCommunications(customerId));
+  }
+
+  static createCustomerCommunication(customerId, data) {
+    return this.apipost(ServerUrl.customerCommunications(customerId), data);
+  }
+
+  static getCustomerDocuments(customerId) {
+    return this.apiget(ServerUrl.customerDocuments(customerId));
+  }
+
+  static uploadCustomerDocument(customerId, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.axiosInstance
+      .post(ServerUrl.customerDocuments(customerId), formData)
+      .then((res) => res.data?.data);
+  }
+
+  static downloadCustomerDocument(customerId, documentId) {
+    return this.axiosInstance.get(ServerUrl.customerDocumentDownload(customerId, documentId), {
+      responseType: 'blob',
+    });
+  }
+
+  static deleteCustomerDocument(customerId, documentId) {
+    return this.apidelete(ServerUrl.customerDocument(customerId, documentId));
+  }
+
   // ------------------ Lead APIs ------------------
   static getLeads(params) {
     return this.apiget(ServerUrl.LEADS, params);

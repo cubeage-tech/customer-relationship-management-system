@@ -1,7 +1,7 @@
 /** Shared heading for every CRM module page. */
 const PageHeader = ({ title, subtitle, actions }) => {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <header data-motion="reveal" className="page-heading flex flex-wrap items-start justify-between gap-4 mb-7">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
         {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}

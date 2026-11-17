@@ -25,6 +25,13 @@ class ServerUrl {
     static customerContacts = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/contacts`;
     static customerContact = (customerId, contactId) =>
       `${ServerUrl.CUSTOMERS}/${customerId}/contacts/${contactId}`;
+    static customerCommunications = (customerId) =>
+      `${ServerUrl.CUSTOMERS}/${customerId}/communications`;
+    static customerDocuments = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/documents`;
+    static customerDocumentDownload = (customerId, documentId) =>
+      `${ServerUrl.customerDocuments(customerId)}/${documentId}/download`;
+    static customerDocument = (customerId, documentId) =>
+      `${ServerUrl.customerDocuments(customerId)}/${documentId}`;
 
     // leads
     static LEADS = ServerUrl.API_MODULE_USER + "/leads";

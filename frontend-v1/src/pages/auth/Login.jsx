@@ -100,9 +100,9 @@ const Login = () => {
   const handleDevLogin = (email) => submitCredentials({ email, password: DEV_LOGIN_PASSWORD });
 
   return (
-    <div className="flex min-h-screen bg-white relative">
+    <div className="auth-scene flex min-h-screen bg-white relative">
       {/* Left side - Marketing/Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-12 flex-col relative overflow-hidden">
+      <div className="auth-brand-panel hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-12 flex-col relative overflow-hidden">
         <div className="z-10 flex flex-col h-full max-w-xl mx-auto w-full">
           <div className="flex items-center gap-3 mb-16">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -162,8 +162,8 @@ const Login = () => {
       </div>
 
       {/* Right side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 xl:p-20 relative bg-[#FAFAFA]">
-        <div className="w-full max-w-[420px]">
+      <div className="auth-form-stage w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 xl:p-20 relative bg-[#FAFAFA]">
+        <div className="auth-form-card w-full max-w-[420px]">
           <div className="mb-8">
             <p className="text-indigo-600 font-bold text-xs tracking-[0.15em] uppercase mb-3">Welcome back</p>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign in to SmartCRM AI</h2>

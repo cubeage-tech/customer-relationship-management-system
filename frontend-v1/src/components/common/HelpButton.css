@@ -1,0 +1,368 @@
+.app-help-button-area {
+  display: flex;
+  justify-content: flex-end;
+  width: min(100%, 80rem);
+  margin-inline: auto;
+  padding: 12px 24px 20px;
+}
+
+.app-help-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 16px 6px 8px;
+  border: 1px solid oklch(1 0 0 / 24%);
+  border-radius: 999px;
+  background: linear-gradient(115deg, oklch(0.52 0.23 276), oklch(0.58 0.22 294));
+  box-shadow: 0 10px 28px oklch(0.43 0.2 280 / 32%), inset 0 1px 0 oklch(1 0 0 / 20%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.app-help-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px oklch(0.43 0.2 280 / 42%), inset 0 1px 0 oklch(1 0 0 / 20%);
+}
+
+.app-help-button:focus-visible,
+.app-help-dialog button:focus-visible,
+.app-help-dialog a:focus-visible,
+.app-help-faq summary:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 4px;
+}
+
+.app-help-button__icon,
+.app-help-dialog__header-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid oklch(1 0 0 / 26%);
+  border-radius: 50%;
+  background: oklch(1 0 0 / 17%);
+}
+
+.app-help-button__icon {
+  width: 36px;
+  height: 36px;
+}
+
+.app-help-dialog {
+  position: fixed;
+  inset: auto 24px 76px auto;
+  width: min(400px, calc(100vw - 32px));
+  max-width: none;
+  max-height: var(--app-help-dialog-max-height, min(560px, calc(100dvh - 40px)));
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 32px 100px oklch(0.18 0.05 275 / 30%);
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), display 240ms allow-discrete;
+}
+
+.app-help-dialog[open] {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.app-help-dialog::backdrop {
+  background: oklch(0.17 0.035 275 / 52%);
+  backdrop-filter: blur(5px);
+}
+
+@starting-style {
+  .app-help-dialog[open] {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+.app-help-dialog__header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 58px 20px 22px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 90% 15%, oklch(1 0 0 / 17%), transparent 29%),
+    linear-gradient(125deg, oklch(0.49 0.23 276), oklch(0.58 0.22 294) 65%, oklch(0.62 0.17 248));
+  color: #fff;
+}
+
+.app-help-dialog__header::after {
+  position: absolute;
+  right: -40px;
+  bottom: -100px;
+  width: 210px;
+  height: 170px;
+  border: 1px solid oklch(1 0 0 / 17%);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.app-help-dialog__header-icon {
+  width: 46px;
+  height: 46px;
+  margin-top: 3px;
+}
+
+.app-help-dialog__heading {
+  position: relative;
+  z-index: 1;
+}
+
+.app-help-dialog__eyebrow {
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  opacity: 0.8;
+}
+
+.app-help-dialog__heading h2 {
+  margin: 5px 0 3px;
+  color: inherit;
+  font-size: clamp(1.3rem, 5vw, 1.65rem);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.app-help-dialog__heading p {
+  margin: 0;
+  color: oklch(1 0 0 / 83%);
+  font-size: 0.88rem;
+}
+
+.app-help-dialog__close {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  z-index: 2;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid oklch(1 0 0 / 35%);
+  border-radius: 50%;
+  background: oklch(1 0 0 / 13%);
+  color: #fff;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.app-help-dialog__close:hover {
+  transform: rotate(90deg);
+  background: oklch(1 0 0 / 24%);
+}
+
+.app-help-dialog__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding: 12px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-help-dialog__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 12px;
+  border: 1px solid oklch(0.72 0.12 276 / 20%);
+  border-radius: 14px;
+  background: linear-gradient(120deg, oklch(0.96 0.035 276), var(--surface-muted));
+  color: var(--muted-foreground);
+}
+
+.app-help-dialog__intro svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--primary);
+}
+
+.app-help-dialog__intro div {
+  display: grid;
+  gap: 3px;
+}
+
+.app-help-dialog__intro strong {
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.app-help-dialog__intro span {
+  color: var(--muted-foreground);
+  font-size: 0.76rem;
+}
+
+.app-help-faq {
+  border-bottom: 1px solid var(--border);
+}
+
+.app-help-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 54px;
+  padding: 12px 3px;
+  color: var(--foreground);
+  font-size: 0.91rem;
+  font-weight: 650;
+  line-height: 1.4;
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-help-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-help-faq__chevron {
+  flex: 0 0 auto;
+  color: var(--primary);
+  transition: transform 180ms ease;
+}
+
+.app-help-faq[open] .app-help-faq__chevron {
+  transform: rotate(180deg);
+}
+
+.app-help-faq > p {
+  margin: -2px 25px 15px 3px;
+  color: var(--muted-foreground);
+  font-size: 0.86rem;
+  line-height: 1.65;
+  animation: app-help-answer-in 200ms ease both;
+}
+
+@keyframes app-help-answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-help-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 0 0 auto;
+  margin: 8px 16px 16px;
+  padding: 13px 14px;
+  border: 1px solid oklch(0.72 0.12 276 / 22%);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 100% 0%, oklch(0.92 0.08 290 / 42%), transparent 48%),
+    linear-gradient(135deg, var(--surface-muted), oklch(0.97 0.025 280));
+  box-shadow: 0 5px 16px oklch(0.35 0.12 276 / 7%);
+}
+
+.app-help-dialog__footer > div {
+  display: grid;
+  gap: 3px;
+}
+
+.app-help-dialog__footer strong {
+  color: var(--foreground);
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.app-help-dialog__footer span {
+  color: var(--muted-foreground);
+  font-size: 0.79rem;
+}
+
+.app-help-dialog__contact {
+  flex: 0 0 auto;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: linear-gradient(115deg, oklch(0.52 0.23 276), oklch(0.58 0.22 294));
+  box-shadow: 0 4px 12px oklch(0.43 0.2 280 / 20%);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.app-help-dialog__contact:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px oklch(0.43 0.2 280 / 30%);
+}
+
+@media (max-width: 480px) {
+  .app-help-button-area {
+    padding: 10px 12px 16px;
+  }
+
+  .app-help-dialog {
+    width: calc(100vw - 24px);
+    max-height: var(--app-help-dialog-max-height, calc(100dvh - 24px));
+    border-radius: 20px;
+  }
+
+  .app-help-dialog__header {
+    gap: 11px;
+    padding: 18px 52px 18px 18px;
+  }
+
+  .app-help-dialog__header-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .app-help-dialog__close {
+    top: 13px;
+    right: 13px;
+  }
+
+  .app-help-dialog__content {
+    padding: 11px 16px;
+  }
+
+  .app-help-dialog__footer {
+    gap: 8px;
+    margin: 7px 12px 12px;
+    padding: 11px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-help-button,
+  .app-help-dialog,
+  .app-help-dialog *,
+  .app-help-faq__chevron,
+  .app-help-faq > p {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}

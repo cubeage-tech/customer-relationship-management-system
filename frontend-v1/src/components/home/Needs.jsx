@@ -45,10 +45,12 @@ const Needs = () => {
         </p>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {NEEDS.map(({ icon: Icon, title, description }) => (
+          {NEEDS.map(({ icon: Icon, title, description }, index) => (
             <div
               key={title}
-              className="surface-card p-6 transition-all duration-300 hover:shadow-elevated hover:-translate-y-0.5"
+              data-motion="reveal"
+              className="feature-card surface-card p-6 transition-all duration-300 hover:shadow-elevated hover:-translate-y-0.5"
+              style={{ animationDelay: `${index * 80 + 120}ms` }}
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl gradient-primary">
                 <Icon className="h-6 w-6 text-primary-foreground" aria-hidden="true" />

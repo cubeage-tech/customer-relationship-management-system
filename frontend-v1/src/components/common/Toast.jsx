@@ -7,7 +7,7 @@ const Toast = ({ toast, onClose }) => {
 
   return (
     <div
-      className={`fixed right-5 top-20 z-50 flex w-[min(26rem,calc(100vw-2.5rem))] items-start gap-3 rounded-lg border bg-white p-4 shadow-xl ${isError ? 'border-rose-200' : 'border-emerald-200'}`}
+      className={`toast-enter fixed right-5 top-20 z-50 flex w-[min(26rem,calc(100vw-2.5rem))] items-start gap-3 rounded-lg border bg-white p-4 shadow-xl ${isError ? 'border-rose-200' : 'border-emerald-200'}`}
       role={isError ? 'alert' : 'status'}
       aria-live={isError ? 'assertive' : 'polite'}
     >

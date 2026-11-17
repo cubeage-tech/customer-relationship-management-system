@@ -19,8 +19,8 @@ const milestones = [
 
 const Journey = () => {
   return (
-    <section className="bg-transparent px-4 pb-16 pt-6 sm:px-6 sm:pb-24 sm:pt-8 lg:pt-12">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-20">
+    <section className="bg-transparent px-4 pb-16 pt-6 sm:px-6 sm:pb-24 sm:pt-8 lg:pt-16">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_1.15fr] lg:items-center lg:gap-20">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             Our journey

@@ -25,8 +25,14 @@ const planConfigs = {
 
 const defaultPlans = {
   starter: { monthly: 1500, annual: 1200, currency: 'INR' },
-  business: { monthly: 3900, annual: 3100, currency: 'INR' },
-  enterprise: { monthly: 7100, annual: 6300, currency: 'INR' },
+  business: { monthly: 3900, annual: 3200, currency: 'INR' },
+  enterprise: { monthly: 7100, annual: 6200, currency: 'INR' },
+};
+
+const annualPlanPrices = {
+  starter: { price: 1200, savings: 300 },
+  business: { price: 3200, savings: 700 },
+  enterprise: { price: 6200, savings: 900 },
 };
 
 const normalizePlanPrices = (planItems = []) => {
@@ -105,7 +111,7 @@ const Pricing = () => {
             onClick={() => setIsAnnual(true)}
             className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isAnnual ? 'bg-white text-slate-900 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.1)] border border-slate-200/50' : 'text-slate-500 hover:text-slate-900'}`}
           >
-            Annually <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[10px] font-bold tracking-wide">SAVE 20%</span>
+            Annually <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[10px] font-bold tracking-wide">ANNUAL SAVINGS</span>
           </button>
         </div>
       </div>
@@ -114,7 +120,8 @@ const Pricing = () => {
         {planOrder.map((planKey) => {
           const plan = planConfigs[planKey];
           const planPrice = prices[planKey] || { monthly: 0, annual: 0, currency: 'INR' };
-          const value = isAnnual ? planPrice.annual : planPrice.monthly;
+          const annualPlanPrice = annualPlanPrices[planKey];
+          const value = isAnnual ? annualPlanPrice.price : planPrice.monthly;
           const hasPrice = Number(value) > 0;
 
           return (
@@ -134,12 +141,31 @@ const Pricing = () => {
 
               <h3 className="text-lg font-semibold text-slate-900 mb-2 mt-2">{plan.title}</h3>
 
-              <div className="mb-4 flex items-end gap-1">
-                <span className="text-4xl font-bold text-slate-900 tracking-tight">
-                  {hasPrice ? `₹${Number(value).toLocaleString('en-IN')}` : 'Custom'}
-                </span>
-                {hasPrice && <span className="text-slate-500 text-sm font-medium pb-1">/user/mo</span>}
-              </div>
+              {isAnnual && hasPrice ? (
+                <div className="mb-4">
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-bold text-slate-900 tracking-tight">
+                      ₹{Number(value).toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-slate-500 text-sm font-medium pb-1">/user/month</span>
+                  </div>
+                  <p className="mt-1 text-sm font-medium text-indigo-600">
+                    ₹{(Number(value) * 12).toLocaleString('en-IN')} per user / year
+                  </p>
+                  {annualPlanPrice.savings > 0 && (
+                    <p className="mt-1 text-sm font-medium text-emerald-600">
+                      Save ₹{annualPlanPrice.savings.toLocaleString('en-IN')} per user / month
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="mb-4 flex items-end gap-1">
+                  <span className="text-4xl font-bold text-slate-900 tracking-tight">
+                    {hasPrice ? `₹${Number(value).toLocaleString('en-IN')}` : 'Custom'}
+                  </span>
+                  {hasPrice && <span className="text-slate-500 text-sm font-medium pb-1">/user/month</span>}
+                </div>
+              )}
 
               <p className="text-slate-500 text-sm mb-6 h-10">{plan.description}</p>
 

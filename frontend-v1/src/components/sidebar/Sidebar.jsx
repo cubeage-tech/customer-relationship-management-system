@@ -23,7 +23,7 @@ const Sidebar = () => {
   );
 
   return (
-    <aside className="w-72 bg-white border-r border-slate-200 flex flex-col h-full">
+    <aside className="crm-sidebar w-72 flex flex-col h-full">
 
       <nav className="px-4 pt-6 pb-2 flex-1 overflow-y-auto">
         {groups.map((group) => (
@@ -37,7 +37,7 @@ const Sidebar = () => {
                 key={menu.path}
                 to={menu.path}
                 className={({ isActive }) =>
-                  `relative flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
+                  `sidebar-link relative flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
                     isActive
                       ? "bg-indigo-50 text-indigo-600"
                       : "text-slate-600 hover:bg-slate-50"

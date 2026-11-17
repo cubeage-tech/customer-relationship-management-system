@@ -1,14 +1,16 @@
-import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { lazy, Suspense, useRef } from "react";
+import { Routes, Route, Outlet, useLocation } from "react-router-dom";
 
 import MainLayout from "../layouts/MainLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
+import HelpButton from "../components/common/HelpButton";
 import ProtectedRoute from "./ProtectedRoute";
 
 import RoutePath from "../core/constants/routes.constant";
 import { USER_ROLES } from "../core/constants/app.constant";
 import { PERMISSIONS } from "../core/constants/permission.constant";
 import PublicOnlyRoute from "./PublicOnlyRoute";
+import useScrollReveal from "../core/hooks/useScrollReveal";
 
 // Public Pages
 const Home = lazy(() => import("../pages/public/Home"));
@@ -70,10 +72,25 @@ const NotFound = lazy(() => import("../pages/common/NotFound"));
 
 /** Full-page fallback shown while a route's chunk is being fetched. */
 const PageLoader = () => (
-  <div className="flex min-h-[60vh] w-full items-center justify-center" role="status" aria-label="Loading">
+  <div className="page-loader flex min-h-[60vh] w-full items-center justify-center" role="status" aria-label="Loading">
     <span className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
   </div>
 );
+
+const AuthLayout = () => {
+  const location = useLocation();
+  const pageRef = useRef(null);
+  useScrollReveal(pageRef, location.pathname);
+
+  return (
+    <div className="auth-layout">
+      <div ref={pageRef} key={location.pathname} className="route-enter min-h-screen">
+        <Outlet />
+      </div>
+      <HelpButton />
+    </div>
+  );
+};
 
 const AppRoutes = () => {
   return (
@@ -96,11 +113,13 @@ const AppRoutes = () => {
 
         {/* ================= AUTH ROUTES ================= */}
         <Route element={<PublicOnlyRoute />}>
-          <Route path={RoutePath.LOGIN} element={<Login />} />
-          <Route path={RoutePath.SIGNUP} element={<Signup />} />
-          <Route path={RoutePath.VERIFY_EMAIL} element={<VerifyEmail />} />
-          <Route path={RoutePath.FORGOT_PASSWORD} element={<ForgotPassword />} />
-          <Route path={RoutePath.RESET_PASSWORD} element={<ResetPassword />} />
+          <Route element={<AuthLayout />}>
+            <Route path={RoutePath.LOGIN} element={<Login />} />
+            <Route path={RoutePath.SIGNUP} element={<Signup />} />
+            <Route path={RoutePath.VERIFY_EMAIL} element={<VerifyEmail />} />
+            <Route path={RoutePath.FORGOT_PASSWORD} element={<ForgotPassword />} />
+            <Route path={RoutePath.RESET_PASSWORD} element={<ResetPassword />} />
+          </Route>
         </Route>
 
         {/* ================= DASHBOARD LAYOUT ================= */}

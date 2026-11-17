@@ -47,3 +47,17 @@ container started via `docker-compose.yml`.
 ```
 ./mvnw test
 ```
+
+## Customer documents
+
+Customer documents are stored outside the public web root. Set `CUSTOMER_DOCUMENTS_DIR` to a
+private persistent directory or volume for the running application. Uploads are limited to 10 MB
+and support PDF, PNG, JPG, TXT, DOCX, and XLSX files.
+
+- `GET /api/customers/{customerId}/documents` lists documents visible to the caller.
+- `POST /api/customers/{customerId}/documents` uploads multipart form data using the `file` field.
+- `GET /api/customers/{customerId}/documents/{documentId}/download` downloads a file.
+- `DELETE /api/customers/{customerId}/documents/{documentId}` deletes a file.
+
+All document routes enforce tenant and customer-owner data scope. Upload and delete are limited to
+tenant admins, sales managers, and sales executives.
