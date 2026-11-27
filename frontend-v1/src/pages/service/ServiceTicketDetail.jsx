@@ -1,0 +1,286 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import PageHeader from '../../components/common/PageHeader';
+import EmptyState from '../../components/common/EmptyState';
+import Button from '../../components/common/Button';
+import AttachmentsPanel from '../../components/common/AttachmentsPanel';
+import { usePermissions } from '../../core/hooks/usePermissions';
+import { PERMISSIONS } from '../../core/constants/permission.constant';
+import {
+  TICKET_PRIORITY_LABELS,
+  TICKET_STATUS_OPTIONS,
+  TICKET_SLA_STATUS_LABELS,
+  TICKET_STATUSES,
+  USER_ROLES,
+} from '../../core/constants/app.constant';
+import RoutePath from '../../core/constants/routes.constant';
+import {
+  getTicket,
+  assignTicket,
+  changeTicketStatus,
+  recordTicketFeedback,
+  claimTicket,
+} from '../../core/services/serviceTicket.service';
+import { listUsers } from '../../core/services/user.service';
+import { analyseSentiment } from '../../core/services/ai.service';
+import SentimentBadge from '../../components/ai/SentimentBadge';
+import { apiErrorMessage } from '../../core/utils/apiError';
+
+const SLA_BADGE_CLASS = {
+  breached: 'text-red-600 font-medium',
+  at_risk: 'text-amber-600 font-medium',
+  on_track: 'text-slate-600',
+  met: 'text-green-600',
+};
+
+const ServiceTicketDetail = () => {
+  const { id } = useParams();
+  const { can, role } = usePermissions();
+  const canEdit = can(PERMISSIONS.TICKETS_EDIT) || can(PERMISSIONS.TICKETS_RESOLVE);
+
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [technicians, setTechnicians] = useState([]);
+  const [actionError, setActionError] = useState('');
+  const [feedbackForm, setFeedbackForm] = useState({ score: 5, comment: '' });
+  const [checkingSentiment, setCheckingSentiment] = useState(false);
+
+  // FR-AI-6.1: classify the customer's review on request (stored on the ticket).
+  const checkSentiment = async () => {
+    setCheckingSentiment(true);
+    setActionError('');
+    try {
+      await analyseSentiment({ ticketId: ticket.id });
+      refresh();
+    } catch (err) {
+      setActionError(apiErrorMessage(err, 'Could not check the sentiment.'));
+    } finally {
+      setCheckingSentiment(false);
+    }
+  };
+
+  const refresh = () => {
+    getTicket(id)
+      .then(setTicket)
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    refresh();
+    if (canEdit) {
+      listUsers()
+        .then((data) => setTechnicians((data ?? []).filter((u) => u.role === USER_ROLES.SERVICE_AGENT)))
+        .catch(() => setTechnicians([]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const handleAssign = async (e) => {
+    const technicianId = e.target.value;
+    if (!technicianId) return;
+    const saved = await assignTicket(id, technicianId);
+    setTicket(saved);
+  };
+
+  const handleStatusChange = async (status) => {
+    if (status === ticket.status) return;
+    setActionError('');
+    try {
+      const saved = await changeTicketStatus(id, status);
+      setTicket(saved);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not update the status.');
+    }
+  };
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    try {
+      const saved = await recordTicketFeedback(id, Number(feedbackForm.score), feedbackForm.comment);
+      setTicket(saved);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not record feedback.');
+    }
+  };
+
+  if (loading) return null;
+
+  if (notFound) {
+    return (
+      <EmptyState
+        title="Service ticket not found"
+        message="This ticket may have been removed, or you may not have access to it."
+        action={<Link to={RoutePath.SERVICE_TICKETS} className="text-primary hover:underline">Back to tickets</Link>}
+      />
+    );
+  }
+
+  // A service agent may open an unassigned (queue) ticket but must claim it before editing.
+  const needsClaim = role === USER_ROLES.SERVICE_AGENT && !ticket.technicianId;
+  const editable = canEdit && !needsClaim;
+
+  const handleClaim = async () => {
+    setActionError('');
+    try {
+      setTicket(await claimTicket(id));
+    } catch (err) {
+      setActionError(apiErrorMessage(err, 'Could not claim this ticket.'));
+      refresh();
+    }
+  };
+
+  const canRecordFeedback =
+    editable && (ticket.status === TICKET_STATUSES.RESOLVED || ticket.status === TICKET_STATUSES.CLOSED);
+
+  return (
+    <section>
+      <PageHeader
+        title={ticket.subject}
+        subtitle={`${ticket.customerName} · ${TICKET_PRIORITY_LABELS[ticket.priority] || ticket.priority} priority`}
+        actions={
+          <Link to={RoutePath.SERVICE_TICKETS} className="text-sm text-slate-500 hover:underline">
+            Back to tickets
+          </Link>
+        }
+      />
+
+      {needsClaim && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4" role="status">
+          <p className="text-sm text-primary">This ticket is in the queue. Claim it to start working on it.</p>
+          <Button size="sm" onClick={handleClaim}>Claim this ticket</Button>
+        </div>
+      )}
+      {needsClaim && actionError && <p className="form-error mb-4" role="alert">{actionError}</p>}
+
+      {/* ---------------- Status & SLA ---------------- */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
+        <div className="flex flex-wrap items-center gap-6 text-sm mb-4">
+          <div>
+            <p className="text-slate-500">SLA</p>
+            <p className={SLA_BADGE_CLASS[ticket.slaStatus] || ''}>
+              {TICKET_SLA_STATUS_LABELS[ticket.slaStatus] || ticket.slaStatus} — due {new Date(ticket.slaDueAt).toLocaleString()}
+            </p>
+          </div>
+          {ticket.resolvedAt && (
+            <div>
+              <p className="text-slate-500">Resolved at</p>
+              <p>{new Date(ticket.resolvedAt).toLocaleString()}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {TICKET_STATUS_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={!editable}
+              onClick={() => handleStatusChange(option.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                ticket.status === option.value
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-slate-600 border-slate-300 hover:border-primary/50'
+              } ${!editable ? 'cursor-not-allowed opacity-60' : ''}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {actionError && <p className="form-error mt-2">{actionError}</p>}
+      </div>
+
+      {/* ---------------- Assignment ---------------- */}
+      {editable && (
+        <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
+          <h2 className="font-semibold text-slate-900 mb-3">Assigned technician</h2>
+          <select
+            value={ticket.technicianId || ''}
+            onChange={handleAssign}
+            className="border border-slate-300 rounded px-2 py-1 text-sm"
+          >
+            <option value="" disabled>Select a technician…</option>
+            {technicians.map((tech) => (
+              <option key={tech.id} value={tech.id}>{tech.fullName}</option>
+            ))}
+          </select>
+          {ticket.technicianName && !technicians.some((t) => t.id === ticket.technicianId) && (
+            <p className="text-xs text-slate-500 mt-1">Currently: {ticket.technicianName}</p>
+          )}
+        </div>
+      )}
+
+      {/* ---------------- Details ---------------- */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
+        <h2 className="font-semibold text-slate-900 mb-3">Details</h2>
+        <p className="text-sm text-slate-700 whitespace-pre-wrap">{ticket.description || 'No description provided.'}</p>
+        {/* FR-6.1: the affected asset and where the request came from. */}
+        <dl className="mt-3 grid gap-2 sm:grid-cols-2 text-sm">
+          <div><dt className="text-slate-500">Asset</dt><dd>{ticket.assetName || '—'}</dd></div>
+          <div>
+            <dt className="text-slate-500">Raised by</dt>
+            <dd>{ticket.source === 'customer' ? `Customer, via the support form${ticket.reporterEmail ? ` (${ticket.reporterEmail})` : ''}` : 'Staff'}</dd>
+          </div>
+        </dl>
+      </div>
+
+      {/* ---------------- Feedback ---------------- */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5">
+        <h2 className="font-semibold text-slate-900 mb-3">Customer feedback</h2>
+        {ticket.feedbackScore ? (
+          <div className="text-sm">
+            <p className="flex flex-wrap items-center gap-2 font-medium">
+              {ticket.feedbackScore} / 5{ticket.technicianName ? ` for ${ticket.technicianName}` : ''}
+              <SentimentBadge sentiment={ticket.feedbackSentiment} />
+              {ticket.feedbackComment && !ticket.feedbackSentiment && (
+                <button type="button" onClick={checkSentiment} disabled={checkingSentiment}
+                  className="text-xs font-normal text-primary hover:underline disabled:opacity-50">
+                  {checkingSentiment ? 'Checking…' : 'Check sentiment'}
+                </button>
+              )}
+            </p>
+            {ticket.feedbackSentiment?.reason && <p className="text-xs text-slate-500 mt-1">AI: {ticket.feedbackSentiment.reason}</p>}
+            {ticket.feedbackComment && <p className="text-slate-600 mt-1">{ticket.feedbackComment}</p>}
+            {ticket.feedbackAt && <p className="text-xs text-slate-400 mt-1">{new Date(ticket.feedbackAt).toLocaleString()}</p>}
+          </div>
+        ) : canRecordFeedback ? (
+          <form onSubmit={handleFeedbackSubmit} className="flex flex-wrap items-end gap-3">
+            <label className="text-sm text-slate-600">
+              Score
+              <select
+                value={feedbackForm.score}
+                onChange={(e) => setFeedbackForm((prev) => ({ ...prev, score: e.target.value }))}
+                className="ml-2 border border-slate-300 rounded px-2 py-1"
+              >
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            <input
+              type="text"
+              placeholder="Comment (optional)"
+              value={feedbackForm.comment}
+              onChange={(e) => setFeedbackForm((prev) => ({ ...prev, comment: e.target.value }))}
+              className="border border-slate-300 rounded px-2 py-1 text-sm flex-1 min-w-[200px]"
+            />
+            <Button type="submit">Record feedback</Button>
+          </form>
+        ) : (
+          <p className="text-sm text-slate-500">
+            {ticket.status === TICKET_STATUSES.RESOLVED || ticket.status === TICKET_STATUSES.CLOSED
+              ? 'No feedback yet — the customer was emailed a rating link when the ticket was resolved.'
+              : 'Feedback can be recorded once the ticket is resolved.'}
+          </p>
+        )}
+      </div>
+
+      {/* ---------------- Attachments (DB-E16) ---------------- */}
+      <AttachmentsPanel kind="ticket" recordId={ticket.id} canEdit={can(PERMISSIONS.TICKETS_EDIT)} hint="Attach photos, logs or reports" />
+    </section>
+  );
+};
+
+export default ServiceTicketDetail;

@@ -1,54 +1,29 @@
 import { Link } from "react-router-dom";
 import RoutePath from "../core/constants/routes.constant";
-import { APP_NAME } from "../core/constants/app.constant";
 
 const Footer = () => {
   return (
-    <footer className="bg-blue-600 text-white mt-auto">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          {/* Logo / Brand */}
-          <div>
-            <h2 className="text-2xl font-bold">{APP_NAME}</h2>
-            <p className="text-sm text-blue-100 mt-2">
-              © {new Date().getFullYear()} All Rights Reserved.
-            </p>
-          </div>
+    <footer className="bg-surface border-t border-border shadow-soft">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
+        <p className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} SmartCRM AI · Built for revenue teams
+        </p>
 
-          {/* Navigation */}
-          <div className="flex gap-6">
+        <div className="flex flex-nowrap justify-center items-center gap-1">
+          {[
+            { label: "Home", to: RoutePath.HOME },
+            { label: "About", to: RoutePath.ABOUT },
+            { label: "Plans", to: RoutePath.PLANS },
+            { label: "Contact", to: RoutePath.CONTACT },
+          ].map(({ label, to }) => (
             <Link
-              to={RoutePath.HOME}
-              className="hover:text-yellow-300 transition-colors"
+              key={to}
+              to={to}
+              className="px-2 sm:px-4 py-2 rounded-full text-sm text-muted-foreground hover:bg-secondary hover:text-secondary-foreground transition-colors duration-200"
             >
-              Home
+              {label}
             </Link>
-
-            <Link
-              to={RoutePath.ABOUT}
-              className="hover:text-yellow-300 transition-colors"
-            >
-              About
-            </Link>
-
-            <Link
-              to={RoutePath.CONTACT}
-              className="hover:text-yellow-300 transition-colors"
-            >
-              Contact
-            </Link>
-          </div>
-
-          {/* Contact */}
-          <div className="text-center md:text-right">
-            <p>Email: support@example.com</p>
-            <p>Phone: +91 98765 43210</p>
-          </div>
-        </div>
-
-        {/* Bottom */}
-        <div className="border-t border-blue-500 mt-6 pt-4 text-center text-sm text-blue-100">
-          Built with React &amp; Tailwind CSS
+          ))}
         </div>
       </div>
     </footer>

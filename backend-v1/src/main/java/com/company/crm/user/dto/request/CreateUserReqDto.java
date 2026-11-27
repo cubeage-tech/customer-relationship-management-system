@@ -1,0 +1,31 @@
+package com.company.crm.user.dto.request;
+
+import com.company.crm.common.validation.ValidPhone;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CreateUserReqDto {
+
+    @NotBlank
+    private String fullName;
+
+    @NotBlank
+    @Email
+    private String email;
+
+    @NotBlank
+    @Size(max = 128, message = "Password must be at most 128 characters") // SEC-1b: the rest is PasswordPolicy
+    private String password;
+
+    @ValidPhone // VAL-2
+    private String phone;
+
+    /** One of: sales_manager | sales_executive | marketing_executive | service_agent | finance_approver | executive_owner */
+    @NotBlank
+    private String role;
+}

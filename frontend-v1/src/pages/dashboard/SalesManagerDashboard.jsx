@@ -1,5 +1,6 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
-import EmptyState from '../../components/common/EmptyState';
+import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
+import SalesPerformance from '../../components/opportunity/SalesPerformance';
 
 const STATS = [
   { label: 'Team leads', value: '—', hint: 'Open leads across the team' },
@@ -15,10 +16,8 @@ const SalesManagerDashboard = () => {
       subtitle="Team pipeline, quotation approvals and team performance."
       stats={STATS}
     >
-      <EmptyState
-        title="No team activity yet"
-        message="Assign leads to your sales executives to start tracking team pipeline here."
-      />
+      <HeadlineMetrics />
+      <SalesPerformance />
     </DashboardShell>
   );
 };

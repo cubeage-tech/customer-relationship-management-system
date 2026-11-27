@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-crm_db}
+      POSTGRES_USER: ${DB_USERNAME:-crm_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-crm_password}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - crm-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-crm_user} -d ${DB_NAME:-crm_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  crm-db-data:

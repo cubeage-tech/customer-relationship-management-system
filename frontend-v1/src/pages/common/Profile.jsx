@@ -1,7 +1,9 @@
 import PageHeader from '../../components/common/PageHeader';
 import { useAuth } from '../../core/hooks/useAuth';
 import { usePermissions } from '../../core/hooks/usePermissions';
-import { ROLE_DESCRIPTIONS } from '../../core/constants/app.constant';
+import { ROLE_DESCRIPTIONS, USER_ROLES } from '../../core/constants/app.constant';
+import EmailPreferences from '../../components/notification/EmailPreferences';
+import TwoStepSignIn from '../../components/auth/TwoStepSignIn';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -34,6 +36,12 @@ const Profile = () => {
           </dd>
         </dl>
       </div>
+
+      {/* SEC-1c */}
+      <TwoStepSignIn />
+
+      {/* NOT-1: weekly digest opt-out (tenant users only) */}
+      {role && role !== USER_ROLES.SUPER_ADMIN && <EmailPreferences />}
     </section>
   );
 };

@@ -1,0 +1,51 @@
+package com.company.crm.common.response;
+
+import com.company.crm.common.web.RequestIds;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Getter;
+
+/** Standard API response envelope used by all controllers. */
+@Getter
+public class Response<T> {
+
+    private final boolean success;
+    private final String message;
+    private final T data;
+
+    /** Machine-readable error code (e.g. PLAN_LIMIT_EXCEEDED) — only present on some errors. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String errorCode;
+
+    /** API-4: the request's correlation ID, on every error — quote it to support; it finds the request in the logs. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String requestId;
+
+    private Response(boolean success, String message, T data, String errorCode) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+        this.errorCode = errorCode;
+        this.requestId = success ? null : RequestIds.current();
+    }
+
+    public static <T> Response<T> ok(T data) {
+        return new Response<>(true, null, data, null);
+    }
+
+    public static <T> Response<T> ok(String message, T data) {
+        return new Response<>(true, message, data, null);
+    }
+
+    public static <T> Response<T> error(String message) {
+        return new Response<>(false, message, null, null);
+    }
+
+    public static <T> Response<T> error(String message, String errorCode) {
+        return new Response<>(false, message, null, errorCode);
+    }
+
+    /** UI-6: a failure with details in {@code data} — e.g. VALIDATION_FAILED with field → message. */
+    public static <T> Response<T> error(String message, String errorCode, T data) {
+        return new Response<>(false, message, data, errorCode);
+    }
+}

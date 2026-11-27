@@ -1,0 +1,36 @@
+package com.company.crm.sales.repository;
+
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import com.company.crm.sales.entity.Opportunity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+public interface OpportunityRepository extends JpaRepository<Opportunity, Long>, JpaSpecificationExecutor<Opportunity> {
+
+    /** Tenant-scoped lookup: a record from another tenant is indistinguishable from a missing one. */
+    Optional<Opportunity> findByIdAndTenantId(Long id, Long tenantId);
+
+    List<Opportunity> findByTenantId(Long tenantId);
+
+    List<Opportunity> findByTenantIdAndOwnerId(Long tenantId, Long ownerId);
+
+    List<Opportunity> findByTenantIdAndOwnerIdIn(Long tenantId, Collection<Long> ownerIds);
+
+    /** FR-1.3: a customer's deals in one stage (WON = purchases). */
+    List<Opportunity> findByTenantIdAndCustomerIdAndStage(Long tenantId, Long customerId, String stage);
+
+    long countByTenantIdAndStageNotIn(Long tenantId, Collection<String> stages);
+
+    long countByTenantIdAndStageNotIn(Long tenantId, List<String> stages);
+
+    List<Opportunity> findByTenantIdAndStageAndStageChangedAtGreaterThanEqualAndStageChangedAtLessThan(
+        Long tenantId,
+        String stage,
+        LocalDateTime start,
+        LocalDateTime end
+    );
+}

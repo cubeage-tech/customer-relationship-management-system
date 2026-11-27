@@ -1,0 +1,152 @@
+package com.company.crm.user.entity;
+
+import com.company.crm.common.crypto.EncryptedString;
+import com.company.crm.common.enums.AccountStatus;
+import com.company.crm.tenant.entity.Tenant;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+public class User implements UserDetails {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Eager: every consumer of User (JwtAuthFilter.getAuthorities(), the auth/user mappers)
+    // needs tenant/role immediately, often outside any @Transactional boundary — lazy here
+    // means a LazyInitializationException the moment the Hibernate session has closed.
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
+
+    /**
+     * Sales team this user belongs to (FK to sales_teams, ON DELETE SET NULL). A plain id rather
+     * than a relation: User is the security principal and lives outside transactions, so a lazy
+     * association here would be a LazyInitializationException waiting to happen.
+     */
+    @Column(name = "team_id")
+    private Long teamId;
+
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    /** NFR-7.2b: encrypted. (The login email stays plain: it is the account identifier.) */
+    @Convert(converter = EncryptedString.class)
+    private String phone;
+
+    /** FR-5.5c: secret of this user's subscribable meetings calendar feed; null until first requested. */
+    @Column(name = "calendar_feed_token", length = 64)
+    private String calendarFeedToken;
+
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
+    @Column(name = "is_email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(nullable = false)
+    private AccountStatus status = AccountStatus.PENDING_VERIFICATION;
+
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
+
+    /** SEC-1c: the authenticator secret (Base32), encrypted at rest; set once two-step sign-in is on. */
+    @Convert(converter = EncryptedString.class)
+    @Column(name = "mfa_secret")
+    private String mfaSecret;
+
+    /** SEC-1c: a secret being set up, until the user confirms it with a code. */
+    @Convert(converter = EncryptedString.class)
+    @Column(name = "mfa_pending_secret")
+    private String mfaPendingSecret;
+
+    /** SEC-1c: the last accepted 30-second step — a code can't be used twice. */
+    @Column(name = "mfa_last_step")
+    private Long mfaLastStep;
+
+    @Column(name = "mfa_enabled_at")
+    private LocalDateTime mfaEnabledAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    /** NOT-1: receives the weekly digest email (users can opt out). */
+    @Column(name = "weekly_digest", nullable = false)
+    private boolean weeklyDigest = true;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    // ==================== Spring Security UserDetails ====================
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.getName().name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return status != AccountStatus.SUSPENDED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return status == AccountStatus.ACTIVE;
+    }
+}

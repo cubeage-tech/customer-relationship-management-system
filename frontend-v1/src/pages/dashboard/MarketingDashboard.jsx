@@ -1,4 +1,5 @@
 import DashboardShell from '../../components/dashboard/DashboardShell';
+import HeadlineMetrics from '../../components/analytics/HeadlineMetrics';
 import EmptyState from '../../components/common/EmptyState';
 
 const STATS = [
@@ -15,6 +16,7 @@ const MarketingDashboard = () => {
       subtitle="Campaign performance and the leads they generate."
       stats={STATS}
     >
+      <HeadlineMetrics />
       <EmptyState
         title="No campaigns yet"
         message="Create a campaign to start tracking generated leads and conversion here."

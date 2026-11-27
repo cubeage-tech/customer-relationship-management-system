@@ -18,6 +18,8 @@ const DashboardShell = ({ title, subtitle, stats = [], children }) => {
               label={stat.label}
               value={stat.value}
               hint={stat.hint}
+              onClick={stat.onClick}
+              isActive={stat.isActive}
             />
           ))}
         </div>

@@ -1,0 +1,120 @@
+package com.company.crm.common.audit;
+
+/** Business actions recorded in the audit trail. Stored by name; never rename an existing constant. */
+public enum AuditAction {
+    CUSTOMER_CREATED,
+    CUSTOMER_UPDATED,
+    CUSTOMER_ARCHIVED,
+    CUSTOMER_RESTORED,
+    CUSTOMER_CONTACT_ADDED,
+    CUSTOMER_CONTACT_UPDATED,
+    CUSTOMER_CONTACT_REMOVED,
+    TEAM_CREATED,
+    TEAM_UPDATED,
+    TEAM_DELETED,
+    TEAM_MEMBERS_CHANGED,
+    TICKET_CLAIMED,
+    /** FR-6.4c: an at-risk/breached SLA was escalated (system action, no actor). */
+    TICKET_SLA_ESCALATED,
+    DISCOUNT_APPROVED,
+    DISCOUNT_REJECTED,
+    // NFR-7.2d: financial records
+    QUOTATION_CREATED,
+    QUOTATION_UPDATED,
+    QUOTATION_SENT,
+    QUOTATION_STATUS_RECORDED,
+    QUOTATIONS_EXPIRED,
+    OPPORTUNITY_CREATED,
+    OPPORTUNITY_UPDATED,
+    OPPORTUNITY_STAGE_CHANGED,
+    COMMISSION_RECORDED,
+    COMMISSION_VOIDED,
+    COMMISSION_APPROVED,
+    COMMISSION_PAID,
+    COMMISSION_RULE_CREATED,
+    COMMISSION_RULE_UPDATED,
+    COMMISSION_RULE_DELETED,
+    PAYMENT_ORDER_CREATED,
+    PAYMENT_CONFIRMED,
+    PAYMENT_FAILED,
+    SUBSCRIPTION_ACTIVATED,
+    SUBSCRIPTION_CANCELLED,
+    // NFR-7.2d: user management and account security
+    TENANT_SIGNED_UP,
+    USER_CREATED,
+    PASSWORD_RESET,
+    TENANT_DEACTIVATED,
+    TENANT_RESTORED,
+    // NFR-7.6b
+    TENANT_SETTINGS_UPDATED,
+    // API-G12: ERP integration
+    INTEGRATION_KEY_CREATED,
+    INTEGRATION_KEY_REVOKED,
+    ERP_CUSTOMER_CODE_SET,
+    ERP_PRODUCTS_SYNCED,
+
+    // ARC-9: custom fields
+    CUSTOM_FIELD_SAVED,
+    CUSTOM_FIELD_TEMPLATE_APPLIED,
+    CUSTOM_FIELD_VALUES_UPDATED,
+
+    // ROLE-8
+    ROLE_PERMISSIONS_CHANGED,
+
+    // NOT-6 / NOT-7 / INT-8 / SEC-1c
+    NOTIFICATION_SETTINGS_CHANGED,
+    CUSTOMER_CONSENT_CHANGED,
+    INTEGRATION_AUTH_FAILED,
+    MFA_ENABLED,
+    MFA_DISABLED,
+    MFA_RESET,
+    MFA_RECOVERY_CODES_REGENERATED,
+    MFA_RECOVERY_CODE_USED,
+
+    // API-G01 / SEC-6 / SEC-8 / BIZ-2
+    REFRESH_TOKEN_REUSED,
+    AI_SETTINGS_CHANGED,
+    AI_EXCLUSION_CHANGED,
+    DATA_REQUEST_CREATED,
+    DATA_EXPORTED,
+    DATA_ERASED,
+    DATA_REQUEST_REJECTED,
+    EDITION_APPLIED,
+
+    // SEC-7: sign-ins, exports and (RecordAuditListener) every other record's create/update/delete
+    USER_SIGNED_IN,
+    USER_SIGN_IN_FAILED,
+    USER_SIGNED_OUT,
+    REPORT_EXPORTED,
+    RECORD_CREATED,
+    RECORD_UPDATED,
+    RECORD_DELETED,
+    OPPORTUNITY_DELETED,
+
+    // BR-1 / VAL-7: a stage skipped by explicit override
+    LEAD_STAGE_OVERRIDDEN,
+    OPPORTUNITY_STAGE_OVERRIDDEN,
+
+    // FR-AI-5.2: a person approved AI-written content before it was sent
+    AI_CONTENT_APPROVED,
+
+    // FR-AI-7.1: meeting recordings (with consent), and every time one is played
+    MEETING_RECORDING_ADDED,
+    MEETING_RECORDING_PLAYED,
+    MEETING_RECORDING_DELETED,
+
+    // FR-AI-7.2: the meeting's conversation and its AI summary
+    MEETING_TRANSCRIPT_SAVED,
+    MEETING_TRANSCRIPT_DELETED,
+    MEETING_SUMMARY_GENERATED,
+
+    // FR-AI-7.3: a meeting's confirmed action items became follow-up tasks
+    FOLLOW_UP_TASKS_CREATED,
+
+    // FR-AI-8.3: coaching shared between a salesperson and their manager
+    COACHING_SHARED,
+    COACHING_ACKNOWLEDGED,
+
+    // FR-AI-9.1: a suggested duplicate pair was confirmed as two different records
+    DUPLICATE_DISMISSED
+}

@@ -5,19 +5,24 @@ class RoutePath {
   // ==================== BASE ROUTES ====================
   static DASHBOARD_BASE = "/dashboard";
   static ADMIN_BASE = "/admin";
+  static PLATFORM_BASE = "/platform";
 
   // ==================== PUBLIC ROUTES ====================
   static HOME = "/";
   static ABOUT = "/about";
+  static PLANS = "/plans";
   static CONTACT = "/contact";
   static LOGIN = "/login";
   static SIGNUP = "/signup";
   static FORGOT_PASSWORD = "/forgot-password";
+  static RESET_PASSWORD = "/reset-password";
+  static VERIFY_EMAIL = "/verify-email";
 
   // ======================================================
   // ROLE DASHBOARDS
   // ======================================================
 
+  static SUPER_ADMIN_DASHBOARD = `${this.DASHBOARD_BASE}/super-admin`;
   static ADMIN_DASHBOARD = `${this.DASHBOARD_BASE}/admin`;
   static SALES_MANAGER_DASHBOARD = `${this.DASHBOARD_BASE}/sales-manager`;
   static SALES_EXECUTIVE_DASHBOARD = `${this.DASHBOARD_BASE}/sales-executive`;
@@ -57,6 +62,11 @@ class RoutePath {
   static QUOTATIONS = "/quotations";
   static ADD_QUOTATION = "/quotations/add";
   static EDIT_QUOTATION = "/quotations/:id";
+  // FR-4.5: public page the customer opens from the emailed link (no login).
+  static CUSTOMER_QUOTATION = "/q/:token";
+  // FR-6.1 / FR-6.5: public customer pages (no login).
+  static SUPPORT_REQUEST = "/support/:token";
+  static TICKET_FEEDBACK = "/feedback/:token";
 
   // ======================================================
   // SERVICE & SUPPORT
@@ -65,12 +75,23 @@ class RoutePath {
   static SERVICE_TICKETS = "/service-tickets";
   static ADD_SERVICE_TICKET = "/service-tickets/add";
   static EDIT_SERVICE_TICKET = "/service-tickets/:id";
+  // NAV-M07
+  static SLA_DASHBOARD = "/service-tickets/sla";
 
   // ======================================================
   // MARKETING
   // ======================================================
 
   static CAMPAIGNS = "/campaigns";
+  static EDIT_CAMPAIGN = "/campaigns/:id";
+  // FR-7.2 / FR-7.3
+  static SEGMENTS = "/segments";
+  static PROMOTIONS = "/promotions";
+  // Module 8
+  static SALES_FORCE = "/sales-force";
+  // UI-1
+  static COMMUNICATIONS = "/communications";
+  static AI_ASSISTANT = "/ai-assistant";
 
   // ======================================================
   // FINANCE / APPROVALS
@@ -93,10 +114,30 @@ class RoutePath {
   static ADMIN_EDIT_USER = `${this.ADMIN_BASE}/users/:id`;
   static ADMIN_ROLES = `${this.ADMIN_BASE}/roles`;
   static ADMIN_SETTINGS = `${this.ADMIN_BASE}/settings`;
+  static ADMIN_AUDIT_LOG = `${this.ADMIN_BASE}/audit-log`;
+  // NOT-8
+  static ADMIN_NOTIFICATION_LOG = `${this.ADMIN_BASE}/notification-log`;
+  // SEC-8
+  static ADMIN_DATA_REQUESTS = `${this.ADMIN_BASE}/data-requests`;
+  static ADMIN_MY_PLAN = `${this.ADMIN_BASE}/my-plan`;
+  static ADMIN_TEAMS = `${this.ADMIN_BASE}/teams`;
+
+  // ======================================================
+  // PLATFORM ADMINISTRATION (super_admin only)
+  // ======================================================
+
+  static PLATFORM_TENANTS = `${this.PLATFORM_BASE}/tenants`;
+  static PLATFORM_SUBSCRIPTION_PLANS = `${this.PLATFORM_BASE}/subscription-plans`;
+  static PLATFORM_ROLES_PERMISSIONS = `${this.PLATFORM_BASE}/roles-permissions`;
+  static PLATFORM_SETTINGS = `${this.PLATFORM_BASE}/settings`;
+  static PLATFORM_REPORTS = `${this.PLATFORM_BASE}/reports`;
+  static PLATFORM_AUDIT_LOGS = `${this.PLATFORM_BASE}/audit-logs`;
 
   // ======================================================
   // COMMON
   // ======================================================
+
+  static HELP_CENTER = "/help-center";
 
   static PROFILE = "/profile";
 
@@ -107,7 +148,8 @@ class RoutePath {
 
 /** Landing route after login, per CRM role. */
 export const ROLE_HOME_ROUTE = {
-  [USER_ROLES.SUPER_ADMIN]: RoutePath.ADMIN_DASHBOARD,
+  [USER_ROLES.SUPER_ADMIN]: RoutePath.SUPER_ADMIN_DASHBOARD,
+  [USER_ROLES.ADMIN]: RoutePath.ADMIN_DASHBOARD,
   [USER_ROLES.SALES_MANAGER]: RoutePath.SALES_MANAGER_DASHBOARD,
   [USER_ROLES.SALES_EXECUTIVE]: RoutePath.SALES_EXECUTIVE_DASHBOARD,
   [USER_ROLES.MARKETING_EXECUTIVE]: RoutePath.MARKETING_DASHBOARD,

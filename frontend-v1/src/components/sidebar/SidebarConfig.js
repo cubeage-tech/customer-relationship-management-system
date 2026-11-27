@@ -6,17 +6,26 @@ import {
   FileText,
   LifeBuoy,
   Megaphone,
+  Tag,
   BadgeCheck,
   BarChart3,
   Settings,
   ShieldCheck,
+  Building2,
+  CreditCard,
+  ScrollText,
+  CalendarCheck,
+  UsersRound,
+  MessagesSquare,
+  Bot,
 } from "lucide-react";
 import RoutePath, { getRoleHomeRoute } from "../../core/constants/routes.constant";
+import { USER_ROLES } from "../../core/constants/app.constant";
 import { PERMISSIONS } from "../../core/constants/permission.constant";
 import { hasAnyPermission } from "../../core/utils/permission";
 
 /**
- * Single source of truth for the CRM sidebar.
+ * Single source of truth for the tenant CRM sidebar (every non-super_admin role).
  * Every item declares the permissions that make it visible, so navigation can
  * never drift away from the RBAC matrix in permission.constant.js.
  */
@@ -53,6 +62,13 @@ export const SIDEBAR_ITEMS = [
     permissions: [PERMISSIONS.QUOTATIONS_VIEW],
   },
   {
+    // UI-1: unified inbox of emails, WhatsApp, SMS and calls.
+    label: "Communications",
+    icon: MessagesSquare,
+    path: RoutePath.COMMUNICATIONS,
+    permissions: [PERMISSIONS.CUSTOMERS_VIEW],
+  },
+  {
     label: "Service Tickets",
     icon: LifeBuoy,
     path: RoutePath.SERVICE_TICKETS,
@@ -65,6 +81,36 @@ export const SIDEBAR_ITEMS = [
     permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
   },
   {
+    label: "Segments",
+    icon: UsersRound,
+    path: RoutePath.SEGMENTS,
+    permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    label: "Promotions",
+    icon: Tag,
+    path: RoutePath.PROMOTIONS,
+    permissions: [PERMISSIONS.CAMPAIGNS_VIEW],
+  },
+  {
+    // Module 8: attendance for everyone; targets, activity and commission by role (see the page).
+    label: "Sales Team",
+    icon: CalendarCheck,
+    path: RoutePath.SALES_FORCE,
+  },
+  {
+    label: "Reports",
+    icon: BarChart3,
+    path: RoutePath.REPORTS,
+    permissions: [PERMISSIONS.REPORTS_VIEW],
+  },
+  {
+    // UI-1 / API-G11: chat with the CRM, lead scores, forecast, sentiment — every tenant role.
+    label: "AI Assistant",
+    icon: Bot,
+    path: RoutePath.AI_ASSISTANT,
+  },
+  {
     label: "Approvals",
     icon: BadgeCheck,
     path: RoutePath.APPROVALS,
@@ -74,16 +120,22 @@ export const SIDEBAR_ITEMS = [
     ],
   },
   {
-    label: "Reports",
-    icon: BarChart3,
-    path: RoutePath.REPORTS,
-    permissions: [PERMISSIONS.REPORTS_VIEW],
-  },
-  {
     label: "Users",
     icon: ShieldCheck,
     path: RoutePath.ADMIN_USERS,
     permissions: [PERMISSIONS.USERS_VIEW],
+  },
+  {
+    label: "Teams",
+    icon: UsersRound,
+    path: RoutePath.ADMIN_TEAMS,
+    permissions: [PERMISSIONS.TEAMS_MANAGE],
+  },
+  {
+    label: "My Plan",
+    icon: CreditCard,
+    path: RoutePath.ADMIN_MY_PLAN,
+    permissions: [PERMISSIONS.BILLING_VIEW],
   },
   {
     label: "Settings",
@@ -91,16 +143,99 @@ export const SIDEBAR_ITEMS = [
     path: RoutePath.ADMIN_SETTINGS,
     permissions: [PERMISSIONS.SETTINGS_VIEW],
   },
+  {
+    label: "Audit Log",
+    icon: ScrollText,
+    path: RoutePath.ADMIN_AUDIT_LOG,
+    permissions: [PERMISSIONS.AUDIT_VIEW],
+  },
 ];
 
-/** Menu items the given CRM user is allowed to see. */
+/** Platform-level sidebar, grouped into sections — super_admin only. */
+export const SUPER_ADMIN_SIDEBAR_GROUPS = [
+  {
+    section: "PLATFORM",
+    items: [
+      {
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        path: RoutePath.SUPER_ADMIN_DASHBOARD,
+        permissions: null,
+      },
+      {
+        label: "Tenants / Clients",
+        icon: Building2,
+        path: RoutePath.PLATFORM_TENANTS,
+        permissions: [PERMISSIONS.TENANTS_VIEW],
+      },
+      {
+        label: "Subscription Plans",
+        icon: CreditCard,
+        path: RoutePath.PLATFORM_SUBSCRIPTION_PLANS,
+        permissions: [PERMISSIONS.SUBSCRIPTION_PLANS_VIEW],
+      },
+      {
+        label: "Role & Permission",
+        icon: ShieldCheck,
+        path: RoutePath.PLATFORM_ROLES_PERMISSIONS,
+        permissions: [PERMISSIONS.PLATFORM_ROLES_VIEW],
+      },
+      {
+        label: "System Settings",
+        icon: Settings,
+        path: RoutePath.PLATFORM_SETTINGS,
+        permissions: [PERMISSIONS.PLATFORM_SETTINGS_VIEW],
+      },
+      {
+        label: "Reports",
+        icon: BarChart3,
+        path: RoutePath.PLATFORM_REPORTS,
+        permissions: [PERMISSIONS.PLATFORM_REPORTS_VIEW],
+      },
+      {
+        label: "Audit Logs",
+        icon: ScrollText,
+        path: RoutePath.PLATFORM_AUDIT_LOGS,
+        permissions: [PERMISSIONS.AUDIT_LOGS_VIEW],
+      },
+    ],
+  },
+  {
+    section: "SUPPORT",
+    items: [
+      {
+        label: "Help Center",
+        icon: LifeBuoy,
+        path: RoutePath.HELP_CENTER,
+        permissions: null,
+      },
+    ],
+  },
+];
+
+/**
+ * Menu groups the given CRM user is allowed to see, shaped as
+ * `[{ section, items: [{ path, label, icon, badge?, isNew? }] }]` so the
+ * sidebar can render section headers uniformly for every role.
+ */
 export const getSidebarMenu = (user) => {
   if (!user?.role) return [];
 
-  return SIDEBAR_ITEMS.filter(
+  if (user.role === USER_ROLES.SUPER_ADMIN) {
+    return SUPER_ADMIN_SIDEBAR_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.permissions || hasAnyPermission(user, item.permissions)
+      ),
+    })).filter((group) => group.items.length > 0);
+  }
+
+  const items = SIDEBAR_ITEMS.filter(
     (item) => !item.permissions || hasAnyPermission(user, item.permissions)
   ).map((item) => ({
     ...item,
     path: item.path || getRoleHomeRoute(user.role),
   }));
+
+  return [{ section: "WORKSPACE", items }];
 };

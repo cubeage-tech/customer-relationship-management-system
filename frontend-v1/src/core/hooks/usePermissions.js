@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useAuth } from './useAuth';
 import {
   getDataScope,
+  getEffectivePermissions,
   getRoleLabel,
-  getRolePermissions,
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
@@ -18,7 +18,7 @@ export const usePermissions = () => {
     () => ({
       role: user?.role || null,
       roleLabel: user?.role ? getRoleLabel(user.role) : '',
-      permissions: getRolePermissions(user?.role),
+      permissions: getEffectivePermissions(user),
       can: (permission) => hasPermission(user, permission),
       canAny: (permissions) => hasAnyPermission(user, permissions),
       canAll: (permissions) => hasAllPermissions(user, permissions),

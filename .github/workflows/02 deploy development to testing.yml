@@ -1,0 +1,66 @@
+# =============================================================================
+# COMPANY REPOSITORY WORKFLOW 3
+# Trigger : manual "Run workflow" ONLY (workflow_dispatch)
+# Action  : Team Lead types DEPLOY exactly -> merge development -> testing
+#
+# Security:
+#   - This file lives ONLY in the company repository, which interns never
+#     have access to, so only Team Leads / authorized members can even see
+#     the "Run workflow" button.
+#   - The `environment: production-deploy` gate below adds a second layer:
+#     configure that environment's "Required reviewers" to your Team Leads
+#     group in Settings -> Environments, so the run pauses for approval
+#     even if someone with repo write access triggers it.
+# =============================================================================
+name: "03 - Deploy Development -> Testing"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY exactly to confirm merging development into testing'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-development-to-testing
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: testing-deploy
+    steps:
+      - name: Validate confirmation phrase
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DEPLOY" ]; then
+            echo "::error::Confirmation input must be exactly 'DEPLOY' (case-sensitive). Aborting deployment."
+            exit 1
+          fi
+          echo "Confirmation accepted. Proceeding with merge."
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge development into testing
+        run: |
+          set -euo pipefail
+          git fetch origin development testing
+          git checkout testing
+          git merge --no-edit origin/development
+          git push origin testing
+
+      - name: Summary
+        run: |
+          echo "### Deployment complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "development has been merged into testing by ${{ github.actor }}." >> "$GITHUB_STEP_SUMMARY"

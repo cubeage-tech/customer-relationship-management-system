@@ -1,69 +1,117 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useAuth } from "../../core/hooks/useAuth";
 import { getSidebarMenu } from "./SidebarConfig";
-import { APP_SHORT_NAME } from "../../core/constants/app.constant";
-import { getRoleLabel } from "../../core/utils/permission";
 import RoutePath from "../../core/constants/routes.constant";
+import { USER_ROLES } from "../../core/constants/app.constant";
 
-const Sidebar = () => {
-  const { user, logoutUser } = useAuth();
+// Optional AI credits widget data — wire this up to real usage data.
+const AI_CREDITS_USED = 8420;
+const AI_CREDITS_TOTAL = 10000;
+
+/** onNavigate: called when a link is chosen (closes the mobile drawer, NFR-7.9). */
+const Sidebar = ({ onNavigate }) => {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const menus = getSidebarMenu(user);
+  // getSidebarMenu(user) returns sections shaped like:
+  // [{ section, items: [{ path, label, icon, badge?: string | number, isNew?: boolean }] }]
+  const groups = getSidebarMenu(user);
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate(RoutePath.LOGIN, { replace: true });
-  };
+  const creditsPct = Math.min(
+    100,
+    Math.round((AI_CREDITS_USED / AI_CREDITS_TOTAL) * 100)
+  );
 
   return (
-    <aside className="w-72 bg-slate-900 text-white flex flex-col h-full">
+    <aside className="w-72 bg-white border-r border-slate-200 flex flex-col h-full">
 
-      <div className="h-20 flex flex-col items-center justify-center border-b border-slate-800 shrink-0">
-        <h1 className="text-2xl font-bold">
-          {APP_SHORT_NAME}
-        </h1>
-        {user?.role && (
-          <p className="text-xs text-slate-400">
-            {getRoleLabel(user.role)}
-          </p>
-        )}
-      </div>
+      <nav className="px-4 pt-6 pb-2 flex-1 overflow-y-auto">
+        {groups.map((group) => (
+          <div key={group.section} className="mb-6 last:mb-0">
+            <p className="px-3 mb-3 text-xs font-semibold tracking-wider text-slate-400">
+              {group.section}
+            </p>
 
-      <nav className="p-5 flex-1 overflow-y-auto">
+            {group.items.map((menu) => (
+              <NavLink
+                key={menu.path}
+                to={menu.path}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  `relative flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary/5 text-primary"
+                      : "text-slate-600 hover:bg-slate-50"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-primary" />
+                    )}
 
-        {menus.map((menu) => (
+                    <span className="flex items-center gap-3">
+                      <menu.icon size={18} />
+                      {menu.label}
+                    </span>
 
-          <NavLink
-            key={menu.path}
-            to={menu.path}
-            className={({ isActive }) =>
-              `flex items-center gap-3 p-3 rounded-lg mb-2 ${
-                isActive
-                  ? "bg-blue-600"
-                  : "hover:bg-slate-800"
-              }`
-            }
-          >
-            <menu.icon size={20} />
-            {menu.label}
-          </NavLink>
+                    {menu.badge !== undefined && (
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {menu.badge}
+                      </span>
+                    )}
 
+                    {menu.isNew && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary text-white">
+                        New
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         ))}
-
       </nav>
 
-      <div className="p-5 border-t border-slate-800 shrink-0">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-3 p-3 rounded-lg w-full text-left hover:bg-slate-800 transition-colors"
-        >
-          <LogOut size={20} />
-          Logout
-        </button>
-      </div>
+      {/* AI Credits widget — tenant-scoped usage, not meaningful for platform staff */}
+      {user?.role !== USER_ROLES.SUPER_ADMIN && (
+        <div className="p-4 border-t border-slate-200 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate?.();
+              navigate(RoutePath.AI_CREDITS);
+            }}
+            className="w-full text-left rounded-xl bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={16} className="text-primary" />
+              <span className="text-sm font-semibold text-primary">
+                AI Credits
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mb-2">
+              {AI_CREDITS_USED.toLocaleString()} of{" "}
+              {AI_CREDITS_TOTAL.toLocaleString()} monthly credits
+            </p>
+            <div className="h-1.5 w-full bg-primary/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full"
+                style={{ width: `${creditsPct}%` }}
+              />
+            </div>
+          </button>
+        </div>
+      )}
 
     </aside>
   );

@@ -1,3 +1,231 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+class ServerUrl {
+  static BASE_URL = import.meta.env.VITE_API_URL;
 
-export const API_TIMEOUT_MS = 15000;
+  // auth module
+  static API_MODULE_AUTH = "/auth";
+
+    static AUTH_LOGIN = ServerUrl.API_MODULE_AUTH + "/login";
+    static AUTH_REGISTER = ServerUrl.API_MODULE_AUTH + "/signup";
+    static AUTH_LOGOUT = ServerUrl.API_MODULE_AUTH + "/logout";
+    static AUTH_REFRESH = ServerUrl.API_MODULE_AUTH + "/refresh";
+    static AUTH_VERIFY_EMAIL = ServerUrl.API_MODULE_AUTH + "/verify-email";
+    static AUTH_FORGOT_PASSWORD = ServerUrl.API_MODULE_AUTH + "/forgot-password";
+    static AUTH_RESET_PASSWORD = ServerUrl.API_MODULE_AUTH + "/reset-password";
+    static AUTH_RESEND_VERIFICATION = ServerUrl.API_MODULE_AUTH + "/resend-verification";
+    // SEC-1c: the second sign-in step
+    static AUTH_MFA_VERIFY = ServerUrl.API_MODULE_AUTH + "/mfa/verify";
+    static AUTH_MFA_SETUP = ServerUrl.API_MODULE_AUTH + "/mfa/setup";
+    static AUTH_MFA_SETUP_CONFIRM = ServerUrl.API_MODULE_AUTH + "/mfa/setup/confirm";
+
+  static API_MODULE_USER = "/api";
+
+    static USERS = ServerUrl.API_MODULE_USER + "/users";
+    static TENANTS = ServerUrl.API_MODULE_USER + "/tenants";
+
+    // customers
+    static CUSTOMERS = ServerUrl.API_MODULE_USER + "/customers";
+    static customer = (id) => `${ServerUrl.CUSTOMERS}/${id}`;
+    static customerArchive = (id) => `${ServerUrl.CUSTOMERS}/${id}/archive`;
+    static customerRestore = (id) => `${ServerUrl.CUSTOMERS}/${id}/restore`;
+    static customerContacts = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/contacts`;
+    static customerPurchases = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/purchases`;
+    static customerDocuments = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/documents`;
+    static customerDocument = (customerId, documentId) => `${ServerUrl.CUSTOMERS}/${customerId}/documents/${documentId}`;
+
+    // company branding (AC-4.2)
+    static BRANDING = ServerUrl.API_MODULE_USER + "/branding";
+    static BRANDING_LOGO = ServerUrl.BRANDING + "/logo";
+
+    // industries (FR-1.6)
+    static INDUSTRIES = ServerUrl.API_MODULE_USER + "/industries";
+    static industry = (code) => `${ServerUrl.INDUSTRIES}/${code}`;
+
+    // communications (Module 5)
+    // service support (FR-6.1 / 6.3b / 6.5)
+    static customerAssets = (customerId) => `${ServerUrl.CUSTOMERS}/${customerId}/assets`;
+    static customerAsset = (customerId, assetId) => `${ServerUrl.CUSTOMERS}/${customerId}/assets/${assetId}`;
+    static TICKET_ASSIGNMENT_RULES = ServerUrl.API_MODULE_USER + "/ticket-assignment-rules";
+    static ticketAssignmentRule = (id) => `${ServerUrl.TICKET_ASSIGNMENT_RULES}/${id}`;
+    static SUPPORT_FORM = ServerUrl.API_MODULE_USER + "/support-form";
+    static SUPPORT_FORM_RESET = ServerUrl.SUPPORT_FORM + "/reset";
+    static publicSupport = (token) => `${ServerUrl.API_MODULE_USER}/public/support/${encodeURIComponent(token)}`;
+    static publicFeedback = (token) => `${ServerUrl.API_MODULE_USER}/public/feedback/${encodeURIComponent(token)}`;
+
+    // meetings (FR-5.5)
+    static MEETINGS = ServerUrl.API_MODULE_USER + "/meetings";
+    static meeting = (id) => `${ServerUrl.MEETINGS}/${id}`;
+    // follow-up tasks (FR-AI-7.3)
+    static TASKS = ServerUrl.API_MODULE_USER + "/tasks";
+    static meetingCancel = (id) => `${ServerUrl.MEETINGS}/${id}/cancel`;
+    static meetingIcs = (id) => `${ServerUrl.MEETINGS}/${id}/ics`;
+    static MEETINGS_CALENDAR_FEED = ServerUrl.MEETINGS + "/calendar-feed";
+    static MEETINGS_CALENDAR_FEED_RESET = ServerUrl.MEETINGS + "/calendar-feed/reset";
+
+    static COMMUNICATIONS = ServerUrl.API_MODULE_USER + "/communications";
+    static COMMUNICATION_CALLS = ServerUrl.COMMUNICATIONS + "/calls";
+    static COMMUNICATION_EMAIL = ServerUrl.COMMUNICATIONS + "/email";
+    static COMMUNICATION_WHATSAPP = ServerUrl.COMMUNICATIONS + "/whatsapp";
+    static COMMUNICATION_SMS = ServerUrl.COMMUNICATIONS + "/sms";
+    static COMMUNICATION_INBOX = ServerUrl.COMMUNICATIONS + "/inbox";
+    // API-G11 AI services
+    static AI = ServerUrl.API_MODULE_USER + "/ai";
+    // API-G02, NAV-M11, SEC-8, BIZ-2
+    static customerHistory = (id) => `${ServerUrl.API_MODULE_USER}/customers/${id}/history`;
+    static INTEGRATION_STATUS = ServerUrl.API_MODULE_USER + "/integrations/status";
+    static INTEGRATION_KEYS = ServerUrl.API_MODULE_USER + "/integration-keys";
+    static DATA_REQUESTS = ServerUrl.API_MODULE_USER + "/data-requests";
+    static EDITIONS = ServerUrl.API_MODULE_USER + "/editions";
+    // SEC-1b, VAL-1/VAL-3, INT-9
+    static AUTH_PASSWORD_POLICY = ServerUrl.API_MODULE_AUTH + "/password-policy";
+    static DUPLICATE_CHECK = ServerUrl.API_MODULE_USER + "/duplicates/check";
+    static INTEGRATION_CALLS = ServerUrl.API_MODULE_USER + "/integration-calls";
+    // NOT-5..NOT-8, INT-8, SEC-1c
+    static NOTIFICATIONS = ServerUrl.API_MODULE_USER + "/notifications";
+    static NOTIFICATION_SETTINGS = ServerUrl.API_MODULE_USER + "/notification-settings";
+    static NOTIFICATION_DELIVERIES = ServerUrl.API_MODULE_USER + "/notification-deliveries";
+    static customerConsent = (id) => `${ServerUrl.API_MODULE_USER}/customers/${id}/communication-preferences`;
+    static INTEGRATION_HEALTH = ServerUrl.API_MODULE_USER + "/integration-health";
+    static MFA = ServerUrl.API_MODULE_USER + "/mfa";
+    // ROLE-8 / NOT-1
+    static ROLE_PERMISSIONS = ServerUrl.API_MODULE_USER + "/role-permissions";
+    static NOTIFICATION_PREFERENCES = ServerUrl.API_MODULE_USER + "/notifications/preferences";
+    // ARC-9
+    static CUSTOM_FIELDS = ServerUrl.API_MODULE_USER + "/custom-fields";
+    static customFieldValues = (entityType, id) => `${ServerUrl.CUSTOM_FIELDS}/values/${entityType}/${id}`;
+    static COMMUNICATION_SMS_ALERTS = ServerUrl.COMMUNICATIONS + "/sms-alerts";
+    static customerContact = (customerId, contactId) =>
+      `${ServerUrl.CUSTOMERS}/${customerId}/contacts/${contactId}`;
+
+    // leads
+    static LEADS = ServerUrl.API_MODULE_USER + "/leads";
+    static lead = (id) => `${ServerUrl.LEADS}/${id}`;
+    static leadStage = (id) => `${ServerUrl.LEADS}/${id}/stage`;
+    static leadAssign = (id) => `${ServerUrl.LEADS}/${id}/assign`;
+    static leadTeam = (id) => `${ServerUrl.LEADS}/${id}/team`;
+    static LEAD_ASSIGNABLE_TEAMS = ServerUrl.LEADS + "/assignable-teams";
+    static LEAD_ASSIGNMENT_RULES = ServerUrl.API_MODULE_USER + "/lead-assignment-rules";
+    static leadAssignmentRule = (id) => `${ServerUrl.LEAD_ASSIGNMENT_RULES}/${id}`;
+
+    // opportunities
+    static OPPORTUNITIES = ServerUrl.API_MODULE_USER + "/opportunities";
+    static OPPORTUNITIES_SUMMARY = ServerUrl.OPPORTUNITIES + "/summary";
+    static OPPORTUNITIES_PERFORMANCE = ServerUrl.OPPORTUNITIES + "/performance";
+    // FR-3.2: configurable sales stages
+    static OPPORTUNITY_STAGES = ServerUrl.API_MODULE_USER + "/opportunity-stages";
+    static OPPORTUNITY_STAGES_ORDER = ServerUrl.OPPORTUNITY_STAGES + "/order";
+    static pipelineStage = (code) => `${ServerUrl.OPPORTUNITY_STAGES}/${encodeURIComponent(code)}`;
+    static opportunity = (id) => `${ServerUrl.OPPORTUNITIES}/${id}`;
+    static opportunityStage = (id) => `${ServerUrl.OPPORTUNITIES}/${id}/stage`;
+
+    // quotations
+    static QUOTATIONS = ServerUrl.API_MODULE_USER + "/quotations";
+    static quotation = (id) => `${ServerUrl.QUOTATIONS}/${id}`;
+    static quotationPdf = (id) => `${ServerUrl.QUOTATIONS}/${id}/pdf`;
+    static quotationSend = (id) => `${ServerUrl.QUOTATIONS}/${id}/send`;
+    static quotationCustomerStatus = (id) => `${ServerUrl.QUOTATIONS}/${id}/customer-status`;
+    static quotationDiscountApprove = (id) => `${ServerUrl.QUOTATIONS}/${id}/discount/approve`;
+    static quotationDiscountReject = (id) => `${ServerUrl.QUOTATIONS}/${id}/discount/reject`;
+    // FR-4.5: customer view link (public)
+    static publicQuotation = (token) => `${ServerUrl.API_MODULE_USER}/public/quotations/${encodeURIComponent(token)}`;
+    static publicQuotationPdf = (token) => `${ServerUrl.publicQuotation(token)}/pdf`;
+
+    // products (quotation price list)
+    static PRODUCTS = ServerUrl.API_MODULE_USER + "/products";
+    static product = (id) => `${ServerUrl.PRODUCTS}/${id}`;
+    static productDeactivate = (id) => `${ServerUrl.PRODUCTS}/${id}/deactivate`;
+    static productActivate = (id) => `${ServerUrl.PRODUCTS}/${id}/activate`;
+
+    // service tickets
+    static TICKETS = ServerUrl.API_MODULE_USER + "/tickets";
+    static TICKETS_SUMMARY = ServerUrl.TICKETS + "/summary";
+    static ticket = (id) => `${ServerUrl.TICKETS}/${id}`;
+    static ticketAssign = (id) => `${ServerUrl.TICKETS}/${id}/assign`;
+    static ticketStatus = (id) => `${ServerUrl.TICKETS}/${id}/status`;
+    static ticketFeedback = (id) => `${ServerUrl.TICKETS}/${id}/feedback`;
+    static ticketClaim = (id) => `${ServerUrl.TICKETS}/${id}/claim`;
+
+    // campaigns
+    static CAMPAIGNS = ServerUrl.API_MODULE_USER + "/campaigns";
+    static CAMPAIGNS_SUMMARY = ServerUrl.CAMPAIGNS + "/summary";
+    static campaign = (id) => `${ServerUrl.CAMPAIGNS}/${id}`;
+    static campaignStatus = (id) => `${ServerUrl.CAMPAIGNS}/${id}/status`;
+    static campaignLeads = (id) => `${ServerUrl.CAMPAIGNS}/${id}/leads`;
+    // FR-7.1b/7.1c/7.4
+    static campaignLaunch = (id) => `${ServerUrl.CAMPAIGNS}/${id}/launch`;
+    static campaignSchedule = (id) => `${ServerUrl.CAMPAIGNS}/${id}/schedule`;
+    static campaignMetrics = (id) => `${ServerUrl.CAMPAIGNS}/${id}/metrics`;
+    static campaignRecipients = (id) => `${ServerUrl.CAMPAIGNS}/${id}/recipients`;
+    // Module 8 sales force (FR-8.1 - FR-8.5)
+    static SALES_TARGETS = ServerUrl.API_MODULE_USER + "/sales-targets";
+    static salesTarget = (id) => `${ServerUrl.SALES_TARGETS}/${id}`;
+    static SALES_VISITS = ServerUrl.API_MODULE_USER + "/sales-activities/visits";
+    static SALES_ACTIVITY_SUMMARY = ServerUrl.API_MODULE_USER + "/sales-activities/summary";
+    static ATTENDANCE = ServerUrl.API_MODULE_USER + "/attendance";
+    static ATTENDANCE_ME = ServerUrl.ATTENDANCE + "/me";
+    static ATTENDANCE_CHECK_IN = ServerUrl.ATTENDANCE + "/check-in";
+    static ATTENDANCE_CHECK_OUT = ServerUrl.ATTENDANCE + "/check-out";
+    static COMMISSIONS = ServerUrl.API_MODULE_USER + "/commissions";
+    static commissionApprove = (id) => `${ServerUrl.COMMISSIONS}/${id}/approve`;
+    static commissionPaid = (id) => `${ServerUrl.COMMISSIONS}/${id}/paid`;
+    static COMMISSION_RULES = ServerUrl.API_MODULE_USER + "/commission-rules";
+    static commissionRule = (id) => `${ServerUrl.COMMISSION_RULES}/${id}`;
+    // Module 9 analytics and reporting (FR-9.1 - FR-9.6)
+    static ANALYTICS = ServerUrl.API_MODULE_USER + "/analytics";
+    static ANALYTICS_HEADLINE = ServerUrl.ANALYTICS + "/headline";
+    static ANALYTICS_SALES = ServerUrl.ANALYTICS + "/sales";
+    static ANALYTICS_CUSTOMERS = ServerUrl.ANALYTICS + "/customers";
+    static ANALYTICS_LEAD_SOURCES = ServerUrl.ANALYTICS + "/lead-sources";
+    static ANALYTICS_REVENUE = ServerUrl.ANALYTICS + "/revenue";
+    static ANALYTICS_TEAM_PERFORMANCE = ServerUrl.ANALYTICS + "/team-performance";
+    static ANALYTICS_FILTER_OPTIONS = ServerUrl.ANALYTICS + "/filter-options";
+    static DASHBOARD_PREFERENCES = ServerUrl.ANALYTICS + "/dashboard-preferences";
+    // NFR-7.2d audit trail, NFR-7.6b tenant thresholds
+    static AUDIT_EVENTS = ServerUrl.API_MODULE_USER + "/audit-events";
+    // DB-E16: files on quotations and service tickets
+    static quotationAttachments = (id) => `${ServerUrl.API_MODULE_USER}/quotations/${id}/attachments`;
+    static ticketAttachments = (id) => `${ServerUrl.API_MODULE_USER}/tickets/${id}/attachments`;
+    static TENANT_SETTINGS = ServerUrl.API_MODULE_USER + "/tenant-settings";
+    static ANALYTICS_SERVICE = ServerUrl.ANALYTICS + "/service";
+    static ANALYTICS_CAMPAIGNS = ServerUrl.ANALYTICS + "/campaigns";
+    static analyticsExport = (report) => `${ServerUrl.ANALYTICS}/export/${report}`;
+    static REPORT_SCHEDULES = ServerUrl.API_MODULE_USER + "/report-schedules";
+    static reportSchedule = (id) => `${ServerUrl.REPORT_SCHEDULES}/${id}`;
+    static reportScheduleSend = (id) => `${ServerUrl.REPORT_SCHEDULES}/${id}/send`;
+
+    // FR-7.2 segments, FR-7.3 promotions
+    static SEGMENTS = ServerUrl.API_MODULE_USER + "/segments";
+    static segment = (id) => `${ServerUrl.SEGMENTS}/${id}`;
+    static segmentCustomers = (id) => `${ServerUrl.SEGMENTS}/${id}/customers`;
+    static PROMOTIONS = ServerUrl.API_MODULE_USER + "/promotions";
+    static promotion = (id) => `${ServerUrl.PROMOTIONS}/${id}`;
+    static promotionRedemptions = (id) => `${ServerUrl.PROMOTIONS}/${id}/redemptions`;
+    static customerPromotions = (customerId) => `${ServerUrl.API_MODULE_USER}/customers/${customerId}/promotions`;
+
+    static ADMIN_TENANT = ServerUrl.API_MODULE_USER + "/super-admin/tenants";
+    static ADMIN_DASHBOARD = ServerUrl.API_MODULE_USER + "/dashboard/super-admin";
+    static TENANT_ADMIN_DASHBOARD = ServerUrl.API_MODULE_USER + "/dashboard/tenant-admin-status";
+
+    // plans
+    static PLANS = ServerUrl.API_MODULE_USER + "/plans";
+
+    // payments
+    static PAYMENTS = ServerUrl.API_MODULE_USER + "/payments";
+    static PAYMENT_CREATE_ORDER = ServerUrl.PAYMENTS + "/create-order";
+    static PAYMENT_VERIFY_ORDER = ServerUrl.PAYMENTS + "/verify";
+
+    // subscriptions
+    static SUBSCRIPTIONS = ServerUrl.API_MODULE_USER + "/subscriptions";
+    static SUBSCRIPTION_CURRENT = ServerUrl.SUBSCRIPTIONS + "/current";
+    static SUBSCRIPTION_PLANS = ServerUrl.SUBSCRIPTIONS + "/plans";
+    static SUBSCRIPTION_UPGRADE = ServerUrl.SUBSCRIPTIONS + "/upgrade";
+
+    // sales teams (tenant admin)
+    static SALES_TEAMS = ServerUrl.API_MODULE_USER + "/sales-teams";
+    static salesTeam = (id) => `${ServerUrl.SALES_TEAMS}/${id}`;
+    static salesTeamMembers = (id) => `${ServerUrl.SALES_TEAMS}/${id}/members`;
+
+  static PLAN_PRICES = ServerUrl.PLANS + "/prices"; // GET list
+  static planPrice = (plan) => `${ServerUrl.PLANS}/${plan}/price`; // PUT single
+}
+
+export default ServerUrl;

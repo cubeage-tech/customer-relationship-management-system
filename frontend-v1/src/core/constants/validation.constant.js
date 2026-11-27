@@ -1,7 +1,7 @@
 export const VALIDATION_PATTERNS = {
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   PHONE: /^[0-9]{10}$/,
-  PASSWORD_MIN_LENGTH: 8,
+  PASSWORD_MIN_LENGTH: 10, // SEC-1b: the server's default (PASSWORD_MIN_LENGTH)
 };
 
 export const VALIDATION_MESSAGES = {

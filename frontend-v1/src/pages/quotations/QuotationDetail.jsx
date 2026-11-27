@@ -1,0 +1,292 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import PageHeader from '../../components/common/PageHeader';
+import EmptyState from '../../components/common/EmptyState';
+import Button from '../../components/common/Button';
+import AttachmentsPanel from '../../components/common/AttachmentsPanel';
+import QuotationPdfPreview from '../../components/quotation/QuotationPdfPreview';
+import { usePermissions } from '../../core/hooks/usePermissions';
+import { PERMISSIONS } from '../../core/constants/permission.constant';
+import {
+  QUOTATION_STATUS_LABELS,
+  QUOTATION_CUSTOMER_STATUS_OPTIONS,
+  DISCOUNT_APPROVAL_STATUS_LABELS,
+  QUOTATION_STATUSES,
+} from '../../core/constants/app.constant';
+import RoutePath from '../../core/constants/routes.constant';
+import { apiErrorMessage } from '../../core/utils/apiError';
+import {
+  getQuotation,
+  sendQuotation,
+  setQuotationCustomerStatus,
+  approveQuotationDiscount,
+  rejectQuotationDiscount,
+  downloadQuotationPdf,
+} from '../../core/services/quotation.service';
+
+const formatCurrency = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN')}`;
+
+const QuotationDetail = () => {
+  const { id } = useParams();
+  const { can } = usePermissions();
+  const canEdit = can(PERMISSIONS.QUOTATIONS_EDIT);
+  const canApproveDiscount = can(PERMISSIONS.QUOTATIONS_APPROVE) || can(PERMISSIONS.QUOTATIONS_APPROVE_DISCOUNT);
+
+  const [quotation, setQuotation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+
+  const refresh = () => {
+    getQuotation(id)
+      .then(setQuotation)
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const handleSend = async () => {
+    setActionError('');
+    try {
+      const saved = await sendQuotation(id);
+      setQuotation(saved);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not send this quotation.');
+    }
+  };
+
+  // Shared wrapper for the approval/status actions: one request at a time, errors shown inline.
+  const run = async (request, fallback) => {
+    setBusy(true);
+    setActionError('');
+    try {
+      setQuotation(await request());
+      return true;
+    } catch (err) {
+      setActionError(apiErrorMessage(err, fallback));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCustomerStatus = async (e) => {
+    const select = e.target;
+    const status = select.value;
+    if (!status) return;
+    const ok = await run(() => setQuotationCustomerStatus(id, status), 'Could not record the customer response.');
+    if (!ok) select.value = '';
+  };
+
+  const handleApproveDiscount = () =>
+    run(() => approveQuotationDiscount(id), 'Could not approve this discount.');
+
+  const handleRejectDiscount = async () => {
+    const reason = window.prompt('Why is this discount being rejected?');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setActionError('A reason is required to reject a discount.');
+      return;
+    }
+    await run(() => rejectQuotationDiscount(id, reason.trim()), 'Could not reject this discount.');
+  };
+
+  if (loading) return null;
+
+  if (notFound) {
+    return (
+      <EmptyState
+        title="Quotation not found"
+        message="This quotation may have been removed, or you may not have access to it."
+        action={<Link to={RoutePath.QUOTATIONS} className="text-primary hover:underline">Back to quotations</Link>}
+      />
+    );
+  }
+
+  const discountTotal = Number(quotation.subtotal ?? 0) - Number(quotation.grandTotal ?? 0);
+
+  return (
+    <section>
+      <PageHeader
+        title={quotation.quotationNumber}
+        subtitle={`${quotation.customerName} · ${QUOTATION_STATUS_LABELS[quotation.status] || quotation.status}`}
+        actions={
+          <div className="flex items-center gap-3">
+            <Link to={RoutePath.QUOTATIONS} className="text-sm text-slate-500 hover:underline">
+              Back to quotations
+            </Link>
+            <Button variant="outline" onClick={() => setPreviewing(true)}>
+              Preview PDF
+            </Button>
+            <Button variant="secondary" onClick={() => downloadQuotationPdf(id, quotation.quotationNumber)}>
+              Download PDF
+            </Button>
+          </div>
+        }
+      />
+
+      {previewing && (
+        <QuotationPdfPreview
+          quotationId={id}
+          quotationNumber={quotation.quotationNumber}
+          onClose={() => setPreviewing(false)}
+          onDownload={() => downloadQuotationPdf(id, quotation.quotationNumber)}
+        />
+      )}
+
+      {/* ---------------- Status & actions ---------------- */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
+        <div className="flex flex-wrap items-center gap-6 text-sm">
+          <div>
+            <p className="text-slate-500">Discount approval</p>
+            <p className={quotation.discountApprovalStatus === 'pending' ? 'text-amber-600 font-medium' : 'font-medium'}>
+              {DISCOUNT_APPROVAL_STATUS_LABELS[quotation.discountApprovalStatus] || quotation.discountApprovalStatus}
+            </p>
+          </div>
+          {quotation.discountReviewNote && (
+            <div>
+              <p className="text-slate-500">Review note</p>
+              <p>{quotation.discountReviewNote}</p>
+            </div>
+          )}
+          {/* FR-4.5: tracked customer link — emailed on send; opening it marks the quotation Viewed. */}
+          {quotation.viewUrl && (
+            <div>
+              <p className="text-slate-500">Customer link</p>
+              <p className="flex items-center gap-2">
+                <span className="font-medium">{quotation.viewedAt ? `Viewed ${new Date(quotation.viewedAt).toLocaleString()}` : 'Not opened yet'}</span>
+                <button
+                  type="button"
+                  className="text-blue-600 hover:underline"
+                  onClick={() => navigator.clipboard?.writeText(quotation.viewUrl).then(() => setLinkCopied(true)).catch(() => {})}
+                >
+                  {linkCopied ? 'Copied' : 'Copy link'}
+                </button>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {actionError && <p className="form-error mt-3">{actionError}</p>}
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          {canEdit && quotation.status === QUOTATION_STATUSES.DRAFT && (
+            <Button onClick={handleSend}>Send to customer</Button>
+          )}
+
+          {canApproveDiscount && quotation.discountApprovalStatus === 'pending' && (
+            <>
+              <Button variant="success" onClick={handleApproveDiscount} disabled={busy}>Approve discount</Button>
+              <Button variant="destructive" onClick={handleRejectDiscount} disabled={busy}>Reject discount</Button>
+            </>
+          )}
+
+          {canEdit && quotation.status !== QUOTATION_STATUSES.DRAFT && (
+            <select
+              onChange={handleCustomerStatus}
+              defaultValue=""
+              disabled={busy}
+              className="border border-slate-300 rounded px-2 py-1 text-sm"
+            >
+              <option value="" disabled>Record customer response…</option>
+              {QUOTATION_CUSTOMER_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {/* ---------------- Line items ---------------- */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 mb-6">
+        <h2 className="font-semibold text-slate-900 mb-3">Line items</h2>
+        <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-slate-300">
+              <th className="py-2 pr-4">Product / service</th>
+              <th className="py-2 pr-4">Qty</th>
+              <th className="py-2 pr-4">Unit price</th>
+              <th className="py-2 pr-4">Discount</th>
+              <th className="py-2 pr-4">Line total</th>
+              <th className="py-2 pr-4 text-slate-500">Unit cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {quotation.lineItems.map((item) => (
+              <tr key={item.id} className="border-b border-slate-100">
+                <td className="py-2 pr-4">{item.productName}</td>
+                <td className="py-2 pr-4">{item.quantity}</td>
+                <td className="py-2 pr-4">{formatCurrency(item.unitPrice)}</td>
+                <td className="py-2 pr-4">{item.discountPercent}%</td>
+                <td className="py-2 pr-4">{formatCurrency(item.lineTotal)}</td>
+                <td className="py-2 pr-4 text-slate-500">{item.unitCost != null ? formatCurrency(item.unitCost) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+
+        <div className="mt-4 flex flex-col items-end text-sm gap-1">
+          <p>Subtotal: {formatCurrency(quotation.subtotal)}</p>
+          <p>Discount: {formatCurrency(discountTotal)}</p>
+          <p className="font-semibold text-base">Grand total: {formatCurrency(quotation.grandTotal)}</p>
+          {/* FR-4.8: internal estimate — never shown on the customer link or PDF. */}
+          {quotation.estimatedMargin != null ? (
+            <p className={quotation.estimatedMargin < 0 ? 'text-rose-600 font-medium' : 'text-emerald-700 font-medium'}>
+              Estimated margin (internal): {formatCurrency(quotation.estimatedMargin)}
+              {quotation.estimatedMarginPercent != null && ` (${quotation.estimatedMarginPercent}%)`}
+              <span className="font-normal text-slate-500"> · cost {formatCurrency(quotation.estimatedCost)}</span>
+            </p>
+          ) : (
+            <p className="text-slate-500">
+              Estimated margin unknown: {quotation.linesWithoutCost === 1 ? '1 line has' : `${quotation.linesWithoutCost} lines have`} no unit cost
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ---------------- Details ---------------- */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5">
+        <h2 className="font-semibold text-slate-900 mb-3">Details</h2>
+        <dl className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div><dt className="text-slate-500">Owner</dt><dd>{quotation.ownerName || '—'}</dd></div>
+          <div>
+            <dt className="text-slate-500">Valid until</dt>
+            <dd>{quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : '—'}</dd>
+          </div>
+          {quotation.opportunityId && (
+            <div>
+              <dt className="text-slate-500">Linked opportunity</dt>
+              <dd>
+                <Link to={RoutePath.EDIT_OPPORTUNITY.replace(':id', quotation.opportunityId)} className="text-primary underline">
+                  View opportunity
+                </Link>
+              </dd>
+            </div>
+          )}
+          <div className="sm:col-span-2"><dt className="text-slate-500">Notes</dt><dd>{quotation.notes || '—'}</dd></div>
+          {quotation.customerRespondedAt && (
+            <div className="sm:col-span-2">
+              <dt className="text-slate-500">Customer&apos;s answer</dt>
+              <dd>{quotation.status === 'approved' ? 'Accepted' : 'Declined'} on {new Date(quotation.customerRespondedAt).toLocaleString()}
+                {quotation.customerResponseComment ? ` — "${quotation.customerResponseComment}"` : ''}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+
+      {/* ---------------- Attachments (DB-E16) ---------------- */}
+      <AttachmentsPanel kind="quotation" recordId={quotation.id} canEdit={canEdit} hint="Attach specifications, drawings or signed copies" />
+    </section>
+  );
+};
+
+export default QuotationDetail;

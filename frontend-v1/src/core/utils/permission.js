@@ -6,13 +6,19 @@ import {
   SCOPE_LABELS,
 } from '../constants/permission.constant';
 
-/** All permissions granted to a role. */
+/** All permissions granted to a role by default (the built-in matrix). */
 export const getRolePermissions = (role) => ROLE_PERMISSIONS[role] || [];
 
-/** True when the user's role grants the given permission. */
+/** ROLE-8: the role's permissions minus those the tenant switched off for it. */
+export const getEffectivePermissions = (user) => {
+  const revoked = user?.revokedPermissions || [];
+  return getRolePermissions(user?.role).filter((permission) => !revoked.includes(permission));
+};
+
+/** True when the user's role grants the given permission (and the tenant hasn't switched it off). */
 export const hasPermission = (user, permission) => {
   if (!user?.role || !permission) return false;
-  return getRolePermissions(user.role).includes(permission);
+  return getEffectivePermissions(user).includes(permission);
 };
 
 /** True when the user's role grants at least one of the given permissions. */
